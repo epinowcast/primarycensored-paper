@@ -202,3 +202,58 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 ## References
 
 ## Supporting information
+
+### Detailed analytical solutions
+
+#### General framework for analytical solutions
+- Explanation of when analytical solutions are possible
+- Role of partial expectation in deriving solutions
+
+#### Solutions for exponentially tilted primary event times
+- Complete derivation of equation for F_CP
+- Limiting case for uniform distribution
+
+#### Gamma distribution
+- Full derivation of partial expectation
+- Complete survival function and PMF formulations
+
+#### Lognormal distribution
+- Full derivation of partial expectation
+- Complete survival function and PMF formulations
+
+#### Weibull distribution
+- Full derivation of partial expectation 
+- Complete survival function and PMF formulations
+
+### Mathematical details of the naive comparison model
+- Derivation of the model used for comparison
+- Explanation of the limitations and assumptions
+- Implementation details
+
+### Extended connections to other approaches
+- Detailed mathematical connections to Park et al.
+- Complete exposition of relationship to Reich et al.
+- Formal connection to Cori et al. approach
+
+### Extended numerical validation results
+- Detailed accuracy metrics across all distributions and sample sizes
+- Additional visualizations
+
+### Extended parameter recovery results
+
+#### Stan-based estimation
+- Full results across all sample sizes
+- Detailed convergence diagnostics
+- Additional parameter visualizations
+
+#### fitdistrplus-based estimation
+- Full results across all sample sizes
+- Convergence and optimization details
+
+#### Comparison with naive models
+- Complete comparative analysis
+- Additional error metrics
+
+### Extended case study results
+- Complete parameter visualizations
+- Additional comparative outputs
