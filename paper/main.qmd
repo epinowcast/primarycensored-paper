@@ -1,0 +1,186 @@
+---
+title: "Modelling delays with primary Event Censored Distributions"
+author:
+  - name: Samuel P. C. Brand
+    affiliations:
+      - name: Center for Forecasting and Outbreak Analytics, Centers for Disease Control and Prevention, United States of America
+    corresponding: true
+  - name: James Mba Azam
+    affiliations:
+      - name: Centre for Mathematical Modelling of Infectious Diseases, London School of Hygiene & Tropical Medicine, London, United Kingdom
+    corresponding: false
+  - name: Carl Pearson
+    affiliations:
+      - name: Affiliation
+    corresponding: false
+  - name: Kelly Charniga
+    affiliations:
+      - name: Institut Pasteur, France
+    corresponding: false
+  - name: Adam Howes
+    affiliations:
+      - name: Center for Forecasting and Outbreak Analytics, Centers for Disease Control and Prevention, United States of America
+    corresponding: false
+  - name: Sebastian Funk
+    affiliations:
+      - name: Centre for Mathematical Modelling of Infectious Diseases, London School of Hygiene & Tropical Medicine, London, United Kingdom
+    corresponding: false
+  - name: Sam Abbott
+    affiliations:
+      - name: Centre for Mathematical Modelling of Infectious Diseases, London School of Hygiene & Tropical Medicine, London, United Kingdom
+    corresponding: false
+    email: sam.abbott@lshtm.ac.uk
+date: today
+format:
+  html:
+    toc: false
+    number-sections: true
+bibliography: reference.bib
+csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plos.csl
+---
+
+## Abstract
+
+## Author summary
+
+## Introduction
+
+### The broad challenge of delay distributions
+- Importance of delay distributions in epidemiology and other fields
+- Challenges in accurately estimating these distributions (censoring, truncation)
+- Real-world impact of inaccurate delay estimation in outbreak response
+
+### Specific challenges with interval censoring
+- Primary event censoring (uncertainty in start time)
+- Secondary event censoring (uncertainty in end time)
+- Double interval censoring as a common problem in epidemiological data
+- Right truncation in outbreak analysis
+
+### Current approaches and limitations
+- Review of existing methods (Park et al., Charniga et al.)
+- Common approaches: ignoring censored data, discretization, fixed imputation
+- Park's approach using latent variables and its computational limitations
+- Gap in scalable methods for double interval censored data
+
+### Our contribution
+- Marginalizing over primary event times rather than treating as parameters
+- Computational efficiency through analytical solutions
+- R package implementation with Stan integration
+- Aim to establish this as a standard approach for the field
+
+## Methods
+
+### Statistical framework
+
+#### Problem statement
+- Double interval censoring and truncation definitions
+- Notation and variable definitions
+- Assumptions about non-informative censoring
+
+#### Generative model
+- Random sampling process (similar to primarycensored.Rmd)
+- Steps from primary event to observed delays
+
+### Solving the censoring problem
+
+#### Primary event censored distributions
+- Mathematical formulation of the CDF problem
+- Derivation of the survival function approach
+- Connection between approaches
+
+#### Secondary event censoring extension
+- From CDF to PMF with secondary censoring
+- Effects of discrete observation windows
+
+#### Truncation adjustment
+- Adjusting for right truncation in outbreak settings
+- Normalized likelihood for truncated distributions
+
+### Analytical solutions
+
+#### General approach
+- Overview of analytical solution approach
+- When analytical solutions are possible
+
+#### Exponentially tilted primary event times
+- Modeling non-uniform event distributions
+- Application to epidemic growth/decay scenarios
+
+#### Uniform primary intervals
+- Special case of uniform primary intervals
+- Table of distributions with known analytical solutions
+- Key results (with details in SI)
+
+### Software implementation
+
+#### R interface
+- Core functions and design principles
+- User workflow
+
+#### Stan implementation
+- Stan functions
+- Interfacing between R and Stan
+
+#### fitdistrplus extensions
+- Integration with existing R tools
+
+### Evaluation design
+
+#### Simulated datasets
+- Three distributions (gamma, lognormal, Burr)
+- Two settings (with/without truncation)
+- Varying censoring windows
+- Total of 6 reference datasets for subsequent evaluation
+
+#### Numerical validation
+- Comparison of analytical, numerical and Monte Carlo solutions at PMF stage
+- Accuracy and runtime metrics
+
+#### Parameter recovery
+- Stan-based estimation protocol
+- fitdistrplus-based estimation protocol
+- Comparison with naive model approaches
+- Metrics for assessing recovery quality
+
+### Case study
+- Sierra Leone Ebola outbreak data
+- Data description and preprocessing
+- Analysis approach
+- Comparison protocol with Park et al. results
+
+### Implementation details
+- Software tools and versions
+- Hardware specifications
+- Reproducibility information
+
+## Results
+
+### Numerical validation results
+- Accuracy comparison across distributions
+- Runtime performance comparison
+
+### Parameter recovery results
+- Stan-based estimation results across 6 simulated datasets
+- fitdistrplus-based estimation results and comparison with Stan
+- Comparison with naive models
+
+### Case study results
+- Estimated parameters and key findings
+- Comparison with previous estimates from Park et al.
+- Performance advantages demonstrated
+
+## Discussion
+
+### Summary
+
+### Strengths and limitations
+
+### Comparison with existing methods
+
+### Future work
+
+### Conclusions
+
+## References
+
+## Supporting information
