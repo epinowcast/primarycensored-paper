@@ -1,2 +1,11 @@
 primarycensored
 resources
+paper/*.html
+paper/*.pdf
+paper/*.docx
+paper/*.doc
+paper/*.rtf
+paper/*.txt
+paper/*.csv
+paper/*.xlsx
+paper/main_files

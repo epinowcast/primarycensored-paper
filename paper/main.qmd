@@ -5,10 +5,6 @@ author:
     affiliations:
       - name: Center for Forecasting and Outbreak Analytics, Centers for Disease Control and Prevention, United States of America
     corresponding: true
-  - name: James Mba Azam
-    affiliations:
-      - name: Centre for Mathematical Modelling of Infectious Diseases, London School of Hygiene & Tropical Medicine, London, United Kingdom
-    corresponding: false
   - name: Carl Pearson
     affiliations:
       - name: Affiliation
@@ -16,6 +12,14 @@ author:
   - name: Kelly Charniga
     affiliations:
       - name: Institut Pasteur, France
+    corresponding: false
+  - name: Sang Woo Park
+    affiliations:
+      - name: Department of Ecology and Evolution, University of Chicago, Chicago, Illinois, United States of America
+    corresponding: false
+  - name: James Mba Azam
+    affiliations:
+      - name: Centre for Mathematical Modelling of Infectious Diseases, London School of Hygiene & Tropical Medicine, London, United Kingdom
     corresponding: false
   - name: Adam Howes
     affiliations:
@@ -34,7 +38,7 @@ date: today
 format:
   html:
     toc: false
-    number-sections: true
+    number-sections: false
 bibliography: reference.bib
 csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plos.csl
 ---
@@ -150,21 +154,22 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 #### Numerical validation
 - Comparison of analytical, numerical and Monte Carlo solutions at PMF stage
 - Look at different sample sizes.
-- Accuracy and runtime metrics
+- Visualise comparison of different methods
+- Relative runtime metrics
 
 #### Parameter recovery
 - Stan-based estimation protocol
 - fitdistrplus-based estimation protocol
 - Comparison with naive model approaches
 - Look at different sample sizes.
-- Metrics for assessing recovery quality
+- Visualisation of parameter recovery
 
 ### Case study
 - Sierra Leone Ebola outbreak data
 - Data description and preprocessing
 - Analysis approach
 - Comparison protocol with Park et al. results
-
+- Visualisation of case study results
 ### Implementation details
 - Software tools and versions
 - Hardware specifications
