@@ -240,38 +240,28 @@ Sam Abbott\textsuperscript{2*},
 % Use "Eq" instead of "Equation" for equation citations.
 \section*{Introduction}
 
+<comment: I think somewhere in here we need to address that primary event censoring with secondary event censoring = double interval censoring and maybe cite coarsedatatools as a method to deal with it directly we can then say why this isn't the best approach?>
+
 Time-to-event analysis, also known as survival analysis, concerns estimating the distribution of delay times between primary/initial and secondary/end events. Understanding the distribution of delay times plays a crucial role in various fields, including epidemiology, reliability analysis, and survival analysis. These distributions describe probabilistically the time between two events of interest, such as the incubation period of a disease or the time to failure of a component. Accurate estimation and calculation of these distributions is essential to understand the underlying processes and make informed decisions \cite{charniga2024best}. However, estimating these distributions can be challenging due to various factors, including censoring and truncation of the observed data \cite{Park2024.01.12.24301247}.
 
-In statistical epidemiology, these missing data problems occur frequently in both data analysis and theoretical modelling. For a more detailed description of these problems in an epidemiological context see \cite{Park2024.01.12.24301247, charniga2024best}. It is often appropriate to model the evolution of an infectious disease as occurring in discrete time, for example, in the \textbf{EpiNow2}\cite{abbottepinow2} and \textbf{EpiEstim}\cite{Cori2013} modelling packages. This means appropriately discretising continuous distributions, such as the generation interval distribution.
+Beyond direct estimation, similar challenges arise when implementing discrete-time modelling approaches. Popular epidemiological modelling packages such as \textbf{EpiNow2} \cite{abbottepinow2} and \textbf{EpiEstim} \cite{Cori2013} require appropriately discretised continuous distributions—for example, when converting a continuously defined generation interval distribution to daily time steps. This discretisation process introduces additional complexities that must be handled carefully to maintain the statistical integrity of the underlying continuous distribution while adapting it to the discrete framework required by these models.
 
-A distinctive feature of the field are the methodological techniques used to deal with the missing data problems common in data sets of delay times \cite{leung1997censoring}. We focus on the following commonly faced challenges in the estimation of delay distributions:
-
-\begin{itemize}
-    \item \textbf{Primary event censoring}: The primary event (e.g., exposure to a pathogen or the start of a process) is often observed with some degree of interval censoring. This means that the exact time of the event is not known, but rather it is known to have occurred within a certain time interval, commonly a day. As a result, any distribution based on these primary events is a combination of the underlying true distribution and the censoring distribution.
-
-    \item \textbf{Secondary event censoring}: The secondary event (e.g., the onset of symptoms or the end of a process) is also frequently observed with interval censoring. This additional layer of censoring further complicates the estimation of the delay distribution.
-    
-    \item \textbf{(Right) Truncation}: The observation of delay distributions is often conditioned on the occurrence of the secondary event before some time horizon. This leads to a truncation of the observed distribution, as delays with secondary events that occur after the time horizon are not captured in the data.     
-\end{itemize}
-
-Consequently, the observed delay distribution is a combination of the underlying true distribution, the censoring distribution, and the observation time.
-
-Many different statistical methods have been used to account for data missingness, as described above, in time-to-event analysis \cite{leung1997censoring}. \textit{Ignore incomplete/censored observations}, in a situation where there is a mix of censored and uncensored data, the analyst discards the censored data \cite{little2019statistical}. \textit{Discretization/dichotomization of censored data}, the analyst ignores the underlying variance of the event times within their possible range of values and analysis time-to-events using either a discrete distribution or as a dichotomy between whether a secondary event is delayed by a certain amount or not. \textit{Fixed imputation of event times}, the analyst assumes that censored events occur at some fixed point in the possible range of values, for example, mid-point imputation in interval censoring. 
+Many different statistical methods have been used to account for missing data, as described above, in time-to-event analysis \cite{leung1997censoring}. \textit{Ignore incomplete/censored observations}, in a situation where there is a mix of censored and uncensored data, the analyst discards the censored data \cite{little2019statistical}. \textit{Discretization/dichotomization of censored data}, the analyst ignores the underlying variance of the event times within their possible range of values and analysis time-to-events using either a discrete distribution or as a dichotomy between whether a secondary event is delayed by a certain amount or not. \textit{Fixed imputation of event times}, the analyst assumes that censored events occur at some fixed point in the possible range of values, for example, mid-point imputation in interval censoring. 
 
 In epidemiological analysis, it is common to have no uncensored data; therefore, ignoring censored data is not a viable method. Discretization of censored data is possible, but this approach ignores variability of events within an interval and, therefore, will underestimate distribution variance. Fixed imputation for the primary event is a common approach in epidemiological analysis \textbf{many citations}, however, this approach is known to introduce bias into delay estimation \cite{law1992effects,Park2024.01.12.24301247}. In Park \textit{et al} \cite{Park2024.01.12.24301247} the imputation bias due to the use of a \textit{fixed} primary event imputation scheme was eliminated by allowing the primary event time for each data item to be an inferrable latent variable, a common approach to missing data imputation in Bayesian analysis of epidemiological data \cite{o1999bayesian}. However, the approach used by Park \textit{ et al.} introduces $N$ additional effective parameters into the Bayesian imputation of $N$ delay data items, which limits the ability of analysts to scale this method to large data sets.
 
-We extend the method introduced by Park \textit{ et al.} by marginalising the latent primary event times within a Bayesian imputation of the delay distribution rather than treating them as effective parameters. This can be done in general using an efficient numerical quadrature scheme; although we demonstrate that analytical solutions for the marginalisation problem exist for many common parametric delay distributions. The marginalisation approach that we use introduces data exchangeability \cite{gelman_bayesian_2013} between data items with identical primary and secondary censoring intervals that are observed with the same right truncation. The combination of marginalisation and exchangeability makes our approach significantly more scalable than the approach introduced by Park \textit{ et al.} \cite{Park2024.01.12.24301247} while introducing no additional approximations into the underlying Bayesian inference for the underlying continuous delay distribution. The marginalisation approach introduced in this paper is made available to analysts by the open source R package \textbf{primarycensored} \cite{abbottprimarycensored}, which includes extensions to the stan probabilistic programming language.
+We extend the method introduced by Park \textit{ et al.} by marginalising the latent primary event times within a Bayesian imputation of the delay distribution rather than treating them as effective parameters. This can be done in general using an efficient numerical quadrature scheme; although we demonstrate that analytical solutions for the marginalisation problem exist for many common parametric delay distributions. The marginalisation approach that we use introduces data exchangeability \cite{gelman_bayesian_2013} between data items with identical primary and secondary censoring intervals that are observed with the same right truncation. The combination of marginalisation and exchangeability makes our approach significantly more scalable than the approach introduced by Park \textit{ et al.} \cite{Park2024.01.12.24301247} while introducing no additional approximations into the underlying Bayesian inference for the underlying continuous delay distribution. The marginalisation approach introduced in this paper is made available to analysts by the open source R package \textbf{primarycensored} \cite{abbottprimarycensored}, which includes extensions to the stan probabilistic programming language and the fitdistrplus R package.
 
 
 \section*{Materials and methods}
 
 
-We focus on a subset of methods from time to event analysis that address data missingness problems commonly found in epidemiological datasets. We present the statistical problem as a double interval censoring problem, where both the primary event time and the secondary event times are interval censored. We can recover single interval censoring problems by reducing one of the intervals to a point. In particular, all of the methods in `primarycensored` start by assuming no secondary event censoring and solving the primary censoring problem. This is the reason for the packages name despite the most common use case being when there is double censoring. A key assumption we make throughout is that the censoring window for events are known and independent of the event time within the censoring interval. This is known as non-informative censoring.
+We focus on a subset of methods from time to event analysis that address data missingness problems commonly found in epidemiological datasets. We present the statistical problem as a double interval censoring problem, where both the primary event time and the secondary event times are interval censored \cite{Reich2009-aa}. We can recover single interval censoring problems by reducing one of the intervals to a point. In particular, all of the methods in `primarycensored` start by assuming no secondary event censoring and solving the primary censoring problem. This is the reason for the packages name despite the most common use case being when there is double censoring. A key assumption we make throughout is that the censoring window for events are known and independent of the event time within the censoring interval. This is known as non-informative censoring. <comment: this paragraph contains nearly everything I was missing from the introduction. I think its likely fine here and I can't see how to work it into the above naturally.>
 
 \subsection*{Statistical model}
 The target for inference is the distribution of the delay time between the primary and secondary events. We assume that the delay time is a random variable $T = S - P_{u}$ with distribution function $F_T(t) = Pr(T < t)$ and density function $f_T(t)$. In this treatment we assume that the delay time is shift-invariant, that is, the distribution of the delay time is the same regardless of the primary event time.
 
-The (unconditional) primary event time is a random variable $P_{u}$ with distribution function $F_{P_{u}}(t)$ and density function $f_{P_{u}}(t)$. The secondary event time is a random variable $S$, but in this treatment we construct the secondary event time from the primary time and delay, therefore the marginal distribution of $S$ is not considered.
+The (unconditional) primary event time is a random variable $P_{u}$ with distribution function $F_{P_{u}}(t)$ and density function $f_{P_{u}}(t)$. The secondary event time is a random variable $S$, but in this treatment we construct the secondary event time from the primary time and delay, therefore the marginal distribution of $S$ is not considered \cite{Park2024.01.12.24301247} .
 
 The \textit{censoring window} for each event is the interval within which each event is known to have occurred, respectively, $P \in [t_P, t_P + w_P]$ and $S \in [t_S, t_S + w_S]$. The lengths of the censoring windows are $w_P$ and $w_S$ respectively. The precise event times within their windows are unobserved. Note that since the primary event time is known up to the censoring window, we are predominantly interested in the \textit{conditional} primary time $P = P_{u} | \{ P_{u} \in [t_P, t_P + w_P]\}$ which has density function:
 
@@ -282,15 +272,14 @@ The \textit{censoring window} for each event is the interval within which each e
     \end{aligned}
 \end{eqnarray}
 
+<comment: I think everything below here and not in the next section would all fit more naturally as the first paragraph of the next section with some minor reworking.> 
 
-In this note, we measure the \textit{censored delay time} $T_c$ between the primary and secondary event windows from endpoint to endpoint: $T_c = t_S + w_S - (t_P + w_P)$. 
-
-% Note that in the [generative model for delays](primarycensored.html#generating-random-samples-with-rprimarycensored) from "Getting started" the truncated delay $t_{\text{valid}}$ is measured from startpoint to startpoint of event windows.
+In this paper, we measure the \textit{censored delay time} $T_c$ between the primary and secondary event windows from endpoint to endpoint: $T_c = t_S + w_S - (t_P + w_P)$. 
 
 In our treatment below we focus on the survival function of the time after the end of the primary window to the secondary event time which we denote $S_{+}$. We then use this to derive the distribution of the censored delay time $T_c$. This is equivalent to, but differs in mathematical approach from other treatments of the censoring problems in epidemiology, such as Park et al \cite{Park2024.01.12.24301247}, see section [Connections to other approaches] for details.
 
 \subsection{Censored delay time distribution}
-In this section, we explain how to derive the distribution of the censored delay time $T_c$ from the distribution of the delay time $T$ and the condition distribution of the primary event time $P$.
+In this section, we explain how to derive the distribution of the censored delay time $T_c$ from the distribution of the delay time $T$ and the conditional distribution of the primary event time $P$.
 
 \subsubsection{Survival function of time from the end of the primary censoring window to the secondary event time}
 
@@ -300,9 +289,9 @@ When reasoning about the distribution of the censored delay time $T_c$, it is us
 S_+ = S - (t_P + w_P) = T - ((t_P + w_P) - P) = T - C_P.
 \end{equation}
 
-Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = Pr(C_P < p) = Pr(P > t_P + w_P - p)$.
+Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = Pr(C_P < p) = Pr(P > t_P + w_P - p)$.
 
-With non-informative censoring, it is possible to derive the upper distribution function of $S_+$, or \textit{survival function} of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
+With non-informative censoring, it is possible to derive the upper distribution function of $S_+$ ($Q_{S_+}$), or \textit{survival function} of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
 
 
 \begin{equation}
@@ -324,20 +313,14 @@ Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) F_{C_P}(p) dp.
 
 Where we have used that $Q^{'}_{T} = - f_T$, $Q_T$ is the survival function of the actual delay distribution of interest and $w_P$ is the length of the primary censoring window.
 
-Equation \ref{eq:survivalfunc} is the key equation in this note and is used to derive the distribution of the censored delay time $T_c$. It has the interpretation that the probability that the secondary event time is greater than $t$ after the end of the primary censoring window is the sum of two disjoint event probabilities:
+Equation \ref{eq:survivalfunc} is the key equation for our handling of primary delay distributions and is used to derive the distribution of the censored delay time $T_c$. It has the interpretation that the probability that the secondary event time is greater than $t$ after the end of the primary censoring window is the sum of two disjoint event probabilities:
 
 1. The probability that the \textit{actual} delay time $T$ is greater than $t + w_P$.
 2. The probability that the \textit{actual} delay time $T$ is between $t$ and $t + w_P$, and the primary event time $P$ occurred sufficiently close to the end of the primary censoring window that the secondary even occurred more than time $t$ after the end of the primary window.
 
-%Note that in ["Getting started"](primarycensored.html#compute-the-primary-event-censored-cumulative-distribution-function-cdf-for-delays-with-pprimarycensored) the target for numerical quadrature is the cumulative distribution function of the sum of the primary time within the primary censoring window and the delay time.
-% For figure citations, please use "Fig" instead of "Figure".
-% Nulla mi mi, Fig~\ref{fig1} venenatis sed ipsum varius, volutpat euismod diam. Proin rutrum vel massa non gravida. Quisque tempor sem et dignissim rutrum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi at justo vitae nulla elementum commodo eu id massa. In vitae diam ac augue semper tincidunt eu ut eros. Fusce fringilla erat porttitor lectus cursus, \nameref{S1_Video} vel sagittis arcu lobortis. Aliquam in enim semper, aliquam massa id, cursus neque. Praesent faucibus semper libero.
-
-
-
 \subsubsection{Probability of secondary event time within a secondary censoring window}
 
-Having constructed the survival function of $S_+$ with equation \ref{eq:survivalfunc}, using numerical quadrature or in some other way, we can calculate the probability mass of a secondary event time falling within a observed secondary censoring window of length $w_S$ that begins at time $n - w_S$ \textit{after} the primary censoring window. This is the probability that the censored delay time $T_c$ is $n$.
+Having constructed the survival function of $S_+$ with equation \ref{eq:survivalfunc}, using numerical quadrature or analytically, we can calculate the probability mass of a secondary event time falling within a observed secondary censoring window of length $w_S$ that begins at time $n - w_S$ \textit{after} the primary censoring window. This is the probability that the censored delay time $T_c$ is $n$.
 
 This gives the censored delay time probability by integrating over censored values
 
@@ -353,7 +336,10 @@ Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = 
 \end{equation}
 
 \subsection{Exponentially tilted primary event times}
-In epidemiological analysis, it is common for primary events to occur at exponentially increasing or decreasing rates, for example, incidence of new infections in an epidemic. In this case, the distribution of the primary event time within its censoring window is biased by the exponential growth or decay \cite{Park2024.01.12.24301247} (i.e. for exponential growth, the event time will more likely to be closer to the end of the censoring window and vice versa for decay). If we assume a reference uniform distribution within a primary censoring window $[k, k + w_P)$ then the distribution of the primary event time within the censoring window is the exponential tilted uniform distribution:
+
+<comment: This subsection isn't well connected at the moment. I think we just need this for the analytical solutions so perhaps let us move it to the SI >
+
+In epidemiological analysis, it is common for primary events to occur at exponentially increasing or decreasing rates, for example, the incidence of new infections in an epidemic. In this case, the distribution of the primary event time within its censoring window is biased by the exponential growth or decay \cite{Park2024.01.12.24301247} (i.e. for exponential growth, the event time will more likely to be closer to the end of the censoring window and vice versa for decay). If we assume a reference uniform distribution within a primary censoring window $[k, k + w_P)$ then the distribution of the primary event time within the censoring window is the exponential tilted uniform distribution:
 
 \begin{equation}
 f_P(t) \propto \exp(r t) \mathbb{1}_{[k, k + w_P]}(t).
@@ -373,6 +359,9 @@ In the following, it is convenient to use a (linear) difference operator defined
 \end{equation}
 
 \subsection{Generative model and parameter inference}
+
+<comment: I think we can drop all of this and instead just show how to get the PMF and CDF not in terms of the survival function (i.e swap in the 4 to 5) and do something similar for CDF then just wrap it up by writing down the likelihood of a secondary censored and truncated distirbution (cdf - cdf / cdf) and say we can sub in the primary censored version... >
+
 THIS SUBSECTION DISCUSSES GENERATING FROM MODEL AND DOING INFERENCE 
 \subsubsection{Generating random samples}
 This function generates random samples from a, potentially truncated, primary event censored distribution. It adjusts the distribution by accounting for the primary event distribution, potential truncation at a maximum delay ($D$), and secondary event censoring.
@@ -435,12 +424,14 @@ where ($F_{\text{cens}}$) is the potentially right truncated primary event censo
 \subsubsection{Log-likelihood of delays}
 THIS SECTION HAS THE LOGLIKE FUNCTION IN TERMS OF ABOVE AND MENTIONS INFERENCE
 
-% Results and Discussion can be combined.
+<comment: We need some sections here saying what we are going to do in the results i.e numerical validation etc etc etc ideally also a paragraph about implementation in the primaycensored package>
+
 \section*{Results}
 
 \subsection{Analytic results for uniform primary event time}
 
-Applying a uniform primary event time distribution to equation 3.1 from ["Why it works"](why-it-works.html) gives:
+Applying a uniform primary event time distribution to equation 3
+gives:
 
 \begin{equation}
 Q_{S_+}(t) = Q_T(t + w_P) + { 1 \over w_P} \int_0^{w_P} f_T(t+p) p~ dp.
@@ -454,13 +445,13 @@ In each case considered below it is easier to change the integration variable:
 \begin{aligned}
 Q_{S_+}(t) &= Q_T(t + w_P) + { 1 \over w_P} \int_t^{t+w_P} f_T(z) (z-t)~ dz \\
 &= Q_T(t + w_P) + { 1 \over w_P} \Big[  \int_t^{t+w_P} f_T(z) z~ dz - t \Delta_{w_P}F_T(t) \Big].
-\end{aligned} (\#eq:unifprim)
+\end{aligned}
 \end{equation}
 
-Note that for any distribution with an analytically available distribution function $F_T$ equation \@ref(eq:unifprim) can be solved so long as the \textit{partial expectation}
+Note that for any distribution with an analytically available distribution function $F_T$ equation \@ref(eq:uniform) can be solved so long as the \textit{partial expectation}
 
 \begin{equation}
-\int_t^{t+w_P} f_T(z) z~ dz (\#eq:partexp)
+\int_t^{t+w_P} f_T(z) z~ dz
 \end{equation}
 
 can be reduced to an analytic expression.
@@ -487,12 +478,14 @@ $cell1 row3$ & cell2 row 3 & cell3 row 3 & cell4 row 3 & cell5 row 3 & cell6 row
 \end{adjustwidth}
 \end{table}
 
-\subsection{Naive vs full model}
-THIS SECTION RECREATES THE EFFECT OF CENSORING/TRUNCATION ON PARAM ESTS 
-NOT SURE IF NEEDED
+
+
+<comment: I think that we want a section where we show the equivalence between simulated, analytically solved, and numerically solved distributions i.e like the getting started in primarycensored. I don't think we need to discuss how we get the simulated results aside from linking to the park paper as it is the same method and saying we use tooling from primarycensored (all methods of course).>
 
 \subsection{Fitting delay distributions}
 
+<comment: Here I think we just want something that looks like the fitting with stan vignette and just show recovery of the parameters. Potentially we want this for the fitdistrplusmethod as well but not sure it is needed. 
+I think something like looking at Gamma, Lognormal, weibull, and something wiht no analytical solution yet and with each having the same kind of random, varying censoring as in that vignette.>
 \begin{figure}[!h]
 \caption{{\bf Fitted delay distributions.}
 A: . B: Consectetur adipiscing elit.}
@@ -501,11 +494,11 @@ A: . B: Consectetur adipiscing elit.}
 
 
 \section*{Discussion}
-\textbf{TO DO}
-
-
-\section*{Conclusion}
-\textbf{TO DO}
+Summary
+Strengths and limitations 
+Strengths and Limitations vs the literature
+Future work
+Conclusions
 
 
  
@@ -597,7 +590,7 @@ Using the notation from the methods overview given in Park et al \cite{Park2024.
 \end{aligned}
 \end{equation}
 
-In this note, we assume that the forward distribution doesn't vary over time (such that $f_x = f$), then
+In this paper, we assume that the forward distribution doesn't vary over time (such that $f_x = f$), then
 
 \begin{equation}
 \int_{P_L}^{P_R} \int_{S_L}^{S_R} g_P(x|P_L, P_R) f_x(y-x)dy dx = \int_{P_L}^{P_R} g_P(x|P_L, P_R) \big[F(S_R - x) - F(S_L - x)\big] dx
