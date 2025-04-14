@@ -72,29 +72,30 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 ### Statistical framework
 
-#### Problem statement
-- Double interval censoring and truncation definitions
-- Notation and variable definitions
-- Assumptions about non-informative censoring
-
 #### Generative model
-- Random sampling process (similar to primarycensored.Rmd)
-- Steps from primary event to observed delays
+- Intuitive description of how delay data arises in epidemiology
+- Random sampling process with concrete examples
+- Visual illustration of primary and secondary event censoring 
+- Effect of truncation on observed distributions
+- Connection to real-world data collection
+
+#### Problem statement
+- Formal definition of double interval censoring and truncation
+- Breaking the problem down into primary censoring and everything else
+- Mathematical notation and variable definitions
+- Assumptions about non-informative censoring
 
 ### Solving the censoring problem
 
+#### Double censored and right truncated PMF
+- Mathematical formulation of the overall PMF problem
+- Introduction of F_cens as a placeholder for the primary censored CDF
+
 #### Primary event censored distributions
-- Mathematical formulation of the CDF problem
+- Focusing on the F_cens component
+- Mathematical formulation of the primary censoring CDF problem 
 - Derivation of the survival function approach
-- Connection between approaches
-
-#### Secondary event censoring extension
-- From CDF to PMF with secondary censoring
-- Effects of discrete observation windows
-
-#### Truncation adjustment
-- Adjusting for right truncation in outbreak settings
-- Normalized likelihood for truncated distributions
+- Numerical or analytical solutions
 
 ### Analytical solutions
 
@@ -107,9 +108,15 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 - Application to epidemic growth/decay scenarios
 
 #### Uniform primary intervals
-- Special case of uniform primary intervals
-- Table of distributions with known analytical solutions
+- Special case of exponentially tilted primary event times
+- High level maths overview of the simplification this leads to
 - Key results (with details in SI)
+- Table of distributions with known analytical solutions
+
+### Connection to other approaches
+- Connection to Park et al.
+- Connection to Reich et al. 
+- Connection to Cori et al.
 
 ### Software implementation
 
