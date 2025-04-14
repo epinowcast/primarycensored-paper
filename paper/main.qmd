@@ -134,19 +134,29 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 ### Evaluation design
 
 #### Simulated datasets
-- Three distributions (gamma, lognormal, Burr)
-- Two settings (with/without truncation)
-- Varying censoring windows
-- Total of 6 reference datasets for subsequent evaluation
+- Three distributions with comparable means but varied shapes:
+  * Gamma (moderate variance)
+  * Lognormal (higher variance with heavier tail)
+  * Burr (heaviest tail)
+- Three truncation scenarios:
+  * No truncation (retrospective scenario)
+  * Moderate truncation (realistic real-time scenario)
+  * Severe truncation (challenging real-time scenario)
+- Consistent primary and secondary censoring windows across all scenarios but varying between individuals. Ranging from 1 day to 4 days for each primary and secondary event.
+- Total of 9 reference datasets (3 distributions × 3 truncation levels)
+- Visualization approach: panel plots with distributions along columns and truncation scenarios along rows
+- Simulate for a 10000 individuals
 
 #### Numerical validation
 - Comparison of analytical, numerical and Monte Carlo solutions at PMF stage
+- Look at different sample sizes.
 - Accuracy and runtime metrics
 
 #### Parameter recovery
 - Stan-based estimation protocol
 - fitdistrplus-based estimation protocol
 - Comparison with naive model approaches
+- Look at different sample sizes.
 - Metrics for assessing recovery quality
 
 ### Case study
@@ -163,13 +173,14 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 ## Results
 
 ### Numerical validation results
-- Accuracy comparison across distributions
+- Accuracy comparison across scenarios and sample sizes
 - Runtime performance comparison
 
 ### Parameter recovery results
-- Stan-based estimation results across 6 simulated datasets
-- fitdistrplus-based estimation results and comparison with Stan
-- Comparison with naive models
+- Stan-based estimation results across all scenarios and sample sizes
+- fitdistrplus-based estimation results
+- Comparison with naive models in both
+- Need to have a main figure with a single sample size and then duplicates for different sample sizes in the SI for both.
 
 ### Case study results
 - Estimated parameters and key findings
