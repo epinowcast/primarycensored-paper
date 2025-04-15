@@ -61,18 +61,35 @@ In this paper, we aim to establish a standard approach for epidemiological delay
 
 ### Statistical framework
 
-#### Generative model
-- Intuitive description of how delay data arises in epidemiology
-- Random sampling process with concrete examples
-- Visual illustration of primary and secondary event censoring 
-- Effect of truncation on observed distributions
-- Connection to real-world data collection
-
 #### Problem statement
-- Formal definition of double interval censoring and truncation
-- Breaking the problem down into primary censoring and everything else
-- Mathematical notation and variable definitions
-- Assumptions about non-informative censoring
+
+For an individual, a primary event (e.g., infection) occurs at time $P_u$, followed by a secondary event (e.g., symptom onset) at time $S$. The true delay between these events is $T = S - P_u$, which follows some distribution $f_T(t)$ with cumulative distribution function $F_T(t)$. In practice, however, neither $P_u$ nor $S$ is typically observed.
+
+Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval. The censored delay time, $T_c$, is measured from the end of the primary window to the end of the secondary window: $T_c = t_S + w_S - (t_P + w_P)$.
+
+With non-informative censoring (where the observation process is independent of the actual event times), the distribution of the primary event within its window is:
+
+$$f_P(p) = \frac{f_{P_u}(p)}{F_{P_u}(t_P + w_P) - F_{P_u}(t_P)}, \quad p \in [t_P, t_P + w_P]$$
+
+In the simplest case, primary events occur uniformly within their censoring windows, but in real epidemiological situations, they often follow non-uniform patterns. During epidemic growth, for example, events are more likely to occur near the end of their censoring windows, while during decline, they are more likely to occur near the beginning. This can be modeled using an exponentially tilted distribution:
+
+$$f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
+
+where $r$ controls the growth/decline rate.
+
+The observed data are further complicated by right truncation. At any observation time $D$, we can only observe delays where the secondary event has already occurred. Delays longer than $D - P_u$ are systematically missing from the data, creating a bias toward shorter delays in recent data. This truncation effect is particularly important in real-time analyses during outbreaks, when recent primary events with longer delays are not yet observed.
+
+#### Generative process for delay data
+
+The generative process for generating delay data we consider in this paper follows these steps:
+
+1. Generate a primary event time $P_u$ from its distribution $f_{P_u}(p)$
+2. Generate a delay $T$ from the delay distribution $f_T(t)$
+3. Calculate the secondary event time as $S = P_u + T$
+4. Apply censoring by observing only that $P_u \in [t_P, t_P + w_P]$ and $S \in [t_S, t_S + w_S]$
+5. Apply right truncation by excluding any observations where $S > D$ (where $D$ is the maximum observable time)
+
+This process creates a relationship between the true delay distribution and the observed data. The primary goal of our methods is to recover the true delay distribution $f_T(t)$ from censored and truncated observations, accounting for these various biases. The Ward et al. approach deals with modelling this sampling process by directly recreating it as a latent variable in the model [@Park2024.01.12.24301247; @Ward2022-wo].
 
 ### Solving the censoring problem
 
