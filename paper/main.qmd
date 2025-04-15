@@ -89,23 +89,73 @@ The generative process for generating delay data we consider in this paper follo
 4. Apply censoring by observing only that $P_u \in [t_P, t_P + w_P]$ and $S \in [t_S, t_S + w_S]$
 5. Apply right truncation by excluding any observations where $S > D$ (where $D$ is the maximum observable time)
 
-This process creates a relationship between the true delay distribution and the observed data. The primary goal of our methods is to recover the true delay distribution $f_T(t)$ from censored and truncated observations, accounting for these various biases. The Ward et al. approach deals with modelling this sampling process by directly recreating it as a latent variable in the model [@Park2024.01.12.24301247; @Ward2022-wo].
+This then results in a empirical probability mass function (PMF) of delay data that is a combination of the true delay distribution $f_T(t)$ and the censoring and truncation processes. The primary goal of our method is to recover the true delay distribution $f_T(t)$ from censored and truncated observations, accounting for these various biases. The Ward et al. approach deals with modelling this sampling process by directly recreating it as a latent variable in the model [@Park2024.01.12.24301247; @Ward2022-wo].
 
 ### Solving the censoring problem
 
 #### Double censored and right truncated PMF
-- Mathematical formulation of the overall PMF problem
-- Introduction of F_cens as a placeholder for the primary censored CDF
+
+To recover the true delay distribution $f_T(t)$ from observed data, we begin by considering the simplest case of secondary event censoring with right truncation, and then extend to include primary event censoring.
+
+When only the secondary event is interval-censored, our goal is to calculate the probability that a delay falls into a specific observed bin. For a secondary event observed in the interval $[t_S, t_S + w_S]$ given that the primary event occurred at a precisely known time $P_u = t_P$, and conditioned on the secondary event occurring before the maximum observable time $D$, the PMF is:
+
+$$P(T_c = t_S + w_S - t_P \mid \text{observed}) = \frac{P(S \in [t_S, t_S + w_S] \mid P_u = t_P)}{P(S < D \mid P_u = t_P)}$$
+
+This can be written in terms of the CDF of the true delay distribution $F_T$:
+
+$$P(T_c = t_S + w_S - t_P \mid \text{observed}) = \frac{F_T(t_S + w_S - t_P) - F_T(t_S - t_P)}{F_T(D - t_P)}$$
+
+However, in most epidemiological contexts, the primary event is also interval-censored, creating double interval censoring. Following the approach of Park et al. [@Park2024.01.12.24301247], we treat the primary and secondary censoring as separable problems, rather than using the joint interval approach described by Reich et al. [@Reich2009-aa]. This separation significantly simplifies the mathematical formulation.
+
+With primary event censoring, the primary event is known only to have occurred within the interval $[t_P, t_P + w_P]$. To account for this additional uncertainty, we need to derive the distribution of delays when the primary event is interval-censored. We introduce $F_{\text{cens}}(q)$ as the cumulative distribution function (CDF) of the delay distribution adjusted for primary event censoring:
+
+$$F_{\text{cens}}(q) = P(T \leq q \mid P \in [t_P, t_P + w_P])$$
+
+Once we have $F_{\text{cens}}$, we can extend our formula for secondary event censoring by substituting $F_{\text{cens}}$ for $F_T$:
+
+$$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{F_{\text{cens}}(t_S + w_S - t_P) - F_{\text{cens}}(t_S - t_P)}{F_{\text{cens}}(D - t_P)}$$
+
+This approach breaks the problem of double censoring and right truncation into separable components, with the primary censored CDF ($F_{\text{cens}}$) as the core element that needs to be derived. In the next section, we focus on deriving the primary censored distribution $F_{\text{cens}}$.
 
 #### Primary event censored distributions
-- Focusing on the F_cens component
-- Mathematical formulation of the primary censoring CDF problem 
-- Derivation of the survival function approach
-- Numerical or analytical solutions
+
+Having established the importance of the primary censored CDF ($F_{\text{cens}}$) in the previous section, we now focus on deriving this distribution.
+
+The primary event censored CDF, $F_{\text{cens}}(q)$, represents the probability that the delay is less than or equal to $q$, given that the primary event occurred within its censoring window:
+
+$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} F_T(q - (p - t_P)) \cdot f_P(p) \, dp$$
+
+where $F_T$ is the CDF of the true delay distribution, $f_P$ is the PDF of the primary event within its censoring window, and the integration is over all possible primary event times within the window.
+
+For computational simplicity, we can shift the integration variable to measure time from the start of the primary event window:
+
+$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - p) \cdot f_P(t_P + p) \, dp$$
+
+We can now use numerical integration to evaluate this integral for any delay distribution and so we have a general solution for the primary censored CDF. In the next section, we will explore analytical solutions for common parametric distributions.
 
 ### Analytical solutions
 
 #### General approach
+
+While this integral can be evaluated numerically for any delay distribution, we can derive more efficient solutions by considering the survival function approach. Let $S_+$ be the time from the end of the primary censoring interval to the secondary event, and $C_P = w_P - p$ be the time from the primary event to the end of its censoring window. The survival function of $S_+$ is:
+
+$$Q_{S_+}(t) = P(S_+ > t) = P(T > C_P + t) = \mathbb{E}_{C_P}[Q_T(t + C_P)]$$
+
+where $Q_T(t) = 1 - F_T(t)$ is the survival function of the true delay distribution.
+
+Using integration by parts, we can rewrite this as:
+
+$$Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) \cdot F_{C_P}(p) \, dp$$
+
+where $f_T$ is the PDF of the true delay distribution and $F_{C_P}$ is the CDF of the time from the primary event to the end of its censoring window.
+
+This formulation has two key advantages. First, for many common distributions, such as gamma, lognormal, and Weibull, the integral can be analytically solved when the primary event is uniformly distributed within its window. Second, even when analytical solutions are not available, this approach is computationally more efficient for numerical integration than direct evaluation of the primary censored CDF.
+
+The relationship between the survival function $Q_{S_+}$ and the primary censored CDF $F_{\text{cens}}$ is:
+
+$$F_{\text{cens}}(q) = 1 - Q_{S_+}(q - w_P)$$
+
+This approach allows us to efficiently compute the primary censored CDF for a wide range of delay distributions. 
 - Overview of analytical solution approach
 - When analytical solutions are possible
 
