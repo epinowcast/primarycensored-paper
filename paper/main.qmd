@@ -5,10 +5,6 @@ author:
     affiliations:
       - name: Center for Forecasting and Outbreak Analytics, Centers for Disease Control and Prevention, United States of America
     corresponding: true
-  - name: Carl Pearson
-    affiliations:
-      - name: Affiliation
-    corresponding: false
   - name: Kelly Charniga
     affiliations:
       - name: Institut Pasteur, France
@@ -24,6 +20,10 @@ author:
   - name: Adam Howes
     affiliations:
       - name: Center for Forecasting and Outbreak Analytics, Centers for Disease Control and Prevention, United States of America
+    corresponding: false
+  - name: Carl Pearson
+    affiliations:
+      - name: Affiliation
     corresponding: false
   - name: Sebastian Funk
     affiliations:
