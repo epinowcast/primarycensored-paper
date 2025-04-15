@@ -49,28 +49,13 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 ## Introduction
 
-### The broad challenge of delay distributions
-- Importance of delay distributions in epidemiology and other fields
-- Challenges in accurately estimating these distributions (censoring, truncation)
-- Real-world impact of inaccurate delay estimation in outbreak response
+Time-to-event distributions are essential in epidemiology, describing delays between events like infection and symptom onset. These inform disease natural history, enable nowcasting, and support epidemic reconstruction. However, real-world surveillance data present challenges through censoring and truncation, which can significantly bias estimates if not properly addressed [@charniga2024best]. Inaccurate delay distributions directly impact critical response decisions during outbreaks, from resource allocation to intervention timing, potentially leading to mischaracterisation of epidemic dynamics and delayed public health actions [@Park2024.01.12.24301247].
 
-### Specific challenges with interval censoring
-- Primary event censoring (uncertainty in start time)
-- Secondary event censoring (uncertainty in end time)
-- Double interval censoring as a common problem in epidemiological data
-- Right truncation in outbreak analysis
+A key challenge in epidemiological data is interval censoring, where event times are known only within specific intervals rather than at precise moments. Primary event censoring affects the initial event time (e.g., infection), secondary event censoring affects the end event time (e.g., symptom onset), and double interval censoring occurs when both are present [@Reich2009-aa]. These issues are compounded by right truncation, where events with longer delays are systematically missing from recent data because the secondary event hasn't yet occurred or been observed. Each form of censoring introduces distinct biases that must be addressed for accurate estimation [@law1992effects].
 
-### Current approaches and limitations
-- Review of existing methods (Park et al., Charniga et al.)
-- Common approaches: ignoring censored data, discretization, fixed imputation
-- Park's approach using latent variables and its computational limitations
-- Gap in scalable methods for double interval censored data
+Several approaches attempt to address these challenges, but each has limitations. Simple methods include discarding censored observations (infeasible when all data are censored) [@little2019statistical], discretisation (treating delays as occurring in fixed intervals), or fixed imputation (assuming events occur at interval midpoints). Park et al. improved upon fixed imputation through a Bayesian approach treating unobserved primary event times as latent parameters [@Park2024.01.12.24301247], but this introduces N additional parameters when analysing N observations, limiting scalability to large datasets. Charniga et al. highlighted a persistent gap in computationally efficient methods for double interval censored data that maintain statistical rigour while scaling to large surveillance datasets [@charniga2024best].
 
-### Our contribution
-- Marginalizing over primary event times rather than treating as parameters
-- Computational efficiency through analytical solutions
-- R package implementation with Stan integration
-- Aim to establish this as a standard approach for the field
+Our aim is to establish a standard approach for epidemiological delay distribution estimation that balances statistical rigour with computational efficiency. We extend Park et al.'s method by marginalising over latent primary event times rather than treating them as individual parameters, maintaining statistical integrity while dramatically improving scalability for large datasets. Our approach provides both numerical solutions for arbitrary distributions and analytical solutions for common parametric distributions, including gamma, lognormal, and Weibull. We implement these methods in the open-source R package 'primarycensored' [@abbottprimarycensored], with both R functions and Stan extensions that integrate with existing tools like fitdistrplus and epidemiological modelling packages [@abbottepinow2; @Cori2013]. In this paper, we present the statistical framework underlying our approach, derive analytical solutions for commonly used distributions, and evaluate our method using both simulated data and real-world case studies. We demonstrate improved estimation accuracy compared to naive approaches like fixed imputation, while achieving equivalent probability mass function recovery to the latent variable approach with substantially reduced computational demands. Our method makes accurate delay distribution estimation feasible for large-scale surveillance datasets where previous approaches become computationally intractable.
 
 ## Methods
 
