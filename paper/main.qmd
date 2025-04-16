@@ -115,64 +115,89 @@ Once we have $F_{\text{cens}}$, we can extend our formula for secondary event ce
 
 $$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{F_{\text{cens}}(t_S + w_S - t_P) - F_{\text{cens}}(t_S - t_P)}{F_{\text{cens}}(D - t_P)}$$
 
+which is equivalent to,
+
+$$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{P(S \in [t_S, t_S + w_S] \mid P \in [t_P, t_P + w_P])}{P(S < D \mid P \in [t_P, t_P + w_P])}$$
+
 This approach breaks the problem of double censoring and right truncation into separable components, with the primary censored CDF ($F_{\text{cens}}$) as the core element that needs to be derived. In the next section, we focus on deriving the primary censored distribution $F_{\text{cens}}$.
 
 #### Primary event censored distributions
 
 Having established the importance of the primary censored CDF ($F_{\text{cens}}$) in the previous section, we now focus on deriving this distribution.
 
-The primary event censored CDF, $F_{\text{cens}}(q)$, represents the probability that the delay is less than or equal to $q$, given that the primary event occurred within its censoring window:
+The primary event censored CDF, $F_{\text{cens}}(q)$, represents the probability that the delay is less than or equal to $q$, given that the primary event occurred within its censoring window. By the law of total probability, we can decompose this conditional probability by considering all possible specific times where the primary event might have occurred within the censoring window:
 
-$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} F_T(q - (p - t_P)) \cdot f_P(p) \, dp$$
+$$F_{\text{cens}}(q) = P(T \leq q \mid P \in [t_P, t_P + w_P])$$
 
-where $F_T$ is the CDF of the true delay distribution, $f_P$ is the PDF of the primary event within its censoring window, and the integration is over all possible primary event times within the window.
+This can be formulated as an expectation over all possible primary event times, essentially calculating a weighted average where each possible primary event time is weighted by its probability:
 
-For computational simplicity, we can shift the integration variable to measure time from the start of the primary event window:
+$$F_{\text{cens}}(q) = \mathbb{E}_{P}[P(T \leq q \mid P)]$$
 
-$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - p) \cdot f_P(t_P + p) \, dp$$
+For continuous random variables, expectations are calculated using integrals. This gives us:
 
-We can now use numerical integration to evaluate this integral for any delay distribution and so we have a general solution for the primary censored CDF. In the next section, we will explore analytical solutions for common parametric distributions.
+$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} P(T \leq q \mid P = p) \cdot f_P(p) \, dp$$
+
+where $f_P$ is the PDF of the primary event within its censoring window.
+
+For a primary event occurring at time $p$, the true delay between this event and a secondary event occurring at time $t_P + q$ is $(t_P + q - p)$. Therefore, the conditional probability is:
+
+$$P(T \leq q \mid P = p) = F_T(t_P + q - p)$$
+
+where $F_T$ is the CDF of the true delay distribution. Substituting this into our integral:
+
+$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} F_T(t_P + q - p) \cdot f_P(p) \, dp$$
+
+For computational simplicity, we can shift the integration variable to measure time from the start of the primary event window. Using the substitution $u = p - t_P$ (time since the start of the window):
+
+$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du$$
+
+This formulation gives us a general solution for the primary censored CDF that properly accounts for the uncertainty in the primary event time. We can use numerical integration to evaluate this integral for any delay distribution, or derive analytical solutions for specific parametric distributions, as we will explore in the next section. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
 
 ### Analytical solutions
 
-#### General approach
-
-While this integral can be evaluated numerically for any delay distribution, we can derive more efficient solutions by considering the survival function approach. Let $S_+$ be the time from the end of the primary censoring interval to the secondary event, and $C_P = w_P - p$ be the time from the primary event to the end of its censoring window. The survival function of $S_+$ is:
-
-$$Q_{S_+}(t) = P(S_+ > t) = P(T > C_P + t) = \mathbb{E}_{C_P}[Q_T(t + C_P)]$$
-
-where $Q_T(t) = 1 - F_T(t)$ is the survival function of the true delay distribution.
-
-Using integration by parts, we can rewrite this as:
-
-$$Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) \cdot F_{C_P}(p) \, dp$$
-
-where $f_T$ is the PDF of the true delay distribution and $F_{C_P}$ is the CDF of the time from the primary event to the end of its censoring window.
-
-This formulation has two key advantages. First, for many common distributions, such as gamma, lognormal, and Weibull, the integral can be analytically solved when the primary event is uniformly distributed within its window. Second, even when analytical solutions are not available, this approach is computationally more efficient for numerical integration than direct evaluation of the primary censored CDF.
-
-The relationship between the survival function $Q_{S_+}$ and the primary censored CDF $F_{\text{cens}}$ is:
-
-$$F_{\text{cens}}(q) = 1 - Q_{S_+}(q - w_P)$$
-
-This approach allows us to efficiently compute the primary censored CDF for a wide range of delay distributions. 
-- Overview of analytical solution approach
-- When analytical solutions are possible
-
 #### Exponentially tilted primary event times
-- Modeling non-uniform event distributions
-- Application to epidemic growth/decay scenarios
 
-#### Uniform primary intervals
-- Special case of exponentially tilted primary event times
-- High level maths overview of the simplification this leads to
-- Key results (with details in SI)
-- Table of distributions with known analytical solutions
+In practice, censoring patterns can be complex, influenced by a variety of factors including circadian rhythms, weekday/weekend reporting differences, and changing epidemic dynamics. We simplify this complexity by modeling the primary event distribution within its censoring window using an exponentially tilted distribution:
 
-### Connection to other approaches
-- Connection to Park et al.
-- Connection to Reich et al. 
-- Connection to Cori et al.
+$$f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
+
+where $r$ controls the growth rate (positive values) or decay rate (negative values) of events within the window. This captures the key feature that during epidemic growth, events are more likely to occur near the end of their censoring windows, while during decline, they occur closer to the beginning.
+
+#### Uniform primary event time as a special case
+
+When $r = 0$, the exponentially tilted distribution reduces to the uniform distribution:
+
+$$f_P(t) = \frac{1}{w_P} \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
+
+In this case, our primary censored CDF integral simplifies to:
+
+$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \frac{1}{w_P} \int_{0}^{w_P} F_T(q - u) \, du$$
+
+This integral can be evaluated using integration by parts, transforming it into:
+
+$$F_{\text{cens}}(q) = F_T(q) + \frac{1}{w_P} \left[ \int_q^{q+w_P} f_T(z) (z-q) \, dz \right]$$
+
+#### The role of partial expectation in analytical solutions
+
+Here, we encounter what's known as the partial expectation of the delay distribution:
+
+$$\int_q^{q+w_P} z \cdot f_T(z) \, dz$$
+
+This partial expectation calculates the mean contribution from values within the interval [q, q+w_P]. This relationship enables us to develop analytical solutions that avoid numerical integration for distributions with closed-form partial expectations.
+
+#### Distributions with analytical solutions
+
+We have derived analytical solutions for several commonly used distributions:
+
+- **Gamma distribution** with shape $k$ and scale $\theta$: The partial expectation equals $k\theta$ times the CDF of a Gamma(k+1,θ) distribution evaluated over the same interval.
+
+- **Lognormal distribution** with location $\mu$ and scale $\sigma$: The partial expectation equals $e^{\mu+\sigma^2/2}$ times the CDF of a Lognormal(μ+σ²,σ) distribution over the same interval.
+
+- **Weibull distribution** with shape $k$ and scale $\lambda$: The partial expectation relates to incomplete gamma functions through variable substitution.
+
+- **Exponential distribution** as a special case of both Gamma and Weibull distributions with simpler forms.
+
+The complete mathematical derivations are provided in the Supporting Information.
 
 ### Software implementation
 
@@ -287,10 +312,11 @@ This approach allows us to efficiently compute the primary censored CDF for a wi
 - Explanation of the limitations and assumptions
 - Implementation details
 
-### Extended connections to other approaches
-- Detailed mathematical connections to Park et al.
-- Complete exposition of relationship to Reich et al.
-- Formal connection to Cori et al. approach
+
+### Connection to other approaches
+- Connection to Park et al.
+- Connection to Reich et al. 
+- Connection to Cori et al.
 
 ### Extended numerical validation results
 - Detailed accuracy metrics across all distributions and sample sizes
