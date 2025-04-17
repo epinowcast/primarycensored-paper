@@ -248,10 +248,10 @@ We extended the `fitdistrplus` package to handle double-censored data through a 
 - Analysis approach
 - Comparison protocol with Park et al. results
 - Visualisation of case study results
+
 ### Implementation details
-- Software tools and versions
-- Hardware specifications
-- Reproducibility information
+
+Our analysis was implemented using the targets package [@targets] for reproducible workflow management. All analyses were performed in R [@R] with data manipulation handled by dplyr [@dplyr] and visualisations created using ggplot2 [@ggplot2] with patchwork [@patchwork] for combining multiple plots. We used cmdstanr [@cmdstanr] as the interface to Stan [@stan] for Bayesian inference. The complete code for all analyses and visualisations, including simulation scripts, parameter recovery evaluations, and case studies, is available at [@primarycensoredpaper-github].
 
 ## Results
 
