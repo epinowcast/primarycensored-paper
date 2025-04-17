@@ -9,3 +9,4 @@ paper/*.txt
 paper/*.csv
 paper/*.xlsx
 paper/main_files
+primarycensored-paper.code-workspace

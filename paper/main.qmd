@@ -202,15 +202,16 @@ The complete mathematical derivations are provided in the Supporting Information
 ### Software implementation
 
 #### R interface
-- Core functions and design principles
-- User workflow
+
+The `primarycensored` R package implements the analytical and numerical solutions described in previous sections. The package follows R's standard distribution function pattern with density, distribution, quantile, and random generation functions that mirror base R naming conventions. The core functionality is implemented as S3 methods, enabling straightforward extension with new analytical solutions. The interface supports arbitrary delay distributions through their distribution functions (e.g., `lnorm` for lognormal) and includes optimised analytical implementations for gamma, lognormal, and Weibull distributions with uniform primary event times. The package also provides utility functions for exponentially tilted primary event distributions. All functions support any mixture of primary and secondary censoring intervals of varying widths, as well as heterogeneous observation times across observations. The package is fully documented and includes examples in the vignettes. All functionality is tested for correctness and performance. It is available on CRAN and GitHub [@primarycensored; @primarycensoredgithub].
 
 #### Stan implementation
-- Stan functions
-- Interfacing between R and Stan
+
+To support Bayesian modelling, we developed Stan implementations of the primary censored delay distribution framework [@stan]. These implementations include log probability mass functions for integrating into observation models. The Stan interface maintains compatibility with the R interface while following Stan's syntactic requirements. We provide a complete Stan model for estimating distribution parameters from double-censored data with within-chain parallelisation for improved efficiency [@cmdstanr]. This model supports all distributions available in Stan and serves as a template that users can extend for more complex modelling scenarios. The implementation includes helper functions that facilitate integrating the Stan code into existing workflows through file generation or direct inclusion via Stan's include mechanism. All Stan code is fully tested against the R implementation and documented as a website [@primarycensoredstan]. We provide a vignette demonstrating how to use the Stan tools and another vignette with examples of how to fit Stan models to simulated data [@primarycensoredstantools; @primarycensoredstanexamples].
 
 #### fitdistrplus extensions
-- Integration with existing R tools
+
+We extended the `fitdistrplus` package to handle double-censored data through a wrapper function that enables maximum likelihood estimation of delay distribution parameters without complex dependencies [@fitdistrplus]. This integration again accounts for primary event censoring, secondary event censoring, and right truncation simultaneously. Similar to the core R functionality, the extension supports arbitrary distributions, mixtures of censoring intervals, and heterogeneous observation times. The wrapper accepts data frames with columns specifying bounds for observed delays, censoring window widths, and maximum observable times. We provide a vignette with examples of how to use the wrapper [@primarycensoredfitdistrplus].
 
 ### Evaluation design
 
