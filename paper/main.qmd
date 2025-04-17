@@ -213,7 +213,7 @@ To support Bayesian modelling, we developed Stan implementations of the primary 
 
 We extended the `fitdistrplus` package to handle double-censored data through a wrapper function that enables maximum likelihood estimation of delay distribution parameters without complex dependencies [@fitdistrplus]. This integration again accounts for primary event censoring, secondary event censoring, and right truncation simultaneously. Similar to the core R functionality, the extension supports arbitrary distributions, mixtures of censoring intervals, and heterogeneous observation times. The wrapper accepts data frames with columns specifying bounds for observed delays, censoring window widths, and maximum observable times. We provide a vignette with examples of how to use the wrapper [@primarycensoredfitdistrplus].
 
-### Evaluation design
+### Evaluation
 
 #### Simulated datasets
 - Three distributions with comparable means but varied shapes:
@@ -231,16 +231,17 @@ We extended the `fitdistrplus` package to handle double-censored data through a 
 
 #### Numerical validation
 
-We validated our analytical and numerical solutions by comparing them with Monte Carlo simulations basedo on the simulated dataset scenarios described above. For each scenario, we generated empirical probability mass functions (PMFs) from simulated data with varying sample sizes (10, 100, 1,000, and 10,000 observations) and then calculated comparable PMFs using the relevant analytical solution where available as well as the numerical quadrature-based approach. We then visually compared these PMFs. 
+We validated our analytical and numerical solutions by comparing them with Monte Carlo simulations based on the simulated dataset scenarios described above. For each scenario, we generated empirical probability mass functions (PMFs) from simulated data with varying sample sizes (10, 100, 1,000, and 10,000 observations) and then calculated comparable PMFs using the relevant analytical solution where available as well as the numerical quadrature-based approach. We then visually compared these PMFs. 
 
 To evaluate the computational efficiency of the different methods, we measured the runtime for each method and also the runtime of sampling from the full Monte Carlo approach for 10, 100, 1000 and 10000 observations. We then visualised the relative runtime of each method compared to the full Monte Carlo approach with 10000 observations.
 
 #### Parameter recovery
-- Stan-based estimation protocol
-- fitdistrplus-based estimation protocol
-- Comparison with naive model approaches
-- Look at different sample sizes.
-- Visualisation of parameter recovery
+
+Using our simulated datasets, we assessed parameter recovery of the primary censored distribution approach compared to a naive approach that ignores censoring and truncation.
+
+For each distribution and truncation scenario, we fit models using both Bayesian and maximum likelihood methods. The Bayesian models were implemented in Stan with a primary censored likelihood that accounts for all forms of censoring and truncation, and a naive likelihood that treated observed delays as exact [@stan]. Both used weakly informative priors for shape and scale parameters, with details provided in the Supporting Information. We used the No-U-Turn Sampler with four chains, each having 1000 warm-up and 1000 sampling iterations, and adapt_delta set to 0.95 [@cmdstanr; @betancourt_2017]. For maximum likelihood estimation, we used our fitdistrplus extension to implement both primary censored models and naive models [@fitdistrplus].
+
+We visualised parameter recovery by plotting posterior densities from Bayesian models or point estimates with confidence intervals from maximum likelihood models against the true parameter values for all scenarios. For the Bayesian models, we reported convergence diagnostics using R-hat [@gelman1992inference] and noted any divergent transitions.
 
 ### Case study
 
