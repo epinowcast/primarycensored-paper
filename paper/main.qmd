@@ -45,6 +45,8 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 ## Abstract
 
+Delay distributions are essential for understanding disease dynamics but are frequently biased by censoring and truncation. Current approaches for handling double interval censored data either discard observations, rely on discretisation, treat unobserved primary events as individual parameters, creating computational barriers for large datasets, or can't readily be extended to account for truncation. We propose a statistically rigorous yet computationally efficient approach that marginalises over latent primary event times rather than estimating them individually. We first develop a general numerical solution and then derive analytical solutions for commonly used distributions including gamma, lognormal and Weibull distributions. We implement these methods in the open-source primarycensored R package with R and Stan interfaces and an extension for the fitdistrplus package. We validate our approach using simulated data. We then apply our method to case data from the 2014-2016 Sierra Leone Ebola epidemic, comparing to the current best practice latent parameter approach. Our method maintains statistical integrity whilst improving scalability for large-scale surveillance datasets, enabling accurate delay distribution estimation where previous approaches become computationally intractable. The standardised framework and accompanying software tools facilitate integration with existing epidemiological models.
+
 ## Author summary
 
 ## Introduction
@@ -216,18 +218,20 @@ We extended the `fitdistrplus` package to handle double-censored data through a 
 ### Evaluation
 
 #### Simulated datasets
-- Three distributions with comparable means but varied shapes:
-  * Gamma (moderate variance)
-  * Lognormal (higher variance with heavier tail)
-  * Burr (heaviest tail)
-- Three truncation scenarios:
-  * No truncation (retrospective scenario)
-  * Moderate truncation (realistic real-time scenario)
-  * Severe truncation (challenging real-time scenario)
-- Consistent primary and secondary censoring windows across all scenarios but varying between individuals. Ranging from 1 day to 4 days for each primary and secondary event.
-- Total of 9 reference datasets (3 distributions × 3 truncation levels)
-- Visualization approach: panel plots with distributions along columns and truncation scenarios along rows
-- Simulate for a 10000 individuals
+
+We generated 9 synthetic datasets with 10000 individuals each. For primary event censoring, we generated events with censoring windows ranging from 1 day to 4 days in width. Primary events were assumed to follow a uniform distribution within their censoring windows. For the delay distributions, we used three distributions with a common mean of 5 days but varying degrees of variance:  
+
+- **Gamma distribution** (shape of XX, scale of YY) representing a moderate variance scenario (5 days), for which we have an analytical solution.
+- **Lognormal distribution** (location of XX, scale of YY) representing higher variance (10 days), for which we also have an analytical solution.
+- **Burr distribution** (shape1 of XX, shape2 of YY, scale of ZZ) representing the highest variance scenario (10 days with a heavier tail), for which we rely on numerical integration.
+
+We then applied three distinct right truncation scenarios to represent different stages of outbreak analysis:
+
+- **No truncation** (retrospective scenario), where all secondary events were observable regardless of delay length, simulating a complete historical dataset.
+- **Moderate truncation** (realistic real-time scenario), where secondary events were observable only if they occurred within 10 days of the first primary event.
+- **Severe truncation** (challenging real-time scenario), where secondary events were observable only if they occurred within 5 days of the first primary event.
+
+Finally, we applied secondary event censoring with window widths also ranging from 1 day to 4 days, mirroring the primary event censoring approach. This represents the practical reality that both event times are typically known only to the day or reporting period in surveillance systems.
 
 #### Numerical validation
 
@@ -281,6 +285,8 @@ Our analysis was implemented using the targets package [@targets] for reproducib
 ### Future work
 
 ### Conclusions
+
+Our primary event censored distribution approach addresses key challenges in epidemiological delay modelling by providing a statistically rigorous yet computationally efficient framework for handling double interval censored data. We maintain the statistical integrity of current best practice approaches whilst improving computational scalability through marginalisation. Our implementations in R and Stan enable straightforward integration with existing epidemiological workflows, and our analytical solutions for common distributions eliminate numerical integration in many scenarios. Results from simulated data and real-world Ebola case data demonstrate that our approach accurately recovers delay distributions across varying censoring scenarios whilst outperforming existing methods in computational efficiency. By establishing this framework and providing accessible software tools, we improve delay distribution estimation in disease surveillance and outbreak analysis, contributing to more accurate and timely public health decision-making.
 
 ## References
 
