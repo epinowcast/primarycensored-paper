@@ -243,11 +243,10 @@ We extended the `fitdistrplus` package to handle double-censored data through a 
 - Visualisation of parameter recovery
 
 ### Case study
-- Sierra Leone Ebola outbreak data
-- Data description and preprocessing
-- Analysis approach
-- Comparison protocol with Park et al. results
-- Visualisation of case study results
+
+We used data from the 2014-2016 Sierra Leone Ebola virus disease (EVD) epidemic, previously used in the analysis of Park et al. [[@Fang2016; @Park2024.01.12.24301247]. These data contained symptom onset dates and sample test dates for EVD cases in Sierra Leone from May 2014 through September 2015. Following Park et al., we assumed daily censoring intervals for both events, with each day defined from 12:00 AM to 11:59 PM. We estimated the delay distribution from symptom onset to sample test across four 60-day observation windows (0-60, 60-120, 120-180, and 180-240 days after the first symptom onset), conducting both real-time analyses (using only data within each specific window) and retrospective analyses (including all individuals who developed symptoms within the observation period regardless of when they were tested). We compared the performance of our primary censoring adjusted method to the latent variable approach of Ward et al. recommended by Charniga et al. and the naive approach [@charniga2024best; @Ward2022-wo]. We assumed a gamma distribution with priors on the shape and scale parameters of XX and XX.
+
+We visualised the estimated shape and scale parameters of the gamma distribution for each of the four observation windows comparing the real-time and retrospective analyses for all methods. We also compared the computational efficiency of the different methods by plotting the effective samples per second for each method and reported any divergences or other issues with convergence for each method [@cmdstanr].
 
 ### Implementation details
 
