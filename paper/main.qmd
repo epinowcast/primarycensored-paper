@@ -280,9 +280,14 @@ Our analysis was implemented using the targets package [@targets] for reproducib
 
 ### Strengths and limitations
 
+
 ### Comparison with existing methods
 
+The double interval censoring approach by Reich et al. provides a rigorous statistical framework but lacks analytical solutions and explicit truncation handling [@Reich2009-aa]. Software like coarsedatatools implements this approach but has limited distribution options. Park et al. evaluated several methods and highlighted challenges in real-time estimation [@Park2024.01.12.24301247]. Our work builds on these findings. Jamieson et al. demonstrated the biological plausibility of Burr distributions for incubation periods [@Jamieson2024-kk], but without software implementation or truncation support. Our approach allows the use of Burr distributions, or any other distribution with a CDF function, within a validated statistical framework that supports truncation and primary event censoring. The latent variable method developed by Ward et al. and recommended by Charniga et al. maintains statistical integrity but treats primary event times as individual parameters, limiting computational efficiency [@charniga2024best; @Ward2022-wo; @epidist]. Our approach is substantially more computationally efficient and accounts for truncation exactly rather than approximately. Vink et al. developed mixture models for serial intervals [@Vink2014-rq], implemented in the mitey package [@Ainslie-jl] but did not consider truncation. The likelihood we have developed can be used as a component in a mixture model simplifying the implementation of these mixture models. Champredon et al. showed that generation time estimation requires consideration of transmission processes [@Champredon2015-oq], a complexity beyond standard delay distribution methods. Our approach can be used as a likelihood in the joint models required for generation time estimation. 
+
 ### Future work
+
+Further development could include analytical solutions for additional distributions and for exponentially tilted primary event distributions. Improved mixture distribution support would enable better access to these models. Work is underway to support regression models for delay parameters through epidist [@epidist], capturing spatial, temporal, or demographic variation. Implementation in Julia could enable composable modelling frameworks that integrate delay distributions with other epidemic components, building on interoperability concepts [@Nicholson2022-ua]. Such developments could make these methods part of a standard outbreak analysis toolbox, helping to address current barriers in settings where models could provide actionable insights for public health decision-making.
 
 ### Conclusions
 
