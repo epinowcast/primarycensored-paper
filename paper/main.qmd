@@ -121,7 +121,7 @@ $$
 
 The primary goal of our method is to accurately and efficiently calculate $P(T^{(i)}_c | \theta)$, accounting for the various biases induced by censoring and truncation. We call this the censoring problem.
 
-Solving the censoring problem enables unbiased estimation of the delay distribution parameters $\theta$ either in the frequentist paradigm via numerical optimisation of $\mathcal{l}$, or in the Bayesian paradigm via Markov chain Monte carlo (MCMC) sampling. The Ward et al. approach deals with modelling this sampling process by directly recreating the censored event times as latent variables in the model [@Park2024.01.12.24301247; @Ward2022-wo].
+Solving the censoring problem enables unbiased estimation of the delay distribution parameters $\theta$ either in the frequentist paradigm via numerical optimisation of $\mathcal{l}$, or in the Bayesian paradigm via Markov chain Monte carlo (MCMC) sampling. The Ward et al. approach deals with modelling this sampling process by directly recreating the primary censored event times as latent variables in the model, adding $N$ effective parameters to the Bayesian estimation problem [@Park2024.01.12.24301247; @Ward2022-wo].
 
 
 ### Solving the censoring problem
