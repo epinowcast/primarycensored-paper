@@ -65,9 +65,9 @@ In this paper, we aim to establish a standard approach for epidemiological delay
 
 #### Problem statement
 
-For an individual, a primary event (e.g., infection) occurs at time $P_u$, followed by a secondary event (e.g., symptom onset) at time $S$. The true delay between these events is $T = S - P_u$, which follows some distribution $f_T(t)$ with cumulative distribution function $F_T(t)$. In practice, however, neither $P_u$ nor $S$ is typically observed.
+For an individual, a primary event (e.g. infection) occurs at time $P_u$, followed by a secondary event (e.g. symptom onset) at time $S$. The true delay between these events is $T = S - P_u$, which follows some parametric density $f_{T; \theta}(t)$ which has distribution parameters $\theta$ and cumulative distribution function $F_{T; \theta}(t)$. The statistical problem is making estimation on the distribution parameters $\theta$ given a collection of $N$ data items each giving linked information about primary and secondary event pairs (e.g. a linelist of cases).   
 
-Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval. The censored delay time, $T_c$, is measured from the end of the primary window to the end of the secondary window: $T_c = t_S + w_S - (t_P + w_P)$.
+In practice, however, neither $P_u$ nor $S$ is typically observed. Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval. The censored delay time, $T_c$, is measured from the end of the primary window to the end of the secondary window: $T_c = t_S + w_S - (t_P + w_P)$.
 
 With non-informative censoring (where the observation process is independent of the actual event times), the distribution of the primary event within its window is:
 
@@ -83,15 +83,46 @@ The observed data are further complicated by right truncation. At any observatio
 
 #### Generative process for delay data
 
-The generative process for generating delay data we consider in this paper follows these steps:
+The generative process for generating $N$ items of delay data with a maximum observable time of $D$ we consider in this paper follows these steps:
 
-1. Generate a primary event time $P_u$ from its distribution $f_{P_u}(p)$
-2. Generate a delay $T$ from the delay distribution $f_T(t)$
-3. Calculate the secondary event time as $S = P_u + T$
-4. Apply censoring by observing only that $P_u \in [t_P, t_P + w_P]$ and $S \in [t_S, t_S + w_S]$
-5. Apply right truncation by excluding any observations where $S > D$ (where $D$ is the maximum observable time)
+1. Choose or generate the delay distribution parameters $\theta$.
+2. Choose or generate the primary and secondary window widths: $\{w_P^{(i)}\}_{i = 1,\dots,N}$ and $\{w_S^{(i)}\}_{i = 1,\dots,N}$.
+3. For data items $i = 1,\dots, N$:
+    a. Generate a copy of the primary event time $P_u^{(i)}$ from its distribution $f_{P_u}(p)$.
+    b. Generate a copy of the delay $T^{(i)}$ from the delay distribution $f_{T; \theta}(t)$.
+    c. Calculate the secondary event time as $S^{(i)} = P_u^{(i)} + T^{(i)}$.
+    d. Apply censoring by observing only that $P_u^{(i)} \in [t^{(i)}_P, t^{(i)}_P + w^{(i)}_P)$ and $S^{(i)} \in [t^{(i)}_S, t^{(i)}_S + w^{(i)}_S)$ where $t^{(i)}_P$ and $t^{(i)}_S$ are:
+    
+    $$
+    \begin{aligned}
+    t^{(i)}_P &= \lfloor P_u^{(i)} / w^{(i)}_P \rfloor w^{(i)}_P, \\ 
+    t^{(i)}_S &= \lfloor S^{(i)} / w^{(i)}_S \rfloor w^{(i)}_S.
+    \end{aligned}
+    $$
 
-This then results in a empirical probability mass function (PMF) of delay data that is a combination of the true delay distribution $f_T(t)$ and the censoring and truncation processes. The primary goal of our method is to recover the true delay distribution $f_T(t)$ from censored and truncated observations, accounting for these various biases. The Ward et al. approach deals with modelling this sampling process by directly recreating it as a latent variable in the model [@Park2024.01.12.24301247; @Ward2022-wo].
+    e. Apply right truncation by excluding any observations where $S^{(i)} > D$ and returning to step a. until a non excluded observation is generated.
+
+Note that this generative process is flexible enough to generate data with a mixture of censoring window widths that can vary between primary and secondary events as well as by data item.
+
+#### Log-likelihood of delay data
+
+The inference problem we are concerned with is when we have data in the form of $N$ linked primary and secondary censoring intervals, $\left([t^{(i)}_P, t^{(i)}_P + w^{(i)}_P),~ [t^{(i)}_S, t_S^{(i)} + w^{(i)}_S)  \right),~ i = 1,\dots,N.$ 
+
+For the generative model described above, the likelihood of this data set only depends on the censored delay times for each data item:
+
+$$T_c^{(i)} = t^{(i)}_S + w^{(i)}_S - (t^{(i)}_P + w^{(i)}_P), \qquad i = 1,\dots, N.$$
+
+The probability mass function (PMF) of the censored delay time $T_c$ is a combination of the true parameteric delay distribution $f_{T;\theta}(t)$ and the censoring and truncation processes. Therefore, the log-likelihood of the data given delay distribution parameters $\theta$ is:
+
+$$
+\mathcal{l}(\theta) = \sum_{i=1}^N \ln P(T^{(i)}_c | \theta).
+$$
+
+
+The primary goal of our method is to accurately and efficiently calculate $P(T^{(i)}_c | \theta)$, accounting for the various biases induced by censoring and truncation. We call this the censoring problem.
+
+Solving the censoring problem enables unbiased estimation of the delay distribution parameters $\theta$ either in the frequentist paradigm via numerical optimisation of $\mathcal{l}$, or in the Bayesian paradigm via Markov chain Monte carlo (MCMC) sampling. The Ward et al. approach deals with modelling this sampling process by directly recreating the censored event times as latent variables in the model [@Park2024.01.12.24301247; @Ward2022-wo].
+
 
 ### Solving the censoring problem
 
