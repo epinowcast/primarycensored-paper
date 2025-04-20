@@ -167,9 +167,9 @@ When $r = 0$, the exponentially tilted distribution reduces to the uniform distr
 
 $$f_P(t) = \frac{1}{w_P} \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
 
-In this case, our primary censored CDF integral simplifies to:
+In this case, our adjusted delay time CDF integral simplifies to:
 
-$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \frac{1}{w_P} \int_{0}^{w_P} F_T(q - u) \, du$$
+$$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \frac{1}{w_P} \int_{0}^{w_P} F_T(q - u) \, du$$
 
 This integral can be evaluated using integration by parts, transforming it into:
 
