@@ -97,15 +97,15 @@ This then results in a empirical probability mass function (PMF) of delay data t
 
 #### Double censored and right truncated PMF
 
-To recover the true delay distribution $f_T(t)$ from observed data, we begin by considering the simplest case of secondary event censoring with right truncation, and then extend to include primary event censoring.
+To recover unbiased estimates of the delay distribution parameters from observed data, we begin by considering the PMF of the censored delay time $T_c$ in the simplest case of only secondary event censoring with right truncation, and then extend to include primary event censoring. This is equivalent to having a primary censoring window of zero width, $w_P = 0$.
 
-When only the secondary event is interval-censored, our goal is to calculate the probability that a delay falls into a specific observed bin. For a secondary event observed in the interval $[t_S, t_S + w_S]$ given that the primary event occurred at a precisely known time $P_u = t_P$, and conditioned on the secondary event occurring before the maximum observable time $D$, the PMF is:
+When only the secondary event is interval-censored, our goal is to calculate the probability that a delay falls into a specific observed bin. For a secondary event observed in the interval $[t_S, t_S + w_S]$ given that the primary event occurred at a precisely known time $P_u = t_P$, and conditioned on the secondary event occurring before the maximum observable time $D$, the censored delay PMF is:
 
-$$P(T_c = t_S + w_S - t_P \mid \text{observed}) = \frac{P(S \in [t_S, t_S + w_S] \mid P_u = t_P)}{P(S < D \mid P_u = t_P)}$$
+$$P(T_c = t_S + w_S - t_P \mid \text{observed}, P_u = t_p) = \frac{P(S \in [t_S, t_S + w_S] \mid P_u = t_P)}{P(S < D \mid P_u = t_P)}$$
 
 This can be written in terms of the CDF of the true delay distribution $F_T$:
 
-$$P(T_c = t_S + w_S - t_P \mid \text{observed}) = \frac{F_T(t_S + w_S - t_P) - F_T(t_S - t_P)}{F_T(D - t_P)}$$
+$$P(T_c = t_S + w_S - t_P ) \mid \text{observed}, P_u = t_p) = \frac{F_T(t_S + w_S - t_P) - F_T(t_S - t_P)}{F_T(D - t_P)}$$
 
 However, in most epidemiological contexts, the primary event is also interval-censored, creating double interval censoring. Following the approach of Park et al. [@Park2024.01.12.24301247], we treat the primary and secondary censoring as separable problems, rather than using the joint interval approach described by Reich et al. [@Reich2009-aa]. This separation significantly simplifies the mathematical formulation.
 
