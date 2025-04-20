@@ -103,57 +103,49 @@ When only the secondary event is interval-censored, our goal is to calculate the
 
 $$P(T_c = t_S + w_S - t_P \mid \text{observed}, P_u = t_p) = \frac{P(S \in [t_S, t_S + w_S] \mid P_u = t_P)}{P(S < D \mid P_u = t_P)}$$
 
-This can be written in terms of the CDF of the true delay distribution $F_T$:
+Because the primary time is known, this can be written in terms of the CDF of the true delay distribution $F_T$:
 
 $$P(T_c = t_S + w_S - t_P ) \mid \text{observed}, P_u = t_p) = \frac{F_T(t_S + w_S - t_P) - F_T(t_S - t_P)}{F_T(D - t_P)}$$
 
 However, in most epidemiological contexts, the primary event is also interval-censored, creating double interval censoring. Following the approach of Park et al. [@Park2024.01.12.24301247], we treat the primary and secondary censoring as separable problems, rather than using the joint interval approach described by Reich et al. [@Reich2009-aa]. This separation significantly simplifies the mathematical formulation.
 
-With primary event censoring, the primary event is known only to have occurred within the interval $[t_P, t_P + w_P]$. To account for this additional uncertainty, we need to derive the distribution of delays when the primary event is interval-censored. We introduce $F_{\text{cens}}(q)$ as the cumulative distribution function (CDF) of the delay distribution adjusted for primary event censoring:
+With primary event censoring, the primary event is known only to have occurred within the interval $[t_P, t_P + w_P]$. Therefore, the time after $t_P$ until the secondary event will be longer than the true delay since it includes the time between the start of the primary window and the primary event time. We call this delay time after the beginning of the primary window $T_{\text{adj}}$, which is the adjusted delay time that accounts for the primary event censoring. We introduce $F_{\text{adj}}(q)$ as the cumulative distribution function (CDF) of the adjusted delay distribution:
 
-$$F_{\text{cens}}(q) = P(T \leq q \mid P \in [t_P, t_P + w_P])$$
+$$F_{\text{adj}}(q) = P(T_{\text{adj}} \leq q \mid P_u \in [t_P, t_P + w_P])$$
 
-Once we have $F_{\text{cens}}$, we can extend our formula for secondary event censoring by substituting $F_{\text{cens}}$ for $F_T$:
+Once we have $F_{\text{adj}}$, we can extend our formula for secondary event censoring by substituting $F_{\text{adj}}$ for $F_T$. This gives a general form for the censored delay time PMF:
 
-$$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{F_{\text{cens}}(t_S + w_S - t_P) - F_{\text{cens}}(t_S - t_P)}{F_{\text{cens}}(D - t_P)}$$
+$$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{F_{\text{cens}}(t_S + w_S - t_P) - F_{\text{cens}}(t_S - t_P)}{F_{\text{cens}}(D - t_P)}.$$
 
 which is equivalent to,
 
-$$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{P(S \in [t_S, t_S + w_S] \mid P \in [t_P, t_P + w_P])}{P(S < D \mid P \in [t_P, t_P + w_P])}$$
+$$P(T_c = t_S + w_S - (t_P + w_P) \mid \text{observed}) = \frac{P(S \in [t_S, t_S + w_S] \mid P_u \in [t_P, t_P + w_P])}{P(S < D \mid P_u \in [t_P, t_P + w_P])}$$
 
-This approach breaks the problem of double censoring and right truncation into separable components, with the primary censored CDF ($F_{\text{cens}}$) as the core element that needs to be derived. In the next section, we focus on deriving the primary censored distribution $F_{\text{cens}}$.
+This approach breaks the problem of double censoring and right truncation into separable components: first, we calculate the CDF for the adjusted delay time ($F_{\text{adj}}$), second, we apply the adjusted delay time CDF to the secondary censored window. In the next section, we focus on deriving the adjusted delay time CDF $F_{\text{adj}}$.
 
 #### Primary event censored distributions
 
-Having established the importance of the primary censored CDF ($F_{\text{cens}}$) in the previous section, we now focus on deriving this distribution.
+Having established the importance of the adjusted delay time CDF ($F_{\text{adj}}$) in the previous section, we now focus on deriving this distribution.
 
-The primary event censored CDF, $F_{\text{cens}}(q)$, represents the probability that the delay is less than or equal to $q$, given that the primary event occurred within its censoring window. By the law of total probability, we can decompose this conditional probability by considering all possible specific times where the primary event might have occurred within the censoring window:
+The adjusted delay time CDF, $F_{\text{adj}}(q)$, represents the probability that the sum of the time between the beginning of the primary window and the primary event time $P - t_P$ and the delay time $T$ is less than or equal to $q$, given that the primary event occurred within its censoring window. 
 
-$$F_{\text{cens}}(q) = P(T \leq q \mid P \in [t_P, t_P + w_P])$$
+$$F_{\text{adj}}(q) = P(T + (P - t_P) \leq q \mid P_u \in [t_P, t_P + w_P])$$
 
-This can be formulated as an expectation over all possible primary event times, essentially calculating a weighted average where each possible primary event time is weighted by its probability:
+Because the delay time $T$ is independent of $P_u$, we can conveniently write
 
-$$F_{\text{cens}}(q) = \mathbb{E}_{P}[P(T \leq q \mid P)]$$
+$$F_{\text{adj}}(q) = P(T + \tilde{P} \leq q),$$
+
+Where $\tilde{P} = (P - t_P) | P_u \in [t_P, t_P + w_P])$. Using a standard identity for the cumulative distribution of the sum of random variables we reduce the calculation of $F_{\text{adj}}$$ to,
+
+$$F_{\text{adj}}(q) = \mathbb{E}_{\tilde{P}}[P(T \leq (q - \tilde{P})]$$
 
 For continuous random variables, expectations are calculated using integrals. This gives us:
 
-$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} P(T \leq q \mid P = p) \cdot f_P(p) \, dp$$
+$$F_{\text{adj}}(q) = \int_{0}^{w_P} P(T \leq q - p ) \cdot f_{\tilde{P}}(p) \, dp  = \int_{0}^{w_P} F_T(q - p) \cdot f_P(t_P + p) \, dp.$$
 
 where $f_P$ is the PDF of the primary event within its censoring window.
 
-For a primary event occurring at time $p$, the true delay between this event and a secondary event occurring at time $t_P + q$ is $(t_P + q - p)$. Therefore, the conditional probability is:
-
-$$P(T \leq q \mid P = p) = F_T(t_P + q - p)$$
-
-where $F_T$ is the CDF of the true delay distribution. Substituting this into our integral:
-
-$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} F_T(t_P + q - p) \cdot f_P(p) \, dp$$
-
-For computational simplicity, we can shift the integration variable to measure time from the start of the primary event window. Using the substitution $u = p - t_P$ (time since the start of the window):
-
-$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du$$
-
-This formulation gives us a general solution for the primary censored CDF that properly accounts for the uncertainty in the primary event time. We can use numerical integration to evaluate this integral for any delay distribution, or derive analytical solutions for specific parametric distributions, as we will explore in the next section. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
+This formulation gives us a general solution to the adjusted delay time CDF as a single variable integral problem. In turn, solving for $F_{\text{adj}}$ solves for the censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. Because $F_{\text{adj}}$ is a single variable integral problem, we can use numerical quadrature to evaluate this integral efficiently for any delay distribution, or derive analytical solutions for specific parametric distributions, as we will explore in the next section. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
 
 ### Analytical solutions
 
