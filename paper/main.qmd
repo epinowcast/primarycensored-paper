@@ -81,7 +81,7 @@ $$f_P(p) = \frac{f_{P_u}(p)}{F_{P_u}(t_P + w_P) - F_{P_u}(t_P)}, \quad p \in [t_
 
 In the simplest case, primary events occur uniformly within their censoring windows, but in real epidemiological situations, they often follow non-uniform patterns. During epidemic growth, for example, events are more likely to occur near the end of their censoring windows, while during decline, they are more likely to occur near the beginning. This can be modeled using an exponentially tilted distribution:
 
-$$f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
+$$f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t)$$ {#eq-condP}
 
 where $r$ controls the growth/decline rate.
 
@@ -174,29 +174,21 @@ $$ {#eq-sumcdf}
 
 Applying @eq-sumcdf to @eq-Tadj gives
 
-$$
-F_{\text{adj}}(q) = P(T + (P_u - t_P) \leq q \mid P_u \in [t_P, t_P + w_P])
-$$
-
-Because the delay time $T$ is independent of $P_u$, we directly use the conditional primary time defined above,
-
-$$F_{\text{adj}}(q) = P(T + P - t_P \leq q),$$
-
-Using a standard identity for the cumulative distribution of the sum of random variables we reduce the calculation of $F_{\text{adj}}$ to,
-
-$$F_{\text{adj}}(q) = \mathbb{E}_{P}[P(T \leq (q + t_P - P)]$$
+$$F_{\text{adj}}(q) = \mathbb{E}_{P_u \mid P_u \in [t_P, t_P + w_P]}[P(T \leq (q + t_P - P_u)]$$
 
 For continuous random variables, expectations are calculated using integrals. This gives us:
 
 $$F_{\text{adj}}(q) = \int_{t_P}^{t_P + w_P} P(T \leq q + t_P - p ) \cdot f_{P}(p) \, dp$$
 
-where $f_P$ is the conditional PDF of the primary event within its censoring window.
+where $f_P$ is the conditional PDF of the primary event within its censoring window (@eq-condP).
 
 It is convenient to make the variable substitution $u = p - t_P$ and write $P(T \leq q + t_P - p )$ in terms of the distribution function of delay time $T$
 
-$$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du.$$
+$$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du.$$ {#eq-Fadj}
 
-This formulation gives us a general solution to the adjusted delay time CDF as a single variable integral problem. In turn, solving for $F_{\text{adj}}$ solves for the censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. Because $F_{\text{adj}}$ is a single variable integral problem, we can use numerical quadrature to evaluate this integral for any delay distribution with an analytic representation of its distribution function, or derive analytical solutions for specific parametric distributions, as we will explore in the next section. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
+@eq-Fadj gives us a general solution to the adjusted delay time CDF as a single variable integral problem. Because $F_{\text{adj}}$ is a single variable integral problem, we can use numerical quadrature to efficiently evaluate this integral for any delay distribution with an analytic representation of its distribution function, or derive analytical solutions for specific parametric distributions, as we will explore in the next section.
+
+As shown in @eq-cdfadj, solving for $F_{\text{adj}}$ also solves for the censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
 
 ### Analytical solutions
 
