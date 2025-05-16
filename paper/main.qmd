@@ -71,6 +71,10 @@ For an individual, a primary event (e.g. infection) occurs at time $P_u$, follow
 
 In practice, however, neither $P_u$ nor $S$ is typically observed. Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval. The censored delay time, $T_c$, is measured from the start of the primary window to the start of the secondary window: $T_c = t_S - t_P$.
 
+The statistical problem is two-fold: first, to correctly impute a posterior distribution for the parameters of the underlying true delay distribution $\theta$ in a way that accounts for censoring and right truncation. Second, to use the posterior distribution for $\theta$ to calculate the probability mass function (PMF) for the possible values of $T_c$.
+
+#### Generative process for delay data
+
 With non-informative censoring (where the observation process is independent of the actual event times), the distribution of the primary event within its window is:
 
 $$f_P(p) = \frac{f_{P_u}(p)}{F_{P_u}(t_P + w_P) - F_{P_u}(t_P)}, \quad p \in [t_P, t_P + w_P]$$
@@ -83,9 +87,7 @@ where $r$ controls the growth/decline rate.
 
 The observed data are further complicated by right truncation. At any observation time $D$, we can only observe delays where the secondary event has already occurred. Delays longer than $D - P_u$ are systematically missing from the data, creating a bias toward shorter delays in recent data. This truncation effect is particularly important in real-time analyses during outbreaks, when recent primary events with longer delays are not yet observed.
 
-#### Generative process for delay data
-
-The generative process for generating $N$ items of delay data with a maximum observable time of $D$ we consider in this paper follows these steps:
+Combining the above, the generative process for generating $N$ items of delay data with a maximum observable time of $D$ we consider in this paper follows these steps:
 
 1. Choose or generate the delay distribution parameters $\theta$.
 2. Choose or generate the primary and secondary window widths: $\{w_P^{(i)}\}_{i = 1,\dots,N}$ and $\{w_S^{(i)}\}_{i = 1,\dots,N}$.
