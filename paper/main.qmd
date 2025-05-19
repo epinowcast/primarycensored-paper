@@ -330,10 +330,7 @@ We have developed a statistically rigorous yet computationally efficient method 
 ### Strengths and limitations
 
 Our primary event censored distribution approach offers several key strengths. First, our derivation of analytical solutions for common distributions (gamma, lognormal, Weibull) enables extremely efficient computation without numerical integration in many scenarios. Second, our generalised framework supports any delay distribution with a tractable CDF, extending beyond distributions with analytical solutions through numerical quadrature. Third, our approach explicitly handles right truncation, a critical factor in real-time analyses that is often overlooked or approximated. Finally, our software implementations in both R and Stan provide accessibility to a wide range of users with varying technical expertise.
-
-The main limitation of our approach is that we separate primary and secondary censoring, treating them as independent problems rather than using a joint interval approach. While this simplifies the mathematical formulation and implementation considerably, it may be less optimal in scenarios where the joint distribution structure is complex. Additionally, our approach currently handles only relatively simple forms of primary event time distributions within censoring windows (uniform and exponentially tilted), whereas real-world reporting patterns may involve more complex distributions.
-
-The Ward et al. latent parameter approach offers simplicity and flexibility for individual-level customisation of observation models, but at substantial computational cost for large datasets. It also requires a small approximation in the denominator term when handling truncation. Our approach addresses these limitations but sacrifices some of the flexibility for individual-level customisation.
+The main limitation of our approach is that it currently provides analytical solutions only for a relatively simple form of primary event time distributions within censoring windows (uniform), whereas real-world reporting patterns may involve more complex distributions. However, this limitation applies only to analytical solutions, as our framework can handle any arbitrary complexity in primary event time distributions numerically through quadrature methods, maintaining statistical rigour while trading some computational efficiency.
 
 It is important to note that our current software implementation in R and Stan, while powerful, is not truly composable due to inherent limitations in these environments. This reduces its potential utility for complex, modular epidemiological models. We aim to address this limitation through a future Julia implementation that would better enable composable modelling approaches.
 
@@ -352,61 +349,3 @@ Further development could include analytical solutions for additional distributi
 Our primary event censored distribution approach addresses key challenges in epidemiological delay modelling by providing a statistically rigorous yet computationally efficient framework for handling double interval censored data. We maintain the statistical integrity of current best practice approaches whilst improving computational scalability through marginalisation. Our implementations in R and Stan enable straightforward integration with existing epidemiological workflows, and our analytical solutions for common distributions eliminate numerical integration in many scenarios. Results from simulated data and real-world Ebola case data demonstrate that our approach accurately recovers delay distributions across varying censoring scenarios whilst outperforming existing methods in computational efficiency. By establishing this framework and providing accessible software tools, we improve delay distribution estimation in disease surveillance and outbreak analysis, contributing to more accurate and timely public health decision-making.
 
 ## References
-
-## Supporting information
-
-### Detailed analytical solutions
-
-#### General framework for analytical solutions
-- Explanation of when analytical solutions are possible
-- Role of partial expectation in deriving solutions
-
-#### Solutions for exponentially tilted primary event times
-- Complete derivation of equation for F_CP
-- Limiting case for uniform distribution
-
-#### Gamma distribution
-- Full derivation of partial expectation
-- Complete survival function and PMF formulations
-
-#### Lognormal distribution
-- Full derivation of partial expectation
-- Complete survival function and PMF formulations
-
-#### Weibull distribution
-- Full derivation of partial expectation 
-- Complete survival function and PMF formulations
-
-### Mathematical details of the naive comparison model
-- Derivation of the model used for comparison
-- Explanation of the limitations and assumptions
-- Implementation details
-
-
-### Connection to other approaches
-- Connection to Park et al.
-- Connection to Reich et al. 
-- Connection to Cori et al.
-
-### Extended numerical validation results
-- Detailed accuracy metrics across all distributions and sample sizes
-- Additional visualizations
-
-### Extended parameter recovery results
-
-#### Stan-based estimation
-- Full results across all sample sizes
-- Detailed convergence diagnostics
-- Additional parameter visualizations
-
-#### fitdistrplus-based estimation
-- Full results across all sample sizes
-- Convergence and optimization details
-
-#### Comparison with naive models
-- Complete comparative analysis
-- Additional error metrics
-
-### Extended case study results
-- Complete parameter visualizations
-- Additional comparative outputs

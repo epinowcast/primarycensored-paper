@@ -1,0 +1,434 @@
+---
+title: "Supporting Information: Modelling delays with primary Event Censored Distributions"
+format:
+  html:
+    toc: true
+    number-sections: true
+bibliography: reference.bib
+csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plos.csl
+---
+
+# Detailed analytical solutions
+
+## Survival function approach to primary event censoring
+
+The survival function approach provides an alternative but equivalent perspective to the marginalisation method described in the main text. Here, the focus is on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
+
+When reasoning about the distribution of the censored delay time $T_c$, it is useful to consider the time from the end (right) point of the primary censoring interval to the secondary time as a random variable,
+
+$$
+S_+ = S - (t_P + w_P) = T - ((t_P + w_P) - P) = T - C_P.
+$$
+
+Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = Pr(C_P < p) = Pr(P > t_P + w_P - p)$.
+
+With non-informative censoring, it is possible to derive the upper distribution function of $S_+$, or *survival function* of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
+
+$$
+\begin{equation}
+\begin{split}
+Q_{S_+}(t) &= Pr(S_+ > t) \\
+&= Pr(T > C_P + t) \\
+&= \mathbb{E}_{C_P} \Big[Q_T(t + C_P)\Big] \\
+&= \int_0^{w_P} Q_T(t + p) f_{C_P}(p) dp.
+\end{split}
+\end{equation}
+$$
+
+Using integration by parts gives:
+$$
+Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) F_{C_P}(p) dp.
+$$
+
+Where we have used that $Q^{'}_{T} = - f_T$, $Q_T$ is the survival function of the actual delay distribution of interest and $w_P$ is the length of the primary censoring window.
+
+This equation has the interpretation that the probability that the secondary event time is greater than $t$ after the end of the primary censoring window is the sum of two disjoint event probabilities:
+
+1. The probability that the *actual* delay time $T$ is greater than $t + w_P$.
+2. The probability that the *actual* delay time $T$ is between $t$ and $t + w_P$, and the primary event time $P$ occurred sufficiently close to the end of the primary censoring window that the secondary event occurred more than time $t$ after the end of the primary window.
+
+Having constructed the survival function of $S_+$, using numerical quadrature or in some other way, we can calculate the probability mass of a secondary event time falling within an observed secondary censoring window of length $w_S$ that begins at time $n - w_S$ *after* the primary censoring window. This is the probability that the censored delay time $T_c$ is $n$.
+
+This gives the censored delay time probability by integrating over censored values:
+
+$$
+Pr(S_+ \in [n - w_S, n)) = Q_{S_+}(n-w_S) - Q_{S_+}(n).
+$$
+
+Note that the censored secondary event time can also occur within the primary censoring window. This happens with probability,
+$$
+Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = Pr(T< C).
+$$
+
+## General framework for analytical solutions
+
+For any delay distribution with an analytically available CDF, we can solve for the adjusted delay time CDF by evaluating a single integral. For distributions with particularly advantageous properties, we can derive fully analytical solutions that avoid numerical integration entirely.
+
+The key insight is that we can leverage the concept of *partial expectation* to derive these analytical solutions. The partial expectation of a distribution over an interval $[a, b]$ is defined as:
+
+$$
+\int_a^b z \cdot f(z) \, dz
+$$
+
+where $f$ is the probability density function. This calculates the contribution to the mean from values within that specific interval.
+
+For certain distributions, we can express this partial expectation in terms of the CDF of a related distribution with slightly modified parameters. When this is possible, we can derive fully analytical solutions for the adjusted delay time CDF.
+
+### When analytical solutions are possible
+
+Analytical solutions are possible when:
+
+1. The CDF of the delay distribution has a closed-form expression
+2. The partial expectation of the distribution can be expressed in terms of the CDF of a related distribution
+
+The most common distributions in epidemiological applications—gamma, lognormal, and Weibull—all satisfy these criteria, making them amenable to analytical solutions.
+
+## Solutions for exponentially tilted primary event times
+
+In epidemiological analysis, it is common for primary events to occur at exponentially increasing or decreasing rates, for example, incidence of new infections in an epidemic. In this case, the distribution of the primary event time within its censoring window is biased by the exponential growth or decay (i.e., for exponential growth, the event time will more likely be closer to the end of the censoring window and vice versa for decay). If we assume a reference uniform distribution within a primary censoring window $[t_P, t_P + w_P)$ then the distribution of the primary event time within the censoring window is the exponential tilted uniform distribution:
+
+$$
+f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t).
+$$
+
+In this case, the distribution function for $C_P$, that is the length of time left in the primary censor window *after* the primary event time, is given by:
+
+$$
+F_{C_P}(p; r) = \frac{1 - \exp(-r p)}{1 - \exp(-r w_P)}, \qquad p \in [0, w_P].
+$$
+
+Note that taking the limit as $r \rightarrow 0$ gives the uniform distribution function $F_{C_P}(p, 0) = p / w_P$.
+
+## Uniform primary event time ($r=0$)
+
+When primary events are uniformly distributed within their censoring windows, the primary event distribution simplifies to:
+
+$$
+f_P(t) = \frac{1}{w_P} \mathbb{1}_{[t_P, t_P + w_P]}(t)
+$$
+
+Applying this uniform primary event time distribution to the survival function equation gives:
+
+$$
+Q_{S_+}(t) = Q_T(t + w_P) + \frac{1}{w_P} \int_0^{w_P} f_T(t+p) p\, dp.
+$$
+
+This is analytically solvable whenever the upper distribution function of $T$ is known and the mean of $T$ is analytically solvable from its integral definition.
+
+In each case considered below, it is easier to change the integration variable:
+
+$$
+\begin{aligned}
+Q_{S_+}(t) &= Q_T(t + w_P) + \frac{1}{w_P} \int_t^{t+w_P} f_T(z) (z-t)\, dz \\
+&= Q_T(t + w_P) + \frac{1}{w_P} \Big[ \int_t^{t+w_P} f_T(z) z\, dz - t \Delta_{w_P}F_T(t) \Big].
+\end{aligned}
+$$
+
+where we've introduced a (linear) difference operator defined as:
+
+$$
+\Delta_{w}f(t) = f(t + w) - f(t).
+$$
+
+### General partial expectation
+
+For any distribution with an analytically available distribution function $F_T$, the equation above can be solved as long as the *partial expectation*
+
+$$
+\int_t^{t+w_P} f_T(z) z\, dz
+$$
+
+can be reduced to an analytic expression.
+
+The insight here is that this will be possible for any distribution where the average of the distribution can be calculated analytically, which includes commonly used non-negative distributions such as the Gamma, Log-Normal and Weibull distributions.
+
+### General Discrete censored delay distribution
+
+The discrete censored delay distribution for uniformly distributed primary event times can be written as:
+
+$$
+\begin{aligned}
+f_n &= \Delta_1\Big[(n-1) \Delta_1F_T(n-1)\Big] - \Delta_1Q_T(n) - \Delta_1\Big[ \int_{n-1}^n f_T(z) z \,dz \Big] \\
+&= (n+1)F_T(n+1) + (n-1)F_T(n-1) - 2nF_T(n) - \Delta_1\Big[ \int_{n-1}^n f_T(z) z \,dz \Big].
+\end{aligned}
+$$
+
+where $f_n$ is the probability mass function (PMF) for the censored delay time.
+
+## Gamma distributed delay times
+
+The Gamma distribution has the density function:
+
+$$
+f_T(z;k, \theta) = \frac{1}{\Gamma(k) \theta^k} z^{k-1} \exp(-z/\theta).
+$$
+
+Where $\Gamma$ is the Gamma function.
+
+The Gamma distribution has the distribution function:
+
+$$
+\begin{aligned}
+F_T(z;k, \theta) &= \frac{\gamma(k, z/\theta)}{\Gamma(k)}, \qquad z\geq 0,\\
+F_T(z;k, \theta) &= 0, \qquad z < 0.
+\end{aligned}
+$$
+
+Where $\gamma$ is the lower incomplete gamma function.
+
+### Gamma partial expectation
+
+We know that the full expectation of the Gamma distribution is $\mathbb{E}[T] = k\theta$, which can be calculated as a standard integral. Doing the same integral for the partial expectation gives:
+
+$$
+\begin{aligned}
+\int_t^{t+w_P} f_T(z) z\, dz &= \frac{1}{\Gamma(k) \theta^k} \int_t^{t+w_P} \mathbb{1}(z \geq 0) z\, z^{k-1} \exp(-z/\theta)\,dz \\
+&= \frac{\Gamma(k+1) \theta^{k+1}}{\Gamma(k) \theta^k} \frac{1}{\Gamma(k+1) \theta^{k+1}} \int_t^{t+w_P} \mathbb{1}(z \geq 0) z^{k} \exp(-z/\theta)\,dz\\
+&= k\theta \Delta_{w_P} F_T(t; k + 1, \theta).
+\end{aligned}
+$$
+
+### Survival function of $S_{+}$ for Gamma distribution
+
+By substituting the gamma partial expectation equation into the survival function equation we can solve for the survival function of $S_+$ in terms of analytically available functions:
+
+$$
+Q_{S_+}(t; k, \theta) = Q_T(t + w_P; k, \theta) + \frac{1}{w_P} \big[ k \theta \Delta_{w_P}F_T(t; k+1, \theta) - t \Delta_{w_P}F_T(t; k, \theta) \big].
+$$
+
+### Gamma discrete censored delay distribution
+
+By substituting the equations above into the general discrete censored delay distribution equation, we get the discrete censored delay distribution in terms of analytically available functions:
+
+$$
+\begin{aligned}
+f_n &= (n+1) F_T(n+1; k, \theta) + (n-1) F_T(n-1; k, \theta) - 2n F_T(n; k, \theta) - k \theta \Delta_1^{(2)}F_T(n-1; k+1, \theta)\\
+ &= (n+1) F_T(n+1; k, \theta) + (n-1) F_T(n-1; k, \theta) - 2n F_T(n; k, \theta) \\
+ &+ k \theta \Big( 2 F_T(n; k+1, \theta) - F_T(n-1; k+1, \theta) - F_T(n+1; k+1,\theta) \Big) \qquad n = 0, 1, \dots.
+\end{aligned}
+$$
+
+Which was also found by Cori et al. [@cori2013new].
+
+## Lognormal distribution
+
+The Lognormal distribution has the density function:
+
+$$
+\begin{aligned}
+f_T(z;\mu, \sigma) &= \frac{1}{z \sigma \sqrt{2\pi}} \exp\left( - \frac{(\log(z) - \mu)^2}{2 \sigma^2} \right),\\ 
+f_T(z;\mu, \sigma) &= 0, \qquad z < 0.
+\end{aligned}
+$$
+
+And distribution function:
+
+$$
+F_T(z;\mu, \sigma) = \Phi\left( \frac{\log(z) - \mu}{\sigma} \right),
+$$
+
+Where $\Phi$ is the standard normal distribution function.
+
+### Lognormal partial expectation
+
+We know that the full expectation of the Lognormal distribution is $\mathbb{E}[T] = e^{\mu + \frac{1}{2} \sigma^2}$, which can be calculated by integration with the integration substitution $y = (\ln z - \mu) / \sigma$. This has transformation Jacobian:
+
+$$
+\frac{dz}{dy} = \sigma e^{\sigma y + \mu}.
+$$
+
+Doing the same integral for the partial expectation, and using the same integration substitution gives:
+
+$$
+\begin{aligned}
+\int_t^{t+w_P} z\, f_T(z; \mu, \sigma) dz &= \frac{1}{\sigma \sqrt{2\pi}} \int_t^{t+w_P} \mathbb{1}(z \geq 0) \exp\left( - \frac{(\log(z) - \mu)^2}{2 \sigma^2} \right) dz \\
+&= \frac{1}{\sqrt{2\pi}} \int_{(\ln t - \mu)/\sigma}^{(\ln(t+w_P) - \mu)/\sigma} e^{\sigma y + \mu} e^{-y^2/2} dy\\
+&= \frac{e^{\mu + \frac{1}{2} \sigma^2}}{\sqrt{2 \pi}} \int_{(\ln t - \mu)/\sigma}^{(\ln(t+w_P) - \mu)/\sigma} e^{-(y- \sigma)^2/2} dy \\
+&= e^{\mu + \frac{1}{2} \sigma^2} \Big[\Phi\Big(\frac{\ln(t+w_P) - \mu}{\sigma} - \sigma\Big) - \Phi\Big(\frac{\ln(t) - \mu}{\sigma} - \sigma\Big) \Big]\\
+&= e^{\mu + \frac{1}{2} \sigma^2} \Delta_{w_P}F_T(t; \mu + \sigma^2, \sigma).
+\end{aligned}
+$$
+
+### Survival function of $S_{+}$ for Lognormal distribution
+
+By substituting the lognormal partial expectation equation into the survival function equation we can solve for the survival function of $S_+$ in terms of analytically available functions:
+
+$$
+Q_{S+}(t ;\mu, \sigma) = Q_T(t + w_P;\mu, \sigma) + \frac{1}{w_P} \Big[ e^{\mu + \frac{1}{2} \sigma^2} \Delta_{w_P}F_T(t; \mu + \sigma^2, \sigma) - t\Delta_{w_P}F_T(t; \mu, \sigma) \Big]
+$$
+
+### Lognormal discrete censored delay distribution
+
+By substituting the equations above into the general discrete censored delay distribution equation, we get the discrete censored delay distribution in terms of analytically available functions:
+
+$$
+\begin{aligned}
+f_n &= (n+1) F_T(n+1; \mu, \sigma) + (n-1) F_T(n-1; \mu, \sigma) - 2n F_T(n; \mu, \sigma) \\
+ &- e^{\mu + \frac{1}{2} \sigma^2} \Delta_1^{(2)}F_T(n-1;\mu + \sigma^2, \sigma) \\
+ &= (n+1) F_T(n+1; \mu, \sigma) + (n-1) F_T(n-1; \mu, \sigma) - 2n F_T(n; \mu, \sigma) \\
+  &+ e^{\mu + \frac{1}{2} \sigma^2} \Big( 2F_T(n; \mu + \sigma^2, \sigma) - F_T(n+1; \mu + \sigma^2, \sigma) - F_T(n-1; \mu + \sigma^2, \sigma) \Big) \qquad n = 0, 1, \dots.
+\end{aligned}
+$$
+
+## Weibull distribution
+
+The Weibull distribution has the density function:
+
+$$
+f_T(z;\lambda,k) =
+\begin{cases}
+\frac{k}{\lambda}\left(\frac{z}{\lambda}\right)^{k-1}e^{-(z/\lambda)^{k}}, & z\geq0 ,\\
+0, & z<0,
+\end{cases}
+$$
+
+And distribution function:
+
+$$
+F_T(z;\lambda,k)=\begin{cases}1 - e^{-(z/\lambda)^k}, & z\geq0,\\ 0, & z<0.\end{cases}
+$$
+
+### Weibull partial expectation
+
+We know that the full expectation of the Weibull distribution is $\mathbb{E}[T] = \lambda \Gamma(1 + 1/k)$, which can be calculated by integration using the integration substitution $y = (z / \lambda)^k$, which has transformation Jacobian:
+
+$$
+\frac{dz}{dy} = \frac{\lambda}{k}y^{1/k - 1}.
+$$
+
+Doing the same integral for the partial expectation, and using the same integration substitution gives:
+
+$$
+\begin{aligned}
+\int_{t}^{t+w_P} z\, f_T(z; \lambda,k) dz &= \int_t^{t+w_P} \mathbb{1}(z \geq 0) \frac{kz}{\lambda}\left(\frac{z}{\lambda}\right)^{k-1}e^{-(z/\lambda)^{k}} dz \\
+&= k\int_t^{t+w_P} \mathbb{1}(z \geq 0) \left(\frac{z}{\lambda}\right)^{k}e^{-(z/\lambda)^{k}} dz \\
+&= \lambda k \int_{(t / \lambda)^k}^{((t + w_P) / \lambda)^k} \mathbb{1}(y \geq 0) y y^{1/k - 1} e^{-y} dy \\
+&= \lambda\int_{(t / \lambda)^k}^{((t + w_P) / \lambda)^k} \mathbb{1}(y \geq 0) y^{1/k} e^{-y} dy\\
+&= \lambda \Delta_{w_P} g(t; \lambda,k)
+\end{aligned}
+$$
+
+Where
+
+$$
+g(t; \lambda, k) = \gamma\left(1 + 1/k, \left({t\vee 0 \over \lambda}\right)^k\right) = \frac{1}{k}\gamma\left(1/k, \left({t\vee 0 \over \lambda}\right)^k\right) - \frac{t}{\lambda}\exp\left(-\left({t\vee 0 \over \lambda}\right)^k\right)
+$$
+
+is a reparametrisation of the lower incomplete gamma function. Note that the $\vee$ operator $t \vee 0 = \text{max}(0, t)$ comes into the expression due to $\mathbb{1}(y \geq 0)$ term in the integrand.
+
+### Survival function of $S_{+}$ for Weibull distribution
+
+By substituting the Weibull partial expectation equation into the survival function equation we can solve for the survival function of $S_+$ in terms of analytically available functions:
+
+$$
+Q_{S+}(t ;\lambda,k) = Q_T(t + w_P; \lambda,k) + \frac{1}{w_P} \Big[ \lambda \Delta_{w_P} g(t; \lambda,k) - t\Delta_{w_P}F_T(t; \lambda,k)\Big].
+$$
+
+### Weibull discrete censored delay distribution
+
+By substituting the equations above into the general discrete censored delay distribution equation, we get the discrete censored delay distribution in terms of analytically available functions:
+
+$$
+\begin{aligned}
+f_n &= (n+1)F_T(n+1) + (n-1)F_T(n-1) - 2nF_T(n) - \Delta_1\Big[ \int_{n-1}^n f_T(z) z \,dz \Big] \\
+&= (n+1)F_T(n+1) + (n-1)F_T(n-1) - 2nF_T(n) - \lambda \Delta_1^{(2)} g(n-1; \lambda,k) \\
+&= (n+1)F_T(n+1) + (n-1)F_T(n-1) - 2nF_T(n) \\
+&+ \lambda [2g(n; \lambda,k) - g(n+1; \lambda,k) - g(n-1; \lambda,k)] \qquad n = 0, 1, \dots.
+\end{aligned}
+$$
+
+Which was also found by Cori et al. [@cori2013new].
+
+## Connection to other approaches
+
+### Connection to Park et al. 2024
+
+Using the notation from the methods overview given in Park et al. [@Park2024], we write the conditional probability of the secondary event time $S\in (S_L,S_R)$ given the primary event time $P \in (P_L,P_R)$ as:
+
+$$
+\begin{aligned}
+\mathrm{Pr}(S_L < S < S_R | P_L < P < P_R) &= \frac{\mathrm{Pr}(P_L < P < P_R, S_L < S < S_R)}{\mathrm{Pr}(P_L < P < P_R)} \\
+   &= \frac{\int_{P_L}^{P_R} \int_{S_L}^{S_R} g_P(x) f_x(y-x) dy dx}{\int_{P_L}^{P_R} g_P(x) dx}\\
+   &= \int_{P_L}^{P_R} \int_{S_L}^{S_R} g_P(x|P_L, P_R) f_x(y-x)dy dx
+\end{aligned}
+$$
+
+In this note, we assume that the forward distribution doesn't vary over time (such that $f_x = f$), then
+
+$$
+\int_{P_L}^{P_R} \int_{S_L}^{S_R} g_P(x|P_L, P_R) f_x(y-x)dy dx = \int_{P_L}^{P_R} g_P(x|P_L, P_R) \big[F(S_R - x) - F(S_L - x)\big] dx
+$$
+
+Then, by using integration by parts, we get:
+
+$$
+\begin{split}
+\int_{P_L}^{P_R} g_P(x|P_L, P_R) \big[F(S_R - x) - F(S_L - x)\big] dx &=
+F(S_R - P_R) - F(S_L - P_R)  \\ & - \int_{P_L}^{P_R} G_P(x|P_L, P_R) \big[f(S_L - x) - f(S_R - x)\big] dx
+\end{split}
+$$
+
+Where we have used that $\partial_x F(S_R - x) = - f(S_R - x)$ and $\partial_x F(S_L - x) = - f(S_L - x)$.
+
+We can now compare this to the survival function equation by considering the following transformations:
+
+- $P_L = t_P$ and $P_R = t_P + w_P$, i.e., the endpoint of the primary censoring window as the origin.
+- $S_L = t_S = n - w_S + t_P + w_P$ and $S_R = t_S + w_S = n + t_P + w_P$, that is, we are interested in the probability of the secondary event time falling within the secondary censoring window $[t_S, t_S + w_S)$.
+
+Then the equation above becomes:
+
+$$
+\begin{aligned}
+\mathrm{Pr}(S_L < S < S_R | P_L < P < P_R) &= F(n) - F(n-w_S) - \int_{t_P}^{t_P + w_P} G_P(x|t_P, t_P + w_P) \big[f(n - w_S - x + t_P + w_P) - f(n - x + t_P + w_P)\big] dx
+\end{aligned}
+$$
+Making the transformation $x = t_P + w_P - p$, and rewriting in the notation of this document gives:
+$$
+\begin{aligned}
+&= F(n) - F(n-w_S) + \int_{w_P}^{0} G_P(t_P + w_P - p|t_P, t_P + w_P) \big[f_T(n - w_S + p) - f_T(n +p)\big] dp \\
+&= F(n) - F(n-w_S) + \int_{0}^{w_P} G_P(t_P + w_P - p|t_P, t_P + w_P) \big[f_T(n + p) - f_T(n - w_S +p)\big] dp\\
+&= F(n) - F(n-w_S) + \int_{0}^{w_P} (1 - F_{C_P}(p)) \big[f_T(n + p) - f_T(n - w_S +p)\big] dp\\
+&= F(n + w_P) - F(n-w_S + w_P) + \int_{0}^{w_P} [f_T(n + p - w_S) - f_T(n + p)] F_{C_P}(p) dp\\
+&= Q_T(n-w_S + w_P) - Q_T(n + w_P) + \int_{0}^{w_P} [f_T(n + p - w_S) - f_T(n + p)] F_{C_P}(p) dp \\
+&= Q_{S_+}(n-w_S) - Q_{S_+}(n ).
+\end{aligned}
+$$
+which is the same as our derived survival function equation.
+
+In this derivation, we have used that $G_P(x|t_P, t_P + w_P)$ is the distribution function from the time *from* the start of the primary interval *until* primary event time, and $F_{C_P}$ is the distribution function of the time *until* the end of the primary event window *from* the primary event time. Therefore, $G_P(t_P + w_P - p|t_P, t_P + w_P) = Pr(P < t_P + w_P - p | P \in (t_P, t_P + w_P)) = 1 - Pr(C_P \leq p) = 1 - F_{C_P}(p)$.
+
+### Mathematical details of the naive comparison model
+
+For comparison purposes, we implemented a naive model that ignored both censoring and truncation, treating the observed delays $T_c$ as if they were the true delays $T$. This approach is common in practice when the complexities of censoring and truncation are not properly addressed.
+
+The naive model assumes:
+
+$$P(T_c = t_S - t_P) = f_T(t_S - t_P; \theta)$$
+
+where $f_T$ is the probability density function of the true delay distribution with parameters $\theta$.
+
+For discrete observed delays, the naive model uses:
+
+$$P(T_c = n) = F_T(n+1; \theta) - F_T(n; \theta)$$
+
+where $F_T$ is the cumulative distribution function of the true delay distribution.
+
+This approach introduces two major sources of bias:
+
+1. **Censoring bias**: By treating interval-censored data as point data (typically using the start of each interval), the naive approach systematically underestimates the true delay. The expected magnitude of this bias is related to the width of the censoring windows.
+
+2. **Truncation bias**: By failing to account for right truncation, the naive approach oversamples shorter delays, since longer delays are systematically missing from recent data. This bias is particularly severe during ongoing outbreaks and increases with the severity of truncation.
+
+The combined effect of these biases typically results in systematic underestimation of the mean of the delay distribution, with the magnitude of underestimation increasing with both censoring window width and truncation severity.
+
+## Extended numerical validation results
+
+[This section will contain detailed accuracy metrics across all distributions and sample sizes, along with additional visualizations.]
+
+## Extended parameter recovery results
+
+[This section will contain full results across all sample sizes, detailed convergence diagnostics, and additional parameter visualizations for both Stan-based and fitdistrplus-based estimation, along with a comprehensive comparison with naive models.]
+
+## Extended case study results
+
+[This section will contain complete parameter visualizations and additional comparative outputs for the Ebola case study, including detailed computational performance metrics.]
