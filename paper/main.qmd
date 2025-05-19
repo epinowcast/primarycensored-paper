@@ -191,7 +191,7 @@ This will reduce the @eq-Fadj to a simple form whenever $f_P$ is modelled as a s
 
 @eq-Fadj gives us a general solution to the adjusted delay time CDF as a single variable integral problem. Because $F_{\text{adj}}$ is a single variable integral problem, we can use numerical quadrature to efficiently evaluate this integral for any delay distribution with an analytic representation of its distribution function, or derive analytical solutions for specific parametric distributions, as we will explore in the next section.
 
-As shown in @eq-cdfadj, solving for $F_{\text{adj}}$ also solves for the censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
+As shown in @eq-cdfadj, solving for $F_{\text{adj}}$ also solves for the secondary censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
 
 ### Analytical solutions
 
