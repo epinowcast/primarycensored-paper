@@ -130,7 +130,7 @@ The Ward et al. approach approximates solving this by directly recreating the da
 
 ### Solving the censoring problem
 
-#### Double censored and right truncated PMF
+#### Double censored and right-truncated PMF
 
 To recover unbiased estimates of the delay distribution parameters from observed data, we begin by considering secondary event censoring with right truncation, and then extend this to include primary event censoring. This is equivalent to having a primary censoring window of zero width, $w_P = 0$.
 
@@ -273,7 +273,7 @@ Finally, we applied secondary event censoring with window widths also ranging fr
 
 #### Numerical validation
 
-We validated our analytical and numerical solutions by comparing them with Monte Carlo simulations based on the simulated dataset scenarios described above. For each scenario, we generated empirical probability mass functions (PMFs) from simulated data with varying sample sizes (10, 100, 1,000, and 10,000 observations) and then calculated comparable PMFs using the relevant analytical solution where available as well as the numerical quadrature-based approach. We then visually compared these PMFs. 
+We validated our analytical and numerical solutions by comparing them with Monte Carlo simulations based on the simulated dataset scenarios described above. For each scenario, we generated empirical probability mass functions (PMFs) from simulated data with varying sample sizes (10, 100, 1,000, and 10,000 observations) and then calculated comparable PMFs using the relevant analytical solution, where available as well as the numerical quadrature-based approach. We then visually compared these PMFs. 
 
 To evaluate the computational efficiency of the different methods, we measured the runtime for each method and also the runtime of sampling from the full Monte Carlo approach for 10, 100, 1000 and 10000 observations. We then visualised the relative runtime of each method compared to the full Monte Carlo approach with 10000 observations.
 
@@ -287,7 +287,7 @@ We visualised parameter recovery by plotting posterior densities from Bayesian m
 
 ### Case study
 
-We used data from the 2014-2016 Sierra Leone Ebola virus disease (EVD) epidemic, previously used in the analysis of Park et al. [[@Fang2016; @Park2024.01.12.24301247]. These data contained symptom onset dates and sample test dates for EVD cases in Sierra Leone from May 2014 through September 2015. Following Park et al., we assumed daily censoring intervals for both events, with each day defined from 12:00 AM to 11:59 PM. We estimated the delay distribution from symptom onset to sample test across four 60-day observation windows (0-60, 60-120, 120-180, and 180-240 days after the first symptom onset), conducting both real-time analyses (using only data within each specific window) and retrospective analyses (including all individuals who developed symptoms within the observation period regardless of when they were tested). We compared the performance of our primary censoring adjusted method to the latent variable approach of Ward et al. recommended by Charniga et al. and the naive approach [@charniga2024best; @Ward2022-wo]. We assumed a gamma distribution with priors on the shape $k$ and scale $\theta$ parameters of Gamma(2, 1) and Gamma(2, 1) respectively.
+We used data from the 2014-2016 Sierra Leone Ebola virus disease (EVD) epidemic, previously used in the analysis of Park et al. [@Fang2016; @Park2024.01.12.24301247]. These data contained symptom onset dates and sample test dates for EVD cases in Sierra Leone from May 2014 through September 2015. Following Park et al., we assumed daily censoring intervals for both events, with each day defined from 12:00 AM to 11:59 PM. We estimated the delay distribution from symptom onset to sample test across four 60-day observation windows (0-60, 60-120, 120-180, and 180-240 days after the first symptom onset), conducting both real-time analyses (using only data within each specific window) and retrospective analyses (including all individuals who developed symptoms within the observation period regardless of when they were tested). We compared the performance of our primary censoring adjusted method to the latent variable approach of Ward et al. recommended by Charniga et al. and the naive approach [@charniga2024best; @Ward2022-wo]. We assumed a gamma distribution with priors on the shape $k$ and scale $\theta$ parameters of Gamma(2, 1) and Gamma(2, 1) respectively.
 
 We visualised the estimated shape and scale parameters of the gamma distribution for each of the four observation windows comparing the real-time and retrospective analyses for all methods. We also compared the computational efficiency of the different methods by plotting the effective samples per second for each method and reported any divergences or other issues with convergence for each method [@cmdstanr] stratifying by observation period.
 
