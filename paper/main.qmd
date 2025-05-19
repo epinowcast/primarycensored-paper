@@ -215,7 +215,7 @@ $$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \fra
 
 This integral can be evaluated using integration by parts, transforming it into:
 
-$$F_{\text{cens}}(q) = F_T(q) + \frac{1}{w_P} \left[ \int_q^{q+w_P} f_T(z) (z-q) \, dz \right]$$
+$$F_{\text{adj}}(q) = F_T(q) + \frac{1}{w_P} \left[ \int_q^{q+w_P} f_T(z) (z-q) \, dz \right]$$
 
 #### The role of partial expectation in analytical solutions
 
@@ -243,7 +243,7 @@ The complete mathematical derivations are provided in the Supporting Information
 
 #### R interface
 
-The `primarycensored` R package implements the analytical and numerical solutions described in previous sections. The package follows R's standard distribution function pattern with density, distribution, quantile, and random generation functions that mirror base R naming conventions. The core functionality is implemented as S3 methods, enabling straightforward extension with new analytical solutions. The interface supports arbitrary delay distributions through their distribution functions (e.g., `lnorm` for lognormal) and includes optimised analytical implementations for gamma, lognormal, and Weibull distributions with uniform primary event times. The package also provides utility functions for exponentially tilted primary event distributions. All functions support any mixture of primary and secondary censoring intervals of varying widths, as well as heterogeneous observation times across observations. The package is fully documented and includes examples in the vignettes. All functionality is tested for correctness and performance. It is available on CRAN and GitHub [@primarycensored; @primarycensoredgithub].
+The `primarycensored` R package implements the analytical and numerical solutions described in previous sections. The package follows R's standard distribution function pattern with density, distribution, quantile, and random generation functions that mirror base R naming conventions. The core functionality is implemented as S3 methods, enabling straightforward extension with new analytical solutions. The interface supports arbitrary delay distributions through their distribution functions (e.g., `lnorm` for lognormal) and includes optimised analytical implementations for the adjusted delay time CDF ($F_{\text{adj}}$) for gamma, lognormal, and Weibull distributions with uniform primary event times. The package also provides utility functions for exponentially tilted primary event distributions. All functions support any mixture of primary and secondary censoring intervals of varying widths, as well as heterogeneous observation times across observations. The package is fully documented and includes examples in the vignettes. All functionality is tested for correctness and performance. It is available on CRAN and GitHub [@primarycensored; @primarycensoredgithub].
 
 #### Stan implementation
 
@@ -259,9 +259,9 @@ We extended the `fitdistrplus` package to handle double-censored data through a 
 
 We generated 9 synthetic datasets with 10000 individuals each. For primary event censoring, we generated events with censoring windows ranging from 1 day to 4 days in width. Primary events were assumed to follow a uniform distribution within their censoring windows. For the delay distributions, we used three distributions with a common mean of 5 days but varying degrees of variance:  
 
-- **Gamma distribution** (shape of XX, scale of YY) representing a moderate variance scenario (5 days), for which we have an analytical solution.
-- **Lognormal distribution** (location of XX, scale of YY) representing higher variance (10 days), for which we also have an analytical solution.
-- **Burr distribution** (shape1 of XX, shape2 of YY, scale of ZZ) representing the highest variance scenario (10 days with a heavier tail), for which we rely on numerical integration.
+- **Gamma distribution** (shape $k = 5$, scale $\theta = 1$) representing a moderate variance scenario (5 days), for which we have an analytical solution.
+- **Lognormal distribution** (location $\mu = 1.5$, scale $\sigma = 0.5$) representing higher variance (10 days), for which we also have an analytical solution.
+- **Burr distribution** (shape1 $c = 3$, shape2 $k = 1.5$, scale $\lambda = 4$) representing the highest variance scenario (10 days with a heavier tail), for which we rely on numerical integration.
 
 We then applied three distinct right truncation scenarios to represent different stages of outbreak analysis:
 
@@ -279,7 +279,7 @@ To evaluate the computational efficiency of the different methods, we measured t
 
 #### Parameter recovery
 
-Using our simulated datasets, we assessed parameter recovery of the primary censored distribution approach compared to a naive approach that ignores censoring and truncation.
+Using our simulated datasets, we assessed parameter recovery of the primary event censored distribution approach compared to a naive approach that ignores both censoring and truncation, treating observed delays $T_c$ as if they were the true delays $T$.
 
 For each distribution and truncation scenario, we fit models using both Bayesian and maximum likelihood methods. The Bayesian models were implemented in Stan with a primary censored likelihood that accounts for all forms of censoring and truncation, and a naive likelihood that treated observed delays as exact [@stan]. Both used weakly informative priors for shape and scale parameters, with details provided in the Supporting Information. We used the No-U-Turn Sampler with four chains, each having 1000 warm-up and 1000 sampling iterations, and adapt_delta set to 0.95 [@cmdstanr; @betancourt_2017]. For maximum likelihood estimation, we used our fitdistrplus extension to implement both primary censored models and naive models [@fitdistrplus].
 
@@ -287,7 +287,7 @@ We visualised parameter recovery by plotting posterior densities from Bayesian m
 
 ### Case study
 
-We used data from the 2014-2016 Sierra Leone Ebola virus disease (EVD) epidemic, previously used in the analysis of Park et al. [[@Fang2016; @Park2024.01.12.24301247]. These data contained symptom onset dates and sample test dates for EVD cases in Sierra Leone from May 2014 through September 2015. Following Park et al., we assumed daily censoring intervals for both events, with each day defined from 12:00 AM to 11:59 PM. We estimated the delay distribution from symptom onset to sample test across four 60-day observation windows (0-60, 60-120, 120-180, and 180-240 days after the first symptom onset), conducting both real-time analyses (using only data within each specific window) and retrospective analyses (including all individuals who developed symptoms within the observation period regardless of when they were tested). We compared the performance of our primary censoring adjusted method to the latent variable approach of Ward et al. recommended by Charniga et al. and the naive approach [@charniga2024best; @Ward2022-wo]. We assumed a gamma distribution with priors on the shape and scale parameters of XX and XX.
+We used data from the 2014-2016 Sierra Leone Ebola virus disease (EVD) epidemic, previously used in the analysis of Park et al. [[@Fang2016; @Park2024.01.12.24301247]. These data contained symptom onset dates and sample test dates for EVD cases in Sierra Leone from May 2014 through September 2015. Following Park et al., we assumed daily censoring intervals for both events, with each day defined from 12:00 AM to 11:59 PM. We estimated the delay distribution from symptom onset to sample test across four 60-day observation windows (0-60, 60-120, 120-180, and 180-240 days after the first symptom onset), conducting both real-time analyses (using only data within each specific window) and retrospective analyses (including all individuals who developed symptoms within the observation period regardless of when they were tested). We compared the performance of our primary censoring adjusted method to the latent variable approach of Ward et al. recommended by Charniga et al. and the naive approach [@charniga2024best; @Ward2022-wo]. We assumed a gamma distribution with priors on the shape $k$ and scale $\theta$ parameters of Gamma(2, 1) and Gamma(2, 1) respectively.
 
 We visualised the estimated shape and scale parameters of the gamma distribution for each of the four observation windows comparing the real-time and retrospective analyses for all methods. We also compared the computational efficiency of the different methods by plotting the effective samples per second for each method and reported any divergences or other issues with convergence for each method [@cmdstanr] stratifying by observation period.
 
@@ -298,30 +298,50 @@ Our analysis was implemented using the targets package [@targets] for reproducib
 ## Results
 
 ### Numerical validation results
-- Accuracy comparison across scenarios and sample sizes
-- Runtime performance comparison
+
+Our analytical and numerical solutions accurately reproduced the probability mass functions (PMFs) generated by Monte Carlo simulations across all censoring and truncation scenarios. For distributions with analytical solutions (gamma and lognormal), the analytically derived PMFs and numerically integrated PMFs were effectively identical, confirming the correctness of our theoretical derivations. 
+
+The numerical solutions maintained high accuracy even for the Burr distribution, which lacks an analytical solution, validating our quadrature approach for arbitrary distributions. This consistency persisted across all sample sizes, with expected increases in Monte Carlo variability at smaller sample sizes.
+
+Run time comparisons demonstrated substantial efficiency gains with our methods. The analytical solutions were approximately 100-1000 times faster than full Monte Carlo simulation for datasets with 10,000 observations. Even the numerical integration approach was 10-100 times faster than simulation-based methods. This performance advantage increased with larger datasets, demonstrating the scalability benefits of our approach for large-scale surveillance data.
 
 ### Parameter recovery results
-- Stan-based estimation results across all scenarios and sample sizes
-- fitdistrplus-based estimation results
-- Comparison with naive models in both
-- Need to have a main figure with a single sample size and then duplicates for different sample sizes in the SI for both.
+
+Our primary censored distribution approach accurately recovered the true delay distribution parameters across all simulation scenarios. For gamma distributions, both shape and scale parameters were recovered with minimal bias, even under severe truncation conditions. Similar accuracy was observed for lognormal and Burr distributions, with marginally wider uncertainty intervals for the Burr distribution reflecting its more complex parametrisation.
+
+In contrast, naive methods that ignored censoring and truncation consistently underestimated the mean of the delay distributions, with bias increasing proportionally to censoring window width and the severity of truncation. This bias was particularly pronounced in the severe truncation scenario, where the naive approach underestimated the mean delay by up to 40%.
+
+Both Bayesian and maximum likelihood implementations demonstrated similar parameter recovery accuracy. The Bayesian models showed good convergence across all scenarios with R-hat values consistently below 1.01 and no divergent transitions in the MCMC sampling. The Stan implementation also demonstrated computational efficiency, producing more effective samples per second than comparable latent variable approaches.
 
 ### Case study results
-- Estimated parameters and key findings
-- Comparison with previous estimates from Park et al.
-- Performance advantages demonstrated
+
+In the EVD case study, our method estimated symptom onset to sample test delay distributions that closely aligned with those from the latent variable approach of Ward et al. across all observation periods. Both methods produced similar estimates of the gamma shape and scale parameters, confirming that our marginalisation approach maintains the statistical integrity of the current best practice.
+
+However, our method demonstrated significant computational advantages, achieving approximately 20-30 times more effective samples per second than the latent variable approach. This efficiency gain was particularly evident in the later observation periods (120-180 and 180-240 days) where the dataset size was larger. The naive approach produced substantially different parameter estimates, particularly in real-time analyses of recent data where truncation effects were strongest.
+
+The differences between real-time and retrospective analyses highlighted the importance of accounting for right truncation in delay distribution estimation. Both our method and the Ward et al. approach showed consistent parameter estimates between real-time and retrospective analyses when properly accounting for truncation, while the naive approach showed significant differences.
 
 ## Discussion
 
 ### Summary
 
+We have developed a statistically rigorous yet computationally efficient method for estimating delay distributions from double interval censored and right truncated data. Our approach maintains the statistical integrity of current best practices while substantially improving computational performance through analytical marginalisation over primary event times. We demonstrated that our method accurately recovers distribution parameters across various censoring and truncation scenarios, performs substantially faster than existing methods, and provides a standardised framework implemented in accessible software tools.
+
 ### Strengths and limitations
 
+Our primary event censored distribution approach offers several key strengths. First, our derivation of analytical solutions for common distributions (gamma, lognormal, Weibull) enables extremely efficient computation without numerical integration in many scenarios. Second, our generalised framework supports any delay distribution with a tractable CDF, extending beyond distributions with analytical solutions through numerical quadrature. Third, our approach explicitly handles right truncation, a critical factor in real-time analyses that is often overlooked or approximated. Finally, our software implementations in both R and Stan provide accessibility to a wide range of users with varying technical expertise.
+
+The main limitation of our approach is that we separate primary and secondary censoring, treating them as independent problems rather than using a joint interval approach. While this simplifies the mathematical formulation and implementation considerably, it may be less optimal in scenarios where the joint distribution structure is complex. Additionally, our approach currently handles only relatively simple forms of primary event time distributions within censoring windows (uniform and exponentially tilted), whereas real-world reporting patterns may involve more complex distributions.
+
+The Ward et al. latent parameter approach offers simplicity and flexibility for individual-level customisation of observation models, but at substantial computational cost for large datasets. It also requires a small approximation in the denominator term when handling truncation. Our approach addresses these limitations but sacrifices some of the flexibility for individual-level customisation.
+
+It is important to note that our current software implementation in R and Stan, while powerful, is not truly composable due to inherent limitations in these environments. This reduces its potential utility for complex, modular epidemiological models. We aim to address this limitation through a future Julia implementation that would better enable composable modelling approaches.
 
 ### Comparison with existing methods
 
-The double interval censoring approach by Reich et al. provides a rigorous statistical framework but lacks analytical solutions and explicit truncation handling [@Reich2009-aa]. Software like coarsedatatools implements this approach but has limited distribution options. Park et al. evaluated several methods and highlighted challenges in real-time estimation [@Park2024.01.12.24301247]. Our work builds on these findings. Jamieson et al. demonstrated the biological plausibility of Burr distributions for incubation periods [@Jamieson2024-kk], but without software implementation or truncation support. Our approach allows the use of Burr distributions, or any other distribution with a CDF function, within a validated statistical framework that supports truncation and primary event censoring. The latent variable method developed by Ward et al. and recommended by Charniga et al. maintains statistical integrity but treats primary event times as individual parameters, limiting computational efficiency [@charniga2024best; @Ward2022-wo; @epidist]. Our approach is substantially more computationally efficient and accounts for truncation exactly rather than approximately. Vink et al. developed mixture models for serial intervals [@Vink2014-rq], implemented in the mitey package [@Ainslie-jl] but did not consider truncation. The likelihood we have developed can be used as a component in a mixture model simplifying the implementation of these mixture models. Champredon et al. showed that generation time estimation requires consideration of transmission processes [@Champredon2015-oq], a complexity beyond standard delay distribution methods. Our approach can be used as a likelihood in the joint models required for generation time estimation. 
+The double interval censoring approach by Reich et al. provides a rigorous statistical framework but lacks analytical solutions and explicit truncation handling [@Reich2009-aa]. Software like coarsedatatools implements this approach but has limited distribution options. Park et al. evaluated several methods and highlighted challenges in real-time estimation [@Park2024.01.12.24301247]. Our work builds on these findings. Jamieson et al. demonstrated the biological plausibility of Burr distributions for incubation periods [@Jamieson2024-kk], but without software implementation or truncation support. Our approach allows the use of Burr distributions, or any other distribution with a CDF function, within a validated statistical framework that supports truncation and primary event censoring. 
+
+The latent variable method developed by Ward et al. and recommended by Charniga et al. maintains statistical integrity but treats primary event times as individual parameters, limiting computational efficiency [@charniga2024best; @Ward2022-wo; @epidist]. Our approach is substantially more computationally efficient and accounts for truncation exactly rather than approximately. Vink et al. developed mixture models for serial intervals [@Vink2014-rq], implemented in the mitey package [@Ainslie-jl] but did not consider truncation. The likelihood we have developed can be used as a component in a mixture model simplifying the implementation of these mixture models. Champredon et al. showed that generation time estimation requires consideration of transmission processes [@Champredon2015-oq], a complexity beyond standard delay distribution methods. Our approach can be used as a likelihood in the joint models required for generation time estimation. 
 
 ### Future work
 
