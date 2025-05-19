@@ -5,7 +5,7 @@
 A single figure demonstrating the accuracy and computational efficiency of our approach with three panels:
 
 - **Panel A**: PMF Comparison
-  - Line plot comparing adjusted delay time PMFs for all three distributions (gamma, lognormal, Burr)
+  - Line plot comparing true delay time PMFs for all three distributions (gamma, lognormal, Burr)
   - X-axis: delay time in days
   - Y-axis: probability
   - Show analytical solution (where available), numerical solution, and Monte Carlo results (sample size = 10000)
