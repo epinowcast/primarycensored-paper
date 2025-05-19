@@ -57,7 +57,7 @@ $$
 
 Note that the censored secondary event time can also occur within the primary censoring window. This happens with probability,
 $$
-Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = Pr(T< C).
+Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = Pr(T< C_P).
 $$
 
 ## General framework for analytical solutions
@@ -130,6 +130,12 @@ $$
 \Delta_{w}f(t) = f(t + w) - f(t).
 $$
 
+We also use the second-order forward difference operator, defined as:
+
+$$
+\Delta_{w}^{(2)}f(t) = f(t+2w) - 2f(t+w) + f(t).
+$$
+
 ### General partial expectation
 
 For any distribution with an analytically available distribution function $F_T$, the equation above can be solved as long as the *partial expectation*
@@ -190,7 +196,7 @@ $$
 
 ### Survival function of $S_{+}$ for Gamma distribution
 
-By substituting the gamma partial expectation equation into the survival function equation we can solve for the survival function of $S_+$ in terms of analytically available functions:
+By substituting the gamma partial expectation equation into the survival function equation we can solve for the survival function of $S_+$ in terms of analytically available functions. Note that in the partial expectation derivation above, we use the fact that $\Gamma(k+1) = k\Gamma(k)$ to simplify the expression:
 
 $$
 Q_{S_+}(t; k, \theta) = Q_T(t + w_P; k, \theta) + \frac{1}{w_P} \big[ k \theta \Delta_{w_P}F_T(t; k+1, \theta) - t \Delta_{w_P}F_T(t; k, \theta) \big].
