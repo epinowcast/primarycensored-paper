@@ -423,12 +423,142 @@ The combined effect of these biases typically results in systematic underestimat
 
 ## Extended numerical validation results
 
-[This section will contain detailed accuracy metrics across all distributions and sample sizes, along with additional visualizations.]
+### Figure S1: Comprehensive PMF comparison across distributions and sample sizes
+
+- **Panel A**: Gamma distribution PMF comparisons
+  - Subpanels for different sample sizes (10, 100, 1000, 10000 observations)
+  - Each showing empirical PMF vs analytical and numerical solutions
+  - Include 95% confidence bands for empirical estimates
+  - Show different censoring window widths (1-4 days) with different line styles
+
+- **Panel B**: Lognormal distribution PMF comparisons
+  - Same structure as Panel A
+
+- **Panel C**: Burr distribution PMF comparisons
+  - Same structure as Panel A
+  - Highlight numerical-only solution vs empirical PMF
+
+### Figure S2: Runtime performance comparison
+
+- **Panel A**: Absolute runtime comparison
+  - Bar chart showing computation time in milliseconds (log scale)
+  - Groups for different methods (Monte Carlo, analytical solution, numerical solution)
+  - Clusters for different sample sizes (10, 100, 1000, 10000)
+  - Separate bars for each distribution type
+
+- **Panel B**: Relative performance gain
+  - Line plot showing speedup factor relative to Monte Carlo simulation
+  - X-axis: sample size (log scale)
+  - Y-axis: speedup factor (log scale)
+  - Separate lines for analytical and numerical solutions
+  - Separate panels for each distribution
+
+- **Panel C**: Scaling with censoring window width
+  - Line plot showing how runtime scales with censoring window width
+  - Separate lines for each method
+  - Demonstrate efficiency advantage regardless of window complexity
+
+### Table S1: Numerical accuracy metrics
+
+| Distribution | Censoring | Truncation | Method | KL Divergence | Total Variation | Max Error |
+|--------------|-----------|------------|--------|---------------|-----------------|-----------||
+| Gamma        | 1 day     | None       | Analytical | ... | ... | ... |
+| ...          | ...       | ...        | ... | ... | ... | ... |
+
+Comprehensive metrics showing the accuracy of our methods compared to Monte Carlo simulation across all distribution types, censoring scenarios, and truncation conditions.
 
 ## Extended parameter recovery results
 
-[This section will contain full results across all sample sizes, detailed convergence diagnostics, and additional parameter visualizations for both Stan-based and fitdistrplus-based estimation, along with a comprehensive comparison with naive models.]
+### Figure S3: Complete parameter recovery across all scenarios
+
+- **Panel A**: Gamma distribution parameter recovery
+  - Scatter plot of true vs estimated parameter values
+  - Shape parameter (left) and scale parameter (right)
+  - Color points by truncation severity (none, moderate, severe)
+  - Separate symbols for estimation method (PC-Stan, PC-fitdistrplus, naive-Stan, naive-fitdistrplus)
+  - Include reference line for perfect recovery
+  - Add regression line for each method to visualize bias patterns
+
+- **Panel B**: Lognormal distribution parameter recovery
+  - Same structure as Panel A but for μ and σ parameters
+
+- **Panel C**: Burr distribution parameter recovery
+  - Same structure as Panel A but for all three Burr parameters
+
+### Figure S4: Effect of censoring and truncation on parameter bias
+
+- **Panel A**: Censoring window width effect
+  - Line plots showing parameter bias vs censoring window width (1, 2, 3, 4 days)
+  - Separate panels for each distribution parameter
+  - Separate lines for PC and naive approaches
+  - Include uncertainty bands
+
+- **Panel B**: Truncation severity effect
+  - Line plots showing parameter bias vs truncation severity
+  - Demonstrates robustness of PC method under increasing truncation
+  - Shows increasing bias of naive method
+
+### Figure S5: MCMC diagnostics for Stan models
+
+- **Panel A**: Trace plots for selected challenging scenarios
+  - Multiple chains overlaid to show convergence
+  - Parameters for each distribution under severe truncation
+
+- **Panel B**: R-hat values across all scenarios
+  - Heatmap showing R-hat values for each parameter in each scenario
+  - Highlight values above 1.01
+
+- **Panel C**: Effective sample size comparison
+  - Bar chart comparing effective samples per second
+  - PC method vs Ward et al. approach
+  - Stratified by distribution and scenario complexity
+
+### Table S2: Complete parameter recovery results
+
+| Distribution | Parameter | True Value | PC-Stan | PC-fitdistrplus | Naive-Stan | Naive-fitdistrplus |
+|--------------|-----------|------------|---------|-----------------|------------|-------------------|
+| Gamma        | Shape     | 5          | ...     | ...             | ...        | ...               |
+| ...          | ...       | ...        | ...     | ...             | ...        | ...               |
+
+Full parameter estimates with 95% confidence/credible intervals, bias metrics, and coverage statistics for all distribution types and estimation methods across all censoring and truncation scenarios.
 
 ## Extended case study results
 
-[This section will contain complete parameter visualizations and additional comparative outputs for the Ebola case study, including detailed computational performance metrics.]
+### Figure S6: Complete Ebola case study parameter estimates
+
+- **Panel A**: Temporal evolution of gamma parameters
+  - Line plots showing shape and scale parameters across the four observation periods
+  - Separate panels for real-time vs retrospective analyses
+  - Compare PC method, Ward et al. method, and naive approach
+  - Include 95% credible intervals
+
+- **Panel B**: Fitted delay distributions for each period
+  - Probability density functions for estimated gamma distributions
+  - Overlay observed data as histograms
+  - Four subpanels for each observation period
+  - Compare methods side-by-side
+
+### Figure S7: Computational performance in Ebola case study
+
+- **Panel A**: Effective samples per second
+  - Bar chart comparing PC method vs Ward et al. approach
+  - Stratified by observation period
+  - Show scaling with increasing dataset size
+
+- **Panel B**: Convergence diagnostics by method
+  - Heatmap of R-hat values for each parameter in each period
+  - Count of divergent transitions
+  - Effective sample size ratios
+
+- **Panel C**: Memory usage comparison
+  - Bar chart showing peak memory usage for each method
+  - Demonstrate resource efficiency advantage of PC method
+
+### Table S3: Complete EVD case study results
+
+| Period | Analysis Type | Method | Shape Est. | Shape CI | Scale Est. | Scale CI | ESS/sec | Divergences |
+|--------|---------------|--------|------------|----------|------------|----------|---------|-------------|
+| 0-60   | Real-time     | PC     | ...        | ...      | ...        | ...      | ...     | ...         |
+| ...    | ...           | ...    | ...        | ...      | ...        | ...      | ...     | ...         |
+
+Comprehensive results table including parameter estimates, uncertainty intervals, and computational metrics for all methods across all time periods and analysis types.
