@@ -65,15 +65,15 @@ In this paper, we aim to establish a standard approach for epidemiological delay
 
 #### Problem statement
 
-For an individual, a primary event (e.g. infection) occurs at time $P_u$, followed by a secondary event (e.g. symptom onset) at time $S$. The true delay between these events is $T = S - P_u$, which follows some density $f_{T; \theta}(t)$ which has distribution parameters $\theta$ and a cumulative distribution function $F_{T; \theta}(t)$. The statistical problem is estimating the distribution parameters $\theta$ given a collection of $N$ data items, each giving linked information about primary and secondary event pairs (e.g. a linelist of cases).   
+For an individual, a primary event (e.g. infection) occurs at time $P_u$, followed by a secondary event (e.g. symptom onset) at time $S$. The true delay between these events is $T = S - P_u$, which follows some density $f_{T; \theta}(t)$ which has distribution parameters $\theta$ and a cumulative distribution function $F_{T; \theta}(t)$. 
 
 In practice, however, neither $P_u$ nor $S$ is typically observed. Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval. The censored delay time, $T_c$, is measured from the start of the primary window to the start of the secondary window: $T_c = t_S - t_P$.
 
-The statistical problem is two-fold: first, to correctly impute a posterior distribution for the parameters of the underlying true delay distribution $\theta$ in a way that accounts for censoring and right truncation. Second, to use the posterior distribution for $\theta$ to calculate the probability mass function (PMF) for the possible values of $T_c$.
+The statistical problem is two-fold: first, given some delay distribution $T \sim f_{T;\theta}$ what is the corresponding probability mass distribution (PMF) for the censored delays $P(T_c \mid \theta)$? Second, is the inverse problem, given a collection of $N$ data items, each giving linked information about primary and secondary event pairs (e.g. a linelist of cases), what is the log-likelihood for the parameters of the underlying true delay distribution $\theta$?    
 
-#### Generative process for delay data
+#### Generative process and simulation for delay data
 
-With non-informative censoring (where the observation process is independent of the actual event times), the distribution of the primary event within its window is:
+With non-informative censoring (where the observation process is independent of the actual event times), we model the distribution of the primary event within its window as:
 
 $$f_P(p) = \frac{f_{P_u}(p)}{F_{P_u}(t_P + w_P) - F_{P_u}(t_P)}, \quad p \in [t_P, t_P + w_P]$$
 
@@ -85,7 +85,7 @@ where $r$ controls the growth/decline rate.
 
 The observed data are further complicated by right truncation. At any observation time $D$, we can only observe delays where the secondary event has already occurred. Delays longer than $D - P_u$ are systematically missing from the data, creating a bias toward shorter delays in recent data. This truncation effect is particularly important in real-time analyses during outbreaks, when recent primary events with longer delays are not yet observed.
 
-Combining the above, the generative process for generating $N$ items of delay data with a maximum observable time of $D$ we consider in this paper follows these steps:
+Combining the above, the generative process for generating $N$ items of delay data with a maximum observable time of $D$ is simulated by following these steps:
 
 1. Choose or generate the delay distribution parameters $\theta$.
 2. Choose or generate the primary and secondary window widths: $\{w_P^{(i)}\}_{i = 1,\dots,N}$ and $\{w_S^{(i)}\}_{i = 1,\dots,N}$.
@@ -104,25 +104,28 @@ Combining the above, the generative process for generating $N$ items of delay da
 
     e. Apply right truncation by excluding any observations where $S^{(i)} > D$ and returning to step a. until a non excluded observation is generated.
 
-Note that this generative process is flexible enough to generate data with a mixture of censoring window widths that can vary between primary and secondary events as well as by data item. 
+ Note that this generative process is flexible enough to generate data with a mixture of censoring window widths that can vary between primary and secondary events as well as by data item. 
 
-The result of this data generating process is data in the form of $N$ linked primary and secondary censoring intervals, $\left([t^{(i)}_P, t^{(i)}_P + w^{(i)}_P),~ [t^{(i)}_S, t_S^{(i)} + w^{(i)}_S)  \right),~ i = 1,\dots,N.$.
+The result of this data generating process is data in the form of $N$ linked primary and secondary censoring intervals, $\left([t^{(i)}_P, t^{(i)}_P + w^{(i)}_P),~ [t^{(i)}_S, t_S^{(i)} + w^{(i)}_S)  \right),~ i = 1,\dots,N$. The simulated censored delays 
+
+$$T_c^{(i)} = t^{(i)}_S  - t^{(i)}_P, \qquad i = 1,\dots, N$$
+
+are correctly sampled from the censored delay PMF given an underlying true delay distribution with parameters $\theta$: $P(T^{(i)}_c = t^{(i)}_S - t^{(i)}_P\mid \theta)$ but without explicitly calculating the censored delay PMF.
 
 #### Log-likelihood of delay data
 
-The likelihood of these data only depends on the censored delay times for each data item:
+The generative process above correctly samples from the censored delay PMF, but without calculating the PMF directly. 
 
-$$T_c^{(i)} = t^{(i)}_S  - t^{(i)}_P, \qquad i = 1,\dots, N.$$
-
-The probability mass function (PMF) of the censored delay time $T_c$ is a combination of the true parameteric delay distribution $f_{T;\theta}(t)$ and the censoring and truncation processes. Therefore, the log-likelihood of the data given delay distribution parameters $\theta$ is:
+The log-likelihood of the data given delay distribution parameters $\theta$ is:
 
 $$
 \mathcal{l}(\theta) = \sum_{i=1}^N \ln P(T^{(i)}_c | \theta).
 $$ {#eq-loglike}
 
-This means the primary goal is to accurately and efficiently calculate $P(T^{(i)}_c | \theta)$, accounting for the various biases induced by censoring and truncation.
+This means that accurately and efficiently calculating $P(T^{(i)}_c | \theta)$, 
+whilst accounting for the various biases induced by censoring and truncation, is both an useful analysis output and required for likelihood-based estimation on $\theta$ given censored and right truncated data. 
 
-The Ward et al. approach approximates solving this by directly recreating the data-generating process in the model using latent variables, adding $2N$ effective parameters to the Bayesian estimation problem [@Park2024.01.12.24301247; @Ward2022-wo].
+The Ward et al. approach approximates solving this by directly recreating the data-generating process in the model using latent variables, adding $2N$ effective parameters to the Bayesian estimation problem [@Park2024.01.12.24301247; @Ward2022-wo]. Below, we solve the censoring problem by converting the problem into single censoring problem with an adjusted delay distribution, which is efficiently solved using marginalisation.
 
 
 ### Solving the censoring problem
@@ -180,9 +183,11 @@ $$F_{\text{adj}}(q) = \int_{t_P}^{t_P + w_P} P(T \leq q + t_P - p ) \cdot f_{P}(
 
 where $f_P$ is the conditional PDF of the primary event within its censoring window (@eq-condP).
 
-It is convenient to make the variable substitution $u = p - t_P$ and write $P(T \leq q + t_P - p )$ in terms of the distribution function of delay time $T$
+Because $f_P$ is usually expressed in a simple form, c.f. @eq-condP, it is convenient to make the variable substitution $u = p - t_P$ and write $P(T \leq q + t_P - p )$ in terms of the distribution function of delay time $T$
 
 $$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du.$$ {#eq-Fadj}
+
+This will reduce the @eq-Fadj to a simple form whenever $f_P$ is modelled as a simple distribtuion.
 
 @eq-Fadj gives us a general solution to the adjusted delay time CDF as a single variable integral problem. Because $F_{\text{adj}}$ is a single variable integral problem, we can use numerical quadrature to efficiently evaluate this integral for any delay distribution with an analytic representation of its distribution function, or derive analytical solutions for specific parametric distributions, as we will explore in the next section.
 
