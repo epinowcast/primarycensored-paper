@@ -12,3 +12,5 @@ paper/main_files
 primarycensored-paper.code-workspace
 claude.md
 .vscode/settings.json
+
+/.quarto/

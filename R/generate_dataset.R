@@ -29,7 +29,7 @@
 #' ranges.
 #'
 #' @examples
-#' # Generate dataset with exponential delays
+#' # Generate censored dataset with exponential delays
 #' library(primarycensoredpaper)
 #' data <- generate_dataset(rexp, obs_time = 1:10, rate = 0.1)
 #'

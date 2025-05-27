@@ -13,4 +13,5 @@ Imports:
     ggplot2,
     patchwork,
     primarycensored,
+    tarchetypes,
     targets
