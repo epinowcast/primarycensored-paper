@@ -1,31 +1,31 @@
----
-title: "Analysis Pipeline: Primary Event Censored Distributions"
-output: github_document
----
-
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-```
+Analysis Pipeline: Primary Event Censored Distributions
+================
 
 # Introduction
 
-This reproducible pipeline implements the analysis for the primarycensored paper, comparing methods for estimating delay distributions while accounting for primary event censoring.
-The workflow uses the `targets` package to ensure reproducibility and efficient computation.
+This reproducible pipeline implements the analysis for the
+primarycensored paper, comparing methods for estimating delay
+distributions while accounting for primary event censoring. The workflow
+uses the `targets` package to ensure reproducibility and efficient
+computation.
 
 ## Using this pipeline
 
 To render this document:
-```{r, eval = FALSE}
+
+``` r
 rmarkdown::render("_targets.Rmd")
 ```
 
 To run the complete pipeline:
-```{r, eval = FALSE}
+
+``` r
 targets::tar_make()
 ```
 
 To visualize the pipeline:
-```{r, eval = FALSE}
+
+``` r
 targets::tar_visnetwork()
 ```
 
@@ -33,7 +33,7 @@ targets::tar_visnetwork()
 
 Load required packages and initialize the targets workflow.
 
-```{r}
+``` r
 library(targets)
 library(tarchetypes)
 tar_unscript()
@@ -41,7 +41,7 @@ tar_unscript()
 
 Define global options and load custom functions.
 
-```{targets globals, tar_globals = TRUE}
+``` r
 library(targets)
 library(tarchetypes)
 library(data.table)
@@ -59,15 +59,17 @@ tar_option_set(
   packages = c("data.table", "ggplot2", "purrr", "here"),
   format = "rds"
 )
+#> Establish _targets.R and _targets_r/globals/globals.R.
 ```
 
 # Data Preparation
 
 ## Define scenarios
 
-We define different simulation scenarios to test model performance under various conditions.
+We define different simulation scenarios to test model performance under
+various conditions.
 
-```{targets scenarios}
+``` r
 tar_target(
   scenarios,
   data.frame(
@@ -81,11 +83,12 @@ tar_target(
     seed = 123
   )
 )
+#> Establish _targets.R and _targets_r/targets/scenarios.R.
 ```
 
 ## Load real-world data
 
-```{targets real_data}
+``` r
 # Placeholder for loading real-world data
 tar_target(
   real_world_data,
@@ -99,6 +102,7 @@ tar_target(
     )
   }
 )
+#> Establish _targets.R and _targets_r/targets/real_data.R.
 ```
 
 # Simulation Studies
@@ -107,15 +111,16 @@ tar_target(
 
 For each scenario, we simulate primary and secondary events.
 
-```{targets scenario_list}
+``` r
 # Create a list of scenarios for branching
 tar_target(
   scenario_list,
   split(scenarios, scenarios$scenario_id)
 )
+#> Establish _targets.R and _targets_r/targets/scenario_list.R.
 ```
 
-```{targets simulate_data}
+``` r
 tar_target(
   simulated_data,
   {
@@ -148,13 +153,14 @@ tar_target(
   },
   pattern = map(scenario_list)
 )
+#> Establish _targets.R and _targets_r/targets/simulate_data.R.
 ```
 
 # Model Fitting
 
 ## Fit primarycensored models
 
-```{targets fit_primarycensored}
+``` r
 tar_target(
   primarycensored_fits,
   {
@@ -162,11 +168,12 @@ tar_target(
   },
   pattern = map(simulated_data)
 )
+#> Establish _targets.R and _targets_r/targets/fit_primarycensored.R.
 ```
 
 ## Fit comparison models
 
-```{targets fit_naive}
+``` r
 tar_target(
   naive_fits,
   {
@@ -174,11 +181,12 @@ tar_target(
   },
   pattern = map(simulated_data)
 )
+#> Establish _targets.R and _targets_r/targets/fit_naive.R.
 ```
 
 ## Combine model results
 
-```{targets combine_fits}
+``` r
 tar_target(
   all_model_fits,
   {
@@ -190,13 +198,14 @@ tar_target(
     )
   }
 )
+#> Establish _targets.R and _targets_r/targets/combine_fits.R.
 ```
 
 # Model Evaluation
 
 ## Calculate performance metrics
 
-```{targets metrics}
+``` r
 tar_target(
   performance_metrics,
   {
@@ -208,11 +217,12 @@ tar_target(
     )
   }
 )
+#> Establish _targets.R and _targets_r/targets/metrics.R.
 ```
 
 ## Model diagnostics
 
-```{targets diagnostics}
+``` r
 tar_target(
   model_diagnostics,
   {
@@ -224,13 +234,14 @@ tar_target(
     )
   }
 )
+#> Establish _targets.R and _targets_r/targets/diagnostics.R.
 ```
 
 # Visualization
 
 ## Plot delay distribution comparisons
 
-```{targets plot_delays}
+``` r
 tar_target(
   delay_comparison_plot,
   {
@@ -240,11 +251,12 @@ tar_target(
       ggplot2::labs(title = "Delay Distribution Comparison")
   }
 )
+#> Establish _targets.R and _targets_r/targets/plot_delays.R.
 ```
 
 ## Plot simulation results
 
-```{targets plot_simulations}
+``` r
 tar_target(
   simulation_results_plot,
   {
@@ -254,11 +266,12 @@ tar_target(
       ggplot2::labs(title = "Simulation Results")
   }
 )
+#> Establish _targets.R and _targets_r/targets/plot_simulations.R.
 ```
 
 ## Save plots
 
-```{targets save_plots}
+``` r
 tar_target(
   saved_plots,
   {
@@ -267,13 +280,14 @@ tar_target(
     TRUE
   }
 )
+#> Establish _targets.R and _targets_r/targets/save_plots.R.
 ```
 
 # Results Summary
 
 ## Compile results tables
 
-```{targets results_tables}
+``` r
 tar_target(
   results_summary,
   {
@@ -285,11 +299,12 @@ tar_target(
     )
   }
 )
+#> Establish _targets.R and _targets_r/targets/results_tables.R.
 ```
 
 ## Save results
 
-```{targets save_results}
+``` r
 tar_target(
   saved_results,
   {
@@ -298,13 +313,14 @@ tar_target(
     TRUE
   }
 )
+#> Establish _targets.R and _targets_r/targets/save_results.R.
 ```
 
 # Report
 
 ## Generate final report
 
-```{targets report}
+``` r
 tar_target(
   analysis_complete,
   {
@@ -314,4 +330,5 @@ tar_target(
     TRUE
   }
 )
+#> Establish _targets.R and _targets_r/targets/report.R.
 ```
