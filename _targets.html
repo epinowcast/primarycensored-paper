@@ -604,11 +604,18 @@ padding-top: 0px;
 <h1 id="analysis-pipeline-primary-event-censored-distributions">Analysis
 Pipeline: Primary Event Censored Distributions</h1>
 <h1 id="introduction">Introduction</h1>
-<p>This reproducible pipeline implements the analysis for the
-primarycensored paper, comparing methods for estimating delay
-distributions while accounting for primary event censoring. The workflow
-uses the <code>targets</code> package to ensure reproducibility and
-efficient computation.</p>
+<p>This reproducible pipeline implements the complete analysis for
+“Modelling delays with primary Event Censored Distributions” by Brand et
+al. The analysis validates our novel statistical method for handling
+double interval censored data in epidemiological delay distribution
+estimation.</p>
+<p>The pipeline is structured to mirror the manuscript sections: 1.
+<strong>Numerical validation</strong> - Comparing our analytical and
+numerical solutions against Monte Carlo simulations 2. <strong>Parameter
+recovery</strong> - Evaluating bias and accuracy across different
+censoring and truncation scenarios<br />
+3. <strong>Case study</strong> - Applying methods to real Ebola epidemic
+data from Sierra Leone</p>
 <h2 id="using-this-pipeline">Using this pipeline</h2>
 <p>To render this document:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>rmarkdown<span class="sc">::</span><span class="fu">render</span>(<span class="st">&quot;_targets.Rmd&quot;</span>)</span></code></pre></div>
@@ -626,225 +633,588 @@ efficient computation.</p>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">library</span>(tarchetypes)</span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">library</span>(data.table)</span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">library</span>(here)</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># Source all R functions</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>functions <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="fu">here</span>(<span class="st">&quot;R&quot;</span>), <span class="at">full.names =</span> <span class="cn">TRUE</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.R$&quot;</span>)</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="fu">walk</span>(functions, source)</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="fu">rm</span>(<span class="st">&quot;functions&quot;</span>)</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a></span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co"># Set targets options</span></span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="fu">tar_option_set</span>(</span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="at">packages =</span> <span class="fu">c</span>(<span class="st">&quot;data.table&quot;</span>, <span class="st">&quot;ggplot2&quot;</span>, <span class="st">&quot;purrr&quot;</span>, <span class="st">&quot;here&quot;</span>),</span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;rds&quot;</span></span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>)</span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/globals/globals.R.</span></span></code></pre></div>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># Source all R functions</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>functions <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="fu">here</span>(<span class="st">&quot;R&quot;</span>), <span class="at">full.names =</span> <span class="cn">TRUE</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.R$&quot;</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="fu">walk</span>(functions, source)</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="fu">rm</span>(<span class="st">&quot;functions&quot;</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co"># Set targets options</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="fu">tar_option_set</span>(</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  <span class="at">packages =</span> <span class="fu">c</span>(<span class="st">&quot;data.table&quot;</span>, <span class="st">&quot;ggplot2&quot;</span>, <span class="st">&quot;patchwork&quot;</span>, <span class="st">&quot;purrr&quot;</span>, <span class="st">&quot;here&quot;</span>, <span class="st">&quot;dplyr&quot;</span>, <span class="st">&quot;tidyr&quot;</span>),</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;rds&quot;</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>)</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/globals/globals.R.</span></span></code></pre></div>
 <h1 id="data-preparation">Data Preparation</h1>
-<h2 id="define-scenarios">Define scenarios</h2>
-<p>We define different simulation scenarios to test model performance
-under various conditions.</p>
+<h2 id="define-distributions">Define distributions</h2>
+<p>Following the manuscript (Methods lines 259-264), we test three
+distributions with a common mean of 5 days but varying variance: -
+<strong>Gamma</strong> (shape k=5, scale θ=1): Moderate variance
+scenario with analytical solution - <strong>Lognormal</strong> (location
+μ=1.5, scale σ=0.5): Higher variance with analytical solution</p>
+<ul>
+<li><strong>Burr</strong> (shape1 c=3, shape2 k=1.5, scale λ=4): Highest
+variance with heavy tail, requires numerical integration</li>
+</ul>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  scenarios,</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  distributions,</span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>    <span class="at">scenario_id =</span> <span class="fu">c</span>(<span class="st">&quot;base&quot;</span>, <span class="st">&quot;long_delay&quot;</span>, <span class="st">&quot;high_censoring&quot;</span>),</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">c</span>(<span class="dv">1000</span>, <span class="dv">1000</span>, <span class="dv">1000</span>),</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="at">rate =</span> <span class="fu">c</span>(<span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="fl">0.1</span>),</span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="at">meanlog =</span> <span class="fu">c</span>(<span class="fl">1.5</span>, <span class="fl">2.0</span>, <span class="fl">1.5</span>),</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>    <span class="at">sdlog =</span> <span class="fu">c</span>(<span class="fl">0.5</span>, <span class="fl">0.7</span>, <span class="fl">0.5</span>),</span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    <span class="at">censoring_interval =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">7</span>),</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>    <span class="at">distribution =</span> <span class="st">&quot;lognormal&quot;</span>,</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">123</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>    <span class="at">dist_name =</span> <span class="fu">c</span>(<span class="st">&quot;gamma&quot;</span>, <span class="st">&quot;lognormal&quot;</span>, <span class="st">&quot;burr&quot;</span>),</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    <span class="at">dist_family =</span> <span class="fu">c</span>(<span class="st">&quot;gamma&quot;</span>, <span class="st">&quot;lnorm&quot;</span>, <span class="st">&quot;burr&quot;</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="at">param1 =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="fl">1.5</span>, <span class="dv">3</span>),       <span class="co"># shape/meanlog/shape1</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="at">param2 =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="fl">0.5</span>, <span class="fl">1.5</span>),     <span class="co"># scale/sdlog/shape2</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>    <span class="at">param3 =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="cn">NA</span>, <span class="dv">4</span>),       <span class="co"># NA/NA/scale</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    <span class="at">mean =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">5</span>),           <span class="co"># All have mean = 5 days</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>    <span class="at">variance =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">10</span>),     <span class="co"># Increasing variance</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    <span class="at">has_analytical =</span> <span class="fu">c</span>(<span class="cn">TRUE</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span>)</span>
 <span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  )</span>
 <span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>)</span>
-<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/scenarios.R.</span></span></code></pre></div>
-<h2 id="load-real-world-data">Load real-world data</h2>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Placeholder for loading real-world data</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  real_world_data,</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  {</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    <span class="co"># </span><span class="al">TODO</span><span class="co">: Load actual data</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>    <span class="fu">message</span>(<span class="st">&quot;Loading real-world data...&quot;</span>)</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    <span class="fu">data.frame</span>(</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>      <span class="at">id =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>,</span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>      <span class="at">primary_time =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>,</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>      <span class="at">secondary_time =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span> <span class="sc">+</span> <span class="fu">rlnorm</span>(<span class="dv">10</span>, <span class="fl">1.5</span>, <span class="fl">0.5</span>)</span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>    )</span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>  }</span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>)</span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/real_data.R.</span></span></code></pre></div>
-<h1 id="simulation-studies">Simulation Studies</h1>
-<h2 id="generate-simulated-data">Generate simulated data</h2>
-<p>For each scenario, we simulate primary and secondary events.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># Create a list of scenarios for branching</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  scenario_list,</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="fu">split</span>(scenarios, scenarios<span class="sc">$</span>scenario_id)</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>)</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/scenario_list.R.</span></span></code></pre></div>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/distributions.R.</span></span></code></pre></div>
+<h2 id="define-truncation-scenarios">Define truncation scenarios</h2>
+<p>Following the manuscript (Methods lines 266-271), we test three
+truncation scenarios representing different stages of outbreak analysis:
+- <strong>No truncation</strong>: Retrospective scenario with all events
+observable - <strong>Moderate truncation</strong>: Real-time scenario
+with 10-day observation window - <strong>Severe truncation</strong>:
+Challenging real-time scenario with 5-day window</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  truncation_scenarios,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    <span class="at">trunc_name =</span> <span class="fu">c</span>(<span class="st">&quot;none&quot;</span>, <span class="st">&quot;moderate&quot;</span>, <span class="st">&quot;severe&quot;</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    <span class="at">max_delay =</span> <span class="fu">c</span>(<span class="cn">Inf</span>, <span class="dv">10</span>, <span class="dv">5</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>    <span class="at">scenario_type =</span> <span class="fu">c</span>(<span class="st">&quot;retrospective&quot;</span>, <span class="st">&quot;real-time&quot;</span>, <span class="st">&quot;real-time&quot;</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  )</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>)</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/truncation_scenarios.R.</span></span></code></pre></div>
+<h2 id="define-censoring-patterns">Define censoring patterns</h2>
+<p>Both primary and secondary events have censoring windows ranging from
+1-4 days (Methods line 272).</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  censoring_scenarios,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="at">cens_name =</span> <span class="fu">c</span>(<span class="st">&quot;daily&quot;</span>, <span class="st">&quot;medium&quot;</span>, <span class="st">&quot;weekly&quot;</span>),</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>    <span class="at">primary_width =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>),</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    <span class="at">secondary_width =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>)</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  )</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>)</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/censoring_scenarios.R.</span></span></code></pre></div>
+<h2 id="create-full-scenario-grid">Create full scenario grid</h2>
+<p>Combine all scenarios into a full factorial design (9 scenarios total
+as per manuscript).</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  simulated_data,</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  scenario_grid,</span>
 <span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  {</span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="co"># Extract scenario parameters</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    params <span class="ot">&lt;-</span> scenario_list[[<span class="dv">1</span>]]</span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    </span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="co"># Run simulation</span></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>    primary_data <span class="ot">&lt;-</span> <span class="fu">simulate_primary_events</span>(</span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>      <span class="at">n =</span> params<span class="sc">$</span>n,</span>
-<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>      <span class="at">rate =</span> params<span class="sc">$</span>rate,</span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>      <span class="at">seed =</span> params<span class="sc">$</span>seed</span>
-<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>    )</span>
-<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>    </span>
-<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>    secondary_data <span class="ot">&lt;-</span> <span class="fu">simulate_secondary_events</span>(</span>
-<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>      primary_data,</span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>      <span class="at">delay_params =</span> <span class="fu">list</span>(<span class="at">meanlog =</span> params<span class="sc">$</span>meanlog, <span class="at">sdlog =</span> params<span class="sc">$</span>sdlog),</span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>      <span class="at">distribution =</span> params<span class="sc">$</span>distribution</span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>    )</span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>    </span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>    <span class="co"># Apply censoring</span></span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>    censored_data <span class="ot">&lt;-</span> <span class="fu">apply_censoring</span>(</span>
-<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>      secondary_data, </span>
-<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a>      <span class="at">censoring_interval =</span> params<span class="sc">$</span>censoring_interval</span>
-<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a>    )</span>
-<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>    </span>
-<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a>    <span class="co"># Add scenario ID</span></span>
-<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a>    censored_data<span class="sc">$</span>scenario_id <span class="ot">&lt;-</span> params<span class="sc">$</span>scenario_id</span>
-<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a>    </span>
-<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a>    censored_data</span>
-<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a>  },</span>
-<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(scenario_list)</span>
-<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a>)</span>
-<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/simulate_data.R.</span></span></code></pre></div>
-<h1 id="model-fitting">Model Fitting</h1>
-<h2 id="fit-primarycensored-models">Fit primarycensored models</h2>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="co"># Create all combinations</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    grid <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>      <span class="at">distribution =</span> distributions<span class="sc">$</span>dist_name,</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>      <span class="at">truncation =</span> truncation_scenarios<span class="sc">$</span>trunc_name,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>      <span class="at">censoring =</span> censoring_scenarios<span class="sc">$</span>cens_name,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>      <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>    )</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>    </span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>    <span class="co"># Add details from component data frames</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>    grid<span class="sc">$</span>scenario_id <span class="ot">&lt;-</span> <span class="fu">paste</span>(grid<span class="sc">$</span>distribution, grid<span class="sc">$</span>truncation, grid<span class="sc">$</span>censoring, <span class="at">sep =</span> <span class="st">&quot;_&quot;</span>)</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>    grid<span class="sc">$</span>n <span class="ot">&lt;-</span> <span class="dv">10000</span>  <span class="co"># 10,000 observations per scenario</span></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>    grid<span class="sc">$</span>seed <span class="ot">&lt;-</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(grid)) <span class="sc">+</span> <span class="dv">100</span>  <span class="co"># Unique seed per scenario</span></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>    </span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>    grid</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>  }</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>)</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/scenario_grid.R.</span></span></code></pre></div>
+<h2 id="load-ebola-case-study-data">Load Ebola case study data</h2>
+<p>Load the Sierra Leone Ebola data (2014-2016) for the case study
+analysis (Methods lines 288-292).</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  primarycensored_fits,</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  ebola_data,</span>
 <span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  {</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>    <span class="fu">fit_primarycensored</span>(simulated_data, <span class="at">formula =</span> <span class="sc">~</span> <span class="dv">1</span>)</span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  },</span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(simulated_data)</span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>)</span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/fit_primarycensored.R.</span></span></code></pre></div>
-<h2 id="fit-comparison-models">Fit comparison models</h2>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>    <span class="co"># Placeholder for Ebola linelist data</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>    <span class="co"># Real implementation would load Fang et al. 2016 data</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>    <span class="fu">message</span>(<span class="st">&quot;Loading Ebola case study data...&quot;</span>)</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>    </span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>    <span class="co"># Simulate example structure</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>    <span class="fu">data.frame</span>(</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>      <span class="at">case_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">1000</span>,</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>      <span class="at">symptom_onset_date =</span> <span class="fu">as.Date</span>(<span class="st">&quot;2014-05-01&quot;</span>) <span class="sc">+</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">500</span>, <span class="dv">1000</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>      <span class="at">sample_date =</span> <span class="fu">as.Date</span>(<span class="st">&quot;2014-05-01&quot;</span>) <span class="sc">+</span> <span class="fu">sample</span>(<span class="dv">5</span><span class="sc">:</span><span class="dv">510</span>, <span class="dv">1000</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">filter</span>(sample_date <span class="sc">&gt;</span> symptom_onset_date)</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>  }</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>)</span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/ebola_data.R.</span></span></code></pre></div>
+<h2 id="define-observation-windows-for-case-study">Define observation
+windows for case study</h2>
+<p>Four 60-day windows as specified in the manuscript.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  naive_fits,</span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  {</span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    <span class="fu">fit_naive_model</span>(simulated_data)</span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>  },</span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(simulated_data)</span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>)</span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/fit_naive.R.</span></span></code></pre></div>
-<h2 id="combine-model-results">Combine model results</h2>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  all_model_fits,</span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  {</span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    <span class="co"># Placeholder for combining model results</span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>    <span class="co"># In a real implementation, this would aggregate results across branches</span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>    <span class="fu">list</span>(</span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>      <span class="at">message =</span> <span class="st">&quot;Model fits would be combined here&quot;</span>,</span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>      <span class="at">n_fits =</span> <span class="dv">2</span>  <span class="co"># primarycensored and naive</span></span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>    )</span>
-<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>  }</span>
-<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>)</span>
-<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/combine_fits.R.</span></span></code></pre></div>
-<h1 id="model-evaluation">Model Evaluation</h1>
-<h2 id="calculate-performance-metrics">Calculate performance
-metrics</h2>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  observation_windows,</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    <span class="at">window_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>    <span class="at">start_day =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">60</span>, <span class="dv">120</span>, <span class="dv">180</span>),</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>    <span class="at">end_day =</span> <span class="fu">c</span>(<span class="dv">60</span>, <span class="dv">120</span>, <span class="dv">180</span>, <span class="dv">240</span>),</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>    <span class="at">window_label =</span> <span class="fu">c</span>(<span class="st">&quot;0-60 days&quot;</span>, <span class="st">&quot;60-120 days&quot;</span>, <span class="st">&quot;120-180 days&quot;</span>, <span class="st">&quot;180-240 days&quot;</span>)</span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>  )</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>)</span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/observation_windows.R.</span></span></code></pre></div>
+<h1 id="simulation-studies">Simulation Studies</h1>
+<h2 id="generate-simulated-datasets">Generate simulated datasets</h2>
+<p>Following the generative process described in Methods (lines 88-113),
+we simulate data for each scenario combination.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Create a list for dynamic branching over all scenario combinations</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  scenario_list,</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>  {</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>    <span class="co"># Join all scenario details</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>    scenarios <span class="ot">&lt;-</span> scenario_grid <span class="sc">|&gt;</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">left_join</span>(distributions, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;distribution&quot;</span> <span class="ot">=</span> <span class="st">&quot;dist_name&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">left_join</span>(truncation_scenarios, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;truncation&quot;</span> <span class="ot">=</span> <span class="st">&quot;trunc_name&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">left_join</span>(censoring_scenarios, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;censoring&quot;</span> <span class="ot">=</span> <span class="st">&quot;cens_name&quot;</span>))</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>    </span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>    <span class="co"># Split for branching</span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>    <span class="fu">split</span>(scenarios, scenarios<span class="sc">$</span>scenario_id)</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>  }</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>)</span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/scenario_list.R.</span></span></code></pre></div>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  performance_metrics,</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  simulated_data,</span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  {</span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>    <span class="co"># Placeholder for performance metrics</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>    <span class="co"># In a real implementation, this would calculate metrics across all scenarios</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>    <span class="fu">list</span>(</span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>      <span class="at">message =</span> <span class="st">&quot;Performance metrics would be calculated here&quot;</span>,</span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>      <span class="at">n_scenarios =</span> <span class="fu">length</span>(<span class="fu">unique</span>(scenarios<span class="sc">$</span>scenario_id))</span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>    )</span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>  }</span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>)</span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/metrics.R.</span></span></code></pre></div>
-<h2 id="model-diagnostics">Model diagnostics</h2>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>    <span class="co"># Extract scenario parameters</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>    params <span class="ot">&lt;-</span> scenario_list[[<span class="dv">1</span>]]</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>    </span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>    <span class="co"># Placeholder for full simulation following manuscript Methods</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>    <span class="co"># Real implementation would:</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>    <span class="co"># 1. Generate primary event times with appropriate growth rate</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>    <span class="co"># 2. Generate delays from specified distribution</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>    <span class="co"># 3. Apply interval censoring to both events</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>    <span class="co"># 4. Apply right truncation based on scenario</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>    </span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>    <span class="fu">message</span>(<span class="fu">paste</span>(<span class="st">&quot;Simulating data for scenario:&quot;</span>, params<span class="sc">$</span>scenario_id))</span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>    </span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>    <span class="co"># Simplified simulation</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>    n_obs <span class="ot">&lt;-</span> params<span class="sc">$</span>n</span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>    <span class="fu">data.frame</span>(</span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a>      <span class="at">obs_id =</span> <span class="fu">seq_len</span>(n_obs),</span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a>      <span class="at">scenario_id =</span> params<span class="sc">$</span>scenario_id,</span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a>      <span class="at">prim_cens_start =</span> <span class="fu">floor</span>(<span class="fu">runif</span>(n_obs, <span class="dv">0</span>, <span class="dv">100</span>)),</span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a>      <span class="at">prim_cens_end =</span> <span class="fu">floor</span>(<span class="fu">runif</span>(n_obs, <span class="dv">0</span>, <span class="dv">100</span>)) <span class="sc">+</span> params<span class="sc">$</span>primary_width,</span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a>      <span class="at">sec_cens_start =</span> <span class="fu">floor</span>(<span class="fu">runif</span>(n_obs, <span class="dv">5</span>, <span class="dv">105</span>)),  </span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a>      <span class="at">sec_cens_end =</span> <span class="fu">floor</span>(<span class="fu">runif</span>(n_obs, <span class="dv">5</span>, <span class="dv">105</span>)) <span class="sc">+</span> params<span class="sc">$</span>secondary_width,</span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a>      <span class="at">true_delay =</span> <span class="dv">5</span>,  <span class="co"># Placeholder - would sample from distribution</span></span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a>      <span class="at">distribution =</span> params<span class="sc">$</span>distribution,</span>
+<span id="cb13-27"><a href="#cb13-27" tabindex="-1"></a>      <span class="at">truncation =</span> params<span class="sc">$</span>truncation,</span>
+<span id="cb13-28"><a href="#cb13-28" tabindex="-1"></a>      <span class="at">censoring =</span> params<span class="sc">$</span>censoring</span>
+<span id="cb13-29"><a href="#cb13-29" tabindex="-1"></a>    )</span>
+<span id="cb13-30"><a href="#cb13-30" tabindex="-1"></a>  },</span>
+<span id="cb13-31"><a href="#cb13-31" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(scenario_list)</span>
+<span id="cb13-32"><a href="#cb13-32" tabindex="-1"></a>)</span>
+<span id="cb13-33"><a href="#cb13-33" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/simulated_data.R.</span></span></code></pre></div>
+<h2 id="generate-monte-carlo-reference-samples">Generate Monte Carlo
+reference samples</h2>
+<p>For numerical validation (Methods lines 274-278), we need Monte Carlo
+samples at different sizes.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>  model_diagnostics,</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>  monte_carlo_samples,</span>
 <span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>  {</span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>    <span class="co"># Placeholder for model diagnostics</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>    <span class="fu">message</span>(<span class="st">&quot;Running model diagnostics...&quot;</span>)</span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>    <span class="fu">list</span>(</span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>      <span class="at">convergence =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>      <span class="at">effective_sample_size =</span> <span class="dv">1000</span></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a>    )</span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>  }</span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>)</span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/diagnostics.R.</span></span></code></pre></div>
-<h1 id="visualization">Visualization</h1>
-<h2 id="plot-delay-distribution-comparisons">Plot delay distribution
-comparisons</h2>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>    sample_sizes <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">10</span>, <span class="dv">100</span>, <span class="dv">1000</span>, <span class="dv">10000</span>)</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>    </span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>    <span class="co"># Placeholder for Monte Carlo sampling</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>    <span class="co"># Real implementation would generate empirical PMFs</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>    </span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>      <span class="at">sample_sizes =</span> sample_sizes,</span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>      <span class="at">message =</span> <span class="st">&quot;Monte Carlo reference samples would be generated here&quot;</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a>    )</span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a>  }</span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a>)</span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/monte_carlo_samples.R.</span></span></code></pre></div>
+<h1 id="model-fitting">Model Fitting</h1>
+<h2 id="fit-primary-censored-models">Fit primary censored models</h2>
+<p>Our method that accounts for double interval censoring through
+analytical marginalisation (Methods lines 280-286).</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>  delay_comparison_plot,</span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  {</span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>    <span class="co"># Placeholder plot</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Delay Distribution Comparison&quot;</span>)</span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>  }</span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>)</span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/plot_delays.R.</span></span></code></pre></div>
-<h2 id="plot-simulation-results">Plot simulation results</h2>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>  primarycensored_fits,</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="fu">fit_primarycensored</span>(simulated_data, <span class="at">formula =</span> <span class="sc">~</span> <span class="dv">1</span>),</span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(simulated_data)</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>)</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/fit_primarycensored.R.</span></span></code></pre></div>
+<h2 id="fit-naive-models">Fit naive models</h2>
+<p>Baseline comparison that ignores censoring and truncation (Methods
+line 282).</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  simulation_results_plot,</span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  {</span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>    <span class="co"># Placeholder for simulation results visualization</span></span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
-<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Simulation Results&quot;</span>)</span>
-<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>  }</span>
-<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>)</span>
-<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/plot_simulations.R.</span></span></code></pre></div>
-<h2 id="save-plots">Save plots</h2>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  naive_fits,</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  <span class="fu">fit_naive_model</span>(simulated_data),</span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(simulated_data)</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>)</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/fit_naive.R.</span></span></code></pre></div>
+<h2 id="fit-ward-et-al-latent-variable-models">Fit Ward et al. latent
+variable models</h2>
+<p>Current best practice method for comparison (Methods lines 282,
+346).</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  saved_plots,</span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  {</span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>    <span class="fu">.save_plot</span>(delay_comparison_plot, <span class="st">&quot;delay_comparison.pdf&quot;</span>)</span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>    <span class="fu">.save_plot</span>(simulation_results_plot, <span class="st">&quot;simulation_results.pdf&quot;</span>)</span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>    <span class="cn">TRUE</span></span>
-<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a>  }</span>
-<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a>)</span>
-<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/save_plots.R.</span></span></code></pre></div>
-<h1 id="results-summary">Results Summary</h1>
-<h2 id="compile-results-tables">Compile results tables</h2>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  ward_fits,</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  <span class="fu">fit_ward_model</span>(simulated_data),</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="fu">map</span>(simulated_data)</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>)</span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/fit_ward.R.</span></span></code></pre></div>
+<h2 id="combine-all-model-fits">Combine all model fits</h2>
+<p>Aggregate results from all methods for comparison.</p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>  results_summary,</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>  all_model_fits,</span>
 <span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>  {</span>
-<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>    <span class="co"># Compile all results into summary tables</span></span>
-<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a>    <span class="fu">list</span>(</span>
-<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a>      <span class="at">scenarios =</span> scenarios,</span>
-<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a>      <span class="at">metrics =</span> performance_metrics,</span>
-<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a>      <span class="at">diagnostics =</span> model_diagnostics</span>
-<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a>    )</span>
-<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a>  }</span>
-<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a>)</span>
-<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/results_tables.R.</span></span></code></pre></div>
-<h2 id="save-results">Save results</h2>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>    <span class="co"># Placeholder for combined model results</span></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a>    <span class="co"># Real implementation would properly extract and combine fit results</span></span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a>    </span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a>    <span class="co"># Create placeholder combined results</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a>    <span class="fu">expand.grid</span>(</span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a>      <span class="at">method =</span> <span class="fu">c</span>(<span class="st">&quot;primarycensored&quot;</span>, <span class="st">&quot;naive&quot;</span>, <span class="st">&quot;ward&quot;</span>),</span>
+<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a>      <span class="at">scenario_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;scenario_&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">27</span>),</span>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a>      <span class="at">parameter =</span> <span class="fu">c</span>(<span class="st">&quot;param1&quot;</span>, <span class="st">&quot;param2&quot;</span>)</span>
+<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a>        <span class="at">estimate =</span> <span class="fu">ifelse</span>(method <span class="sc">==</span> <span class="st">&quot;primarycensored&quot;</span>, <span class="fl">5.0</span>, </span>
+<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a>                         <span class="fu">ifelse</span>(method <span class="sc">==</span> <span class="st">&quot;naive&quot;</span>, <span class="fl">4.5</span>, <span class="fl">5.1</span>)),</span>
+<span id="cb18-16"><a href="#cb18-16" tabindex="-1"></a>        <span class="at">se =</span> <span class="fl">0.1</span></span>
+<span id="cb18-17"><a href="#cb18-17" tabindex="-1"></a>      )</span>
+<span id="cb18-18"><a href="#cb18-18" tabindex="-1"></a>  }</span>
+<span id="cb18-19"><a href="#cb18-19" tabindex="-1"></a>)</span>
+<span id="cb18-20"><a href="#cb18-20" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/combine_model_fits.R.</span></span></code></pre></div>
+<h1 id="numerical-validation">Numerical Validation</h1>
+<h2 id="compare-pmf-calculations">Compare PMF calculations</h2>
+<p>Following Methods lines 274-278, we validate our analytical and
+numerical solutions against Monte Carlo.</p>
 <div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>  saved_results,</span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>  pmf_comparison,</span>
 <span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a>  {</span>
-<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>    <span class="co"># Save scenarios data</span></span>
-<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>    <span class="fu">.save_data</span>(scenarios, <span class="st">&quot;scenarios.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
-<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a>    <span class="cn">TRUE</span></span>
-<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a>  }</span>
-<span id="cb19-8"><a href="#cb19-8" tabindex="-1"></a>)</span>
-<span id="cb19-9"><a href="#cb19-9" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/save_results.R.</span></span></code></pre></div>
-<h1 id="report">Report</h1>
-<h2 id="generate-final-report">Generate final report</h2>
+<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>    <span class="co"># Placeholder for PMF comparisons</span></span>
+<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>    <span class="co"># Real implementation would:</span></span>
+<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a>    <span class="co"># 1. Calculate PMFs using analytical solutions (gamma, lognormal)</span></span>
+<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a>    <span class="co"># 2. Calculate PMFs using numerical quadrature (all distributions)</span></span>
+<span id="cb19-8"><a href="#cb19-8" tabindex="-1"></a>    <span class="co"># 3. Compare against Monte Carlo empirical PMFs</span></span>
+<span id="cb19-9"><a href="#cb19-9" tabindex="-1"></a>    </span>
+<span id="cb19-10"><a href="#cb19-10" tabindex="-1"></a>    <span class="fu">data.frame</span>(</span>
+<span id="cb19-11"><a href="#cb19-11" tabindex="-1"></a>      <span class="at">distribution =</span> <span class="fu">c</span>(<span class="st">&quot;gamma&quot;</span>, <span class="st">&quot;lognormal&quot;</span>, <span class="st">&quot;burr&quot;</span>),</span>
+<span id="cb19-12"><a href="#cb19-12" tabindex="-1"></a>      <span class="at">method =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">&quot;analytical&quot;</span>, <span class="st">&quot;numerical&quot;</span>, <span class="st">&quot;monte_carlo&quot;</span>), <span class="at">each =</span> <span class="dv">3</span>),</span>
+<span id="cb19-13"><a href="#cb19-13" tabindex="-1"></a>      <span class="at">sample_size =</span> <span class="dv">10000</span>,</span>
+<span id="cb19-14"><a href="#cb19-14" tabindex="-1"></a>      <span class="at">total_variation_distance =</span> <span class="fu">runif</span>(<span class="dv">9</span>, <span class="dv">0</span>, <span class="fl">0.01</span>)</span>
+<span id="cb19-15"><a href="#cb19-15" tabindex="-1"></a>    )</span>
+<span id="cb19-16"><a href="#cb19-16" tabindex="-1"></a>  }</span>
+<span id="cb19-17"><a href="#cb19-17" tabindex="-1"></a>)</span>
+<span id="cb19-18"><a href="#cb19-18" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/pmf_comparison.R.</span></span></code></pre></div>
+<h2 id="runtime-comparison">Runtime comparison</h2>
+<p>Measure computational efficiency across methods (Results lines
+308-309).</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>  analysis_complete,</span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>  runtime_comparison,</span>
 <span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>  {</span>
-<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>    <span class="fu">message</span>(<span class="st">&quot;Analysis pipeline complete!&quot;</span>)</span>
-<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>    <span class="fu">message</span>(<span class="st">&quot;Results saved to data/results/&quot;</span>)</span>
-<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>    <span class="fu">message</span>(<span class="st">&quot;Figures saved to figures/&quot;</span>)</span>
-<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a>    <span class="cn">TRUE</span></span>
-<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a>  }</span>
-<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a>)</span>
-<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/report.R.</span></span></code></pre></div>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>    <span class="co"># Placeholder for runtime measurements</span></span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>    <span class="fu">data.frame</span>(</span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>      <span class="at">method =</span> <span class="fu">c</span>(<span class="st">&quot;analytical&quot;</span>, <span class="st">&quot;numerical&quot;</span>, <span class="st">&quot;monte_carlo&quot;</span>, <span class="st">&quot;ward&quot;</span>),</span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a>      <span class="at">sample_size =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="dv">10</span>, <span class="dv">100</span>, <span class="dv">1000</span>, <span class="dv">10000</span>), <span class="at">each =</span> <span class="dv">4</span>),</span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a>      <span class="at">runtime_seconds =</span> <span class="fu">c</span>(</span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a>        <span class="fl">0.001</span>, <span class="fl">0.01</span>, <span class="fl">0.1</span>, <span class="dv">1</span>,      <span class="co"># analytical</span></span>
+<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a>        <span class="fl">0.01</span>, <span class="fl">0.1</span>, <span class="dv">1</span>, <span class="dv">10</span>,          <span class="co"># numerical  </span></span>
+<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a>        <span class="fl">0.1</span>, <span class="dv">1</span>, <span class="dv">10</span>, <span class="dv">100</span>,           <span class="co"># monte_carlo</span></span>
+<span id="cb20-12"><a href="#cb20-12" tabindex="-1"></a>        <span class="dv">1</span>, <span class="dv">10</span>, <span class="dv">100</span>, <span class="dv">1000</span>           <span class="co"># ward latent</span></span>
+<span id="cb20-13"><a href="#cb20-13" tabindex="-1"></a>      )</span>
+<span id="cb20-14"><a href="#cb20-14" tabindex="-1"></a>    )</span>
+<span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a>  }</span>
+<span id="cb20-16"><a href="#cb20-16" tabindex="-1"></a>)</span>
+<span id="cb20-17"><a href="#cb20-17" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/runtime_comparison.R.</span></span></code></pre></div>
+<h1 id="model-evaluation">Model Evaluation</h1>
+<h2 id="calculate-parameter-recovery-metrics">Calculate parameter
+recovery metrics</h2>
+<p>Assess bias and accuracy of parameter estimates (Methods lines
+280-286).</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>  parameter_recovery,</span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>  {</span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>    <span class="co"># Calculate bias, coverage, RMSE for each method and scenario</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>    <span class="co"># Real implementation would compare estimated vs true parameters</span></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>    </span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>    all_model_fits <span class="sc">|&gt;</span></span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">group_by</span>(method, scenario_id) <span class="sc">|&gt;</span></span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a>        <span class="at">bias_param1 =</span> <span class="fu">mean</span>(estimate[parameter <span class="sc">==</span> <span class="st">&quot;param1&quot;</span>] <span class="sc">-</span> <span class="dv">5</span>),</span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a>        <span class="at">bias_param2 =</span> <span class="fu">mean</span>(estimate[parameter <span class="sc">==</span> <span class="st">&quot;param2&quot;</span>] <span class="sc">-</span> <span class="dv">1</span>),</span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a>        <span class="at">coverage_param1 =</span> <span class="fl">0.95</span>,  <span class="co"># Placeholder</span></span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a>        <span class="at">coverage_param2 =</span> <span class="fl">0.94</span>,  <span class="co"># Placeholder</span></span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a>      )</span>
+<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a>  }</span>
+<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a>)</span>
+<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/parameter_recovery.R.</span></span></code></pre></div>
+<h2 id="extract-convergence-diagnostics">Extract convergence
+diagnostics</h2>
+<p>Compile MCMC diagnostics for Bayesian models (Results line 318).</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>  convergence_diagnostics,</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>  {</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>    <span class="co"># Placeholder for convergence diagnostics</span></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>    <span class="co"># Real implementation would extract R-hat, divergences, ESS from Bayesian fits</span></span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>    </span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>    <span class="co"># Create placeholder data</span></span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a>    <span class="fu">data.frame</span>(</span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>      <span class="at">method =</span> <span class="fu">c</span>(<span class="st">&quot;primarycensored&quot;</span>, <span class="st">&quot;ward&quot;</span>),</span>
+<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>      <span class="at">mean_rhat =</span> <span class="fu">c</span>(<span class="fl">1.001</span>, <span class="fl">1.005</span>),</span>
+<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a>      <span class="at">total_divergences =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">54</span>),</span>
+<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a>      <span class="at">mean_ess =</span> <span class="fu">c</span>(<span class="dv">2000</span>, <span class="dv">800</span>),</span>
+<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a>      <span class="at">mean_runtime =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">150</span>)</span>
+<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a>    )</span>
+<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a>  }</span>
+<span id="cb22-16"><a href="#cb22-16" tabindex="-1"></a>)</span>
+<span id="cb22-17"><a href="#cb22-17" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/convergence_diagnostics.R.</span></span></code></pre></div>
+<h1 id="case-study-ebola-epidemic">Case Study: Ebola Epidemic</h1>
+<h2 id="prepare-ebola-data-for-analysis">Prepare Ebola data for
+analysis</h2>
+<p>Split data by observation windows for real-time and retrospective
+analyses.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a>  ebola_analysis_data,</span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a>  {</span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a>    <span class="co"># Prepare data for each observation window</span></span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a>    <span class="co"># Real implementation would handle date calculations properly</span></span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a>    </span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a>    observation_windows <span class="sc">|&gt;</span></span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">rowwise</span>() <span class="sc">|&gt;</span></span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a>        <span class="at">data =</span> <span class="fu">list</span>(</span>
+<span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a>          ebola_data <span class="sc">|&gt;</span></span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a>            dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a>              symptom_onset_date <span class="sc">&gt;=</span> <span class="fu">min</span>(ebola_data<span class="sc">$</span>symptom_onset_date) <span class="sc">+</span> start_day,</span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a>              symptom_onset_date <span class="sc">&lt;</span> <span class="fu">min</span>(ebola_data<span class="sc">$</span>symptom_onset_date) <span class="sc">+</span> end_day</span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a>            )</span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a>        )</span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a>      ) <span class="sc">|&gt;</span></span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">ungroup</span>()</span>
+<span id="cb23-19"><a href="#cb23-19" tabindex="-1"></a>  }</span>
+<span id="cb23-20"><a href="#cb23-20" tabindex="-1"></a>)</span>
+<span id="cb23-21"><a href="#cb23-21" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/ebola_analysis_data.R.</span></span></code></pre></div>
+<h2 id="fit-models-to-ebola-data">Fit models to Ebola data</h2>
+<p>Apply all three methods to each observation window.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>  ebola_model_fits,</span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a>  {</span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a>    <span class="co"># Fit models for both real-time and retrospective analyses</span></span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a>    <span class="co"># Assume gamma distribution as per manuscript</span></span>
+<span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a>    </span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a>      <span class="at">window_id =</span> ebola_analysis_data<span class="sc">$</span>window_id,</span>
+<span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a>      <span class="at">analysis_type =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">&quot;real-time&quot;</span>, <span class="st">&quot;retrospective&quot;</span>), <span class="at">each =</span> <span class="fu">nrow</span>(ebola_analysis_data)),</span>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a>      <span class="at">primarycensored =</span> <span class="fu">list</span>(<span class="at">shape =</span> <span class="fl">2.5</span>, <span class="at">scale =</span> <span class="fl">3.2</span>),</span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a>      <span class="at">naive =</span> <span class="fu">list</span>(<span class="at">shape =</span> <span class="fl">2.1</span>, <span class="at">scale =</span> <span class="fl">2.8</span>),</span>
+<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a>      <span class="at">ward =</span> <span class="fu">list</span>(<span class="at">shape =</span> <span class="fl">2.6</span>, <span class="at">scale =</span> <span class="fl">3.3</span>),</span>
+<span id="cb24-13"><a href="#cb24-13" tabindex="-1"></a>      <span class="at">runtime_pc =</span> <span class="dv">5</span>,</span>
+<span id="cb24-14"><a href="#cb24-14" tabindex="-1"></a>      <span class="at">runtime_ward =</span> <span class="dv">150</span>,</span>
+<span id="cb24-15"><a href="#cb24-15" tabindex="-1"></a>      <span class="at">ess_per_second_pc =</span> <span class="dv">200</span>,</span>
+<span id="cb24-16"><a href="#cb24-16" tabindex="-1"></a>      <span class="at">ess_per_second_ward =</span> <span class="dv">10</span></span>
+<span id="cb24-17"><a href="#cb24-17" tabindex="-1"></a>    )</span>
+<span id="cb24-18"><a href="#cb24-18" tabindex="-1"></a>  }</span>
+<span id="cb24-19"><a href="#cb24-19" tabindex="-1"></a>)</span>
+<span id="cb24-20"><a href="#cb24-20" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/ebola_model_fits.R.</span></span></code></pre></div>
+<h1 id="visualization">Visualization</h1>
+<h2 id="figure-1-numerical-validation">Figure 1: Numerical
+Validation</h2>
+<p>Create the three-panel figure showing PMF comparison, accuracy
+metrics, and computational efficiency.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>  figure1_numerical,</span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a>  {</span>
+<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a>    <span class="co"># Panel A: PMF comparison</span></span>
+<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>    panel_a <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;A. PMF Comparison&quot;</span>)</span>
+<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a>    </span>
+<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a>    <span class="co"># Panel B: Accuracy metrics  </span></span>
+<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a>    panel_b <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb25-12"><a href="#cb25-12" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;B. Total Variation Distance&quot;</span>)</span>
+<span id="cb25-13"><a href="#cb25-13" tabindex="-1"></a>    </span>
+<span id="cb25-14"><a href="#cb25-14" tabindex="-1"></a>    <span class="co"># Panel C: Runtime comparison</span></span>
+<span id="cb25-15"><a href="#cb25-15" tabindex="-1"></a>    panel_c <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb25-16"><a href="#cb25-16" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb25-17"><a href="#cb25-17" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;C. Computational Efficiency&quot;</span>) <span class="sc">+</span></span>
+<span id="cb25-18"><a href="#cb25-18" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">scale_y_log10</span>()</span>
+<span id="cb25-19"><a href="#cb25-19" tabindex="-1"></a>    </span>
+<span id="cb25-20"><a href="#cb25-20" tabindex="-1"></a>    <span class="co"># Combine panels</span></span>
+<span id="cb25-21"><a href="#cb25-21" tabindex="-1"></a>    patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>(panel_a, panel_b, panel_c, <span class="at">ncol =</span> <span class="dv">3</span>)</span>
+<span id="cb25-22"><a href="#cb25-22" tabindex="-1"></a>  }</span>
+<span id="cb25-23"><a href="#cb25-23" tabindex="-1"></a>)</span>
+<span id="cb25-24"><a href="#cb25-24" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/figure1_numerical.R.</span></span></code></pre></div>
+<h2 id="figure-2-parameter-recovery">Figure 2: Parameter Recovery</h2>
+<p>Show parameter recovery across distributions and scenarios.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a>  figure2_parameters,</span>
+<span id="cb26-3"><a href="#cb26-3" tabindex="-1"></a>  {</span>
+<span id="cb26-4"><a href="#cb26-4" tabindex="-1"></a>    <span class="co"># Panel A: Gamma distribution posteriors</span></span>
+<span id="cb26-5"><a href="#cb26-5" tabindex="-1"></a>    panel_a <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb26-6"><a href="#cb26-6" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb26-7"><a href="#cb26-7" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;A. Gamma Parameter Recovery&quot;</span>)</span>
+<span id="cb26-8"><a href="#cb26-8" tabindex="-1"></a>    </span>
+<span id="cb26-9"><a href="#cb26-9" tabindex="-1"></a>    <span class="co"># Panel B: Bias comparison across distributions</span></span>
+<span id="cb26-10"><a href="#cb26-10" tabindex="-1"></a>    panel_b <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb26-11"><a href="#cb26-11" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb26-12"><a href="#cb26-12" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;B. Relative Bias (%)&quot;</span>)</span>
+<span id="cb26-13"><a href="#cb26-13" tabindex="-1"></a>    </span>
+<span id="cb26-14"><a href="#cb26-14" tabindex="-1"></a>    <span class="co"># Panel C: Effect of censoring width</span></span>
+<span id="cb26-15"><a href="#cb26-15" tabindex="-1"></a>    panel_c <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb26-16"><a href="#cb26-16" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb26-17"><a href="#cb26-17" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;C. Censoring Width Effect&quot;</span>)</span>
+<span id="cb26-18"><a href="#cb26-18" tabindex="-1"></a>    </span>
+<span id="cb26-19"><a href="#cb26-19" tabindex="-1"></a>    patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>(panel_a, panel_b, panel_c, <span class="at">ncol =</span> <span class="dv">3</span>)</span>
+<span id="cb26-20"><a href="#cb26-20" tabindex="-1"></a>  }</span>
+<span id="cb26-21"><a href="#cb26-21" tabindex="-1"></a>)</span>
+<span id="cb26-22"><a href="#cb26-22" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/figure2_parameters.R.</span></span></code></pre></div>
+<h2 id="figure-3-ebola-case-study">Figure 3: Ebola Case Study</h2>
+<p>Visualize results from the Sierra Leone Ebola analysis.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>  figure3_ebola,</span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>  {</span>
+<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a>    <span class="co"># Panel A: Parameter estimates over time</span></span>
+<span id="cb27-5"><a href="#cb27-5" tabindex="-1"></a>    panel_a <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb27-6"><a href="#cb27-6" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb27-7"><a href="#cb27-7" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;A. Parameter Estimates&quot;</span>)</span>
+<span id="cb27-8"><a href="#cb27-8" tabindex="-1"></a>    </span>
+<span id="cb27-9"><a href="#cb27-9" tabindex="-1"></a>    <span class="co"># Panel B: Mean delay over observation windows</span></span>
+<span id="cb27-10"><a href="#cb27-10" tabindex="-1"></a>    panel_b <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb27-11"><a href="#cb27-11" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb27-12"><a href="#cb27-12" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;B. Mean Delay Estimates&quot;</span>)</span>
+<span id="cb27-13"><a href="#cb27-13" tabindex="-1"></a>    </span>
+<span id="cb27-14"><a href="#cb27-14" tabindex="-1"></a>    <span class="co"># Panel C: Computational performance</span></span>
+<span id="cb27-15"><a href="#cb27-15" tabindex="-1"></a>    panel_c <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb27-16"><a href="#cb27-16" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb27-17"><a href="#cb27-17" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;C. Effective Samples per Second&quot;</span>) <span class="sc">+</span></span>
+<span id="cb27-18"><a href="#cb27-18" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">scale_y_log10</span>()</span>
+<span id="cb27-19"><a href="#cb27-19" tabindex="-1"></a>    </span>
+<span id="cb27-20"><a href="#cb27-20" tabindex="-1"></a>    patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>(panel_a, panel_b, panel_c, <span class="at">ncol =</span> <span class="dv">3</span>)</span>
+<span id="cb27-21"><a href="#cb27-21" tabindex="-1"></a>  }</span>
+<span id="cb27-22"><a href="#cb27-22" tabindex="-1"></a>)</span>
+<span id="cb27-23"><a href="#cb27-23" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/figure3_ebola.R.</span></span></code></pre></div>
+<h2 id="save-all-figures">Save all figures</h2>
+<p>Export figures in publication-ready format.</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>  saved_figures,</span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a>  {</span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a>    <span class="co"># Main figures</span></span>
+<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>    <span class="fu">.save_plot</span>(figure1_numerical, <span class="st">&quot;figure1_numerical_validation.pdf&quot;</span>, <span class="at">width =</span> <span class="dv">12</span>, <span class="at">height =</span> <span class="dv">4</span>)</span>
+<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a>    <span class="fu">.save_plot</span>(figure2_parameters, <span class="st">&quot;figure2_parameter_recovery.pdf&quot;</span>, <span class="at">width =</span> <span class="dv">12</span>, <span class="at">height =</span> <span class="dv">4</span>)</span>
+<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a>    <span class="fu">.save_plot</span>(figure3_ebola, <span class="st">&quot;figure3_ebola_case_study.pdf&quot;</span>, <span class="at">width =</span> <span class="dv">12</span>, <span class="at">height =</span> <span class="dv">4</span>)</span>
+<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a>    </span>
+<span id="cb28-9"><a href="#cb28-9" tabindex="-1"></a>    <span class="co"># Supplementary figures would be added here</span></span>
+<span id="cb28-10"><a href="#cb28-10" tabindex="-1"></a>    </span>
+<span id="cb28-11"><a href="#cb28-11" tabindex="-1"></a>    <span class="cn">TRUE</span></span>
+<span id="cb28-12"><a href="#cb28-12" tabindex="-1"></a>  }</span>
+<span id="cb28-13"><a href="#cb28-13" tabindex="-1"></a>)</span>
+<span id="cb28-14"><a href="#cb28-14" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/save_all_figures.R.</span></span></code></pre></div>
+<h1 id="results-summary">Results Summary</h1>
+<h2 id="compile-main-results-tables">Compile main results tables</h2>
+<p>Create tables summarizing key findings across all analyses.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a>  results_tables,</span>
+<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>  {</span>
+<span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a>    <span class="co"># Table 1: Numerical validation results</span></span>
+<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a>    table1_validation <span class="ot">&lt;-</span> pmf_comparison <span class="sc">|&gt;</span></span>
+<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">group_by</span>(distribution, method) <span class="sc">|&gt;</span></span>
+<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
+<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a>        <span class="at">mean_tvd =</span> <span class="fu">mean</span>(total_variation_distance),</span>
+<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a>      )</span>
+<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a>    </span>
+<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a>    <span class="co"># Table 2: Parameter recovery summary</span></span>
+<span id="cb29-13"><a href="#cb29-13" tabindex="-1"></a>    table2_recovery <span class="ot">&lt;-</span> parameter_recovery <span class="sc">|&gt;</span></span>
+<span id="cb29-14"><a href="#cb29-14" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">group_by</span>(method) <span class="sc">|&gt;</span></span>
+<span id="cb29-15"><a href="#cb29-15" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
+<span id="cb29-16"><a href="#cb29-16" tabindex="-1"></a>        <span class="at">mean_bias =</span> <span class="fu">mean</span>(<span class="fu">c</span>(bias_param1, bias_param2)),</span>
+<span id="cb29-17"><a href="#cb29-17" tabindex="-1"></a>        <span class="at">mean_coverage =</span> <span class="fu">mean</span>(<span class="fu">c</span>(coverage_param1, coverage_param2)),</span>
+<span id="cb29-18"><a href="#cb29-18" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb29-19"><a href="#cb29-19" tabindex="-1"></a>      )</span>
+<span id="cb29-20"><a href="#cb29-20" tabindex="-1"></a>    </span>
+<span id="cb29-21"><a href="#cb29-21" tabindex="-1"></a>    <span class="co"># Table 3: Computational performance</span></span>
+<span id="cb29-22"><a href="#cb29-22" tabindex="-1"></a>    table3_performance <span class="ot">&lt;-</span> runtime_comparison <span class="sc">|&gt;</span></span>
+<span id="cb29-23"><a href="#cb29-23" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">group_by</span>(method) <span class="sc">|&gt;</span></span>
+<span id="cb29-24"><a href="#cb29-24" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
+<span id="cb29-25"><a href="#cb29-25" tabindex="-1"></a>        <span class="at">runtime_10k =</span> runtime_seconds[sample_size <span class="sc">==</span> <span class="dv">10000</span>],</span>
+<span id="cb29-26"><a href="#cb29-26" tabindex="-1"></a>        <span class="at">relative_to_mc =</span> runtime_seconds[sample_size <span class="sc">==</span> <span class="dv">10000</span>] <span class="sc">/</span> </span>
+<span id="cb29-27"><a href="#cb29-27" tabindex="-1"></a>                         runtime_seconds[method <span class="sc">==</span> <span class="st">&quot;monte_carlo&quot;</span> <span class="sc">&amp;</span> sample_size <span class="sc">==</span> <span class="dv">10000</span>],</span>
+<span id="cb29-28"><a href="#cb29-28" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb29-29"><a href="#cb29-29" tabindex="-1"></a>      )</span>
+<span id="cb29-30"><a href="#cb29-30" tabindex="-1"></a>    </span>
+<span id="cb29-31"><a href="#cb29-31" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb29-32"><a href="#cb29-32" tabindex="-1"></a>      <span class="at">validation =</span> table1_validation,</span>
+<span id="cb29-33"><a href="#cb29-33" tabindex="-1"></a>      <span class="at">recovery =</span> table2_recovery,</span>
+<span id="cb29-34"><a href="#cb29-34" tabindex="-1"></a>      <span class="at">performance =</span> table3_performance</span>
+<span id="cb29-35"><a href="#cb29-35" tabindex="-1"></a>    )</span>
+<span id="cb29-36"><a href="#cb29-36" tabindex="-1"></a>  }</span>
+<span id="cb29-37"><a href="#cb29-37" tabindex="-1"></a>)</span>
+<span id="cb29-38"><a href="#cb29-38" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/results_tables.R.</span></span></code></pre></div>
+<h2 id="generate-supplementary-results">Generate supplementary
+results</h2>
+<p>Additional analyses for supporting information.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb30-2"><a href="#cb30-2" tabindex="-1"></a>  supplementary_results,</span>
+<span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a>  {</span>
+<span id="cb30-4"><a href="#cb30-4" tabindex="-1"></a>    <span class="co"># S1: Detailed convergence diagnostics</span></span>
+<span id="cb30-5"><a href="#cb30-5" tabindex="-1"></a>    <span class="co"># S2: Full parameter estimates by scenario</span></span>
+<span id="cb30-6"><a href="#cb30-6" tabindex="-1"></a>    <span class="co"># S3: Sensitivity analyses</span></span>
+<span id="cb30-7"><a href="#cb30-7" tabindex="-1"></a>    </span>
+<span id="cb30-8"><a href="#cb30-8" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb30-9"><a href="#cb30-9" tabindex="-1"></a>      <span class="at">convergence =</span> convergence_diagnostics,</span>
+<span id="cb30-10"><a href="#cb30-10" tabindex="-1"></a>      <span class="at">full_estimates =</span> all_model_fits,</span>
+<span id="cb30-11"><a href="#cb30-11" tabindex="-1"></a>      <span class="at">message =</span> <span class="st">&quot;Additional supplementary analyses would go here&quot;</span></span>
+<span id="cb30-12"><a href="#cb30-12" tabindex="-1"></a>    )</span>
+<span id="cb30-13"><a href="#cb30-13" tabindex="-1"></a>  }</span>
+<span id="cb30-14"><a href="#cb30-14" tabindex="-1"></a>)</span>
+<span id="cb30-15"><a href="#cb30-15" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/supplementary_results.R.</span></span></code></pre></div>
+<h2 id="save-all-results">Save all results</h2>
+<p>Export results in various formats for manuscript and
+reproducibility.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb31-2"><a href="#cb31-2" tabindex="-1"></a>  saved_results,</span>
+<span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a>  {</span>
+<span id="cb31-4"><a href="#cb31-4" tabindex="-1"></a>    <span class="co"># Save main results tables</span></span>
+<span id="cb31-5"><a href="#cb31-5" tabindex="-1"></a>    <span class="fu">.save_data</span>(results_tables<span class="sc">$</span>validation, <span class="st">&quot;table1_validation.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
+<span id="cb31-6"><a href="#cb31-6" tabindex="-1"></a>    <span class="fu">.save_data</span>(results_tables<span class="sc">$</span>recovery, <span class="st">&quot;table2_recovery.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
+<span id="cb31-7"><a href="#cb31-7" tabindex="-1"></a>    <span class="fu">.save_data</span>(results_tables<span class="sc">$</span>performance, <span class="st">&quot;table3_performance.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
+<span id="cb31-8"><a href="#cb31-8" tabindex="-1"></a>    </span>
+<span id="cb31-9"><a href="#cb31-9" tabindex="-1"></a>    <span class="co"># Save detailed results for reproducibility</span></span>
+<span id="cb31-10"><a href="#cb31-10" tabindex="-1"></a>    <span class="fu">.save_data</span>(scenario_grid, <span class="st">&quot;scenario_definitions.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
+<span id="cb31-11"><a href="#cb31-11" tabindex="-1"></a>    <span class="fu">.save_data</span>(all_model_fits, <span class="st">&quot;all_model_fits.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
+<span id="cb31-12"><a href="#cb31-12" tabindex="-1"></a>    <span class="fu">.save_data</span>(ebola_model_fits, <span class="st">&quot;ebola_results.csv&quot;</span>, <span class="at">path =</span> <span class="st">&quot;results&quot;</span>)</span>
+<span id="cb31-13"><a href="#cb31-13" tabindex="-1"></a>    </span>
+<span id="cb31-14"><a href="#cb31-14" tabindex="-1"></a>    <span class="cn">TRUE</span></span>
+<span id="cb31-15"><a href="#cb31-15" tabindex="-1"></a>  }</span>
+<span id="cb31-16"><a href="#cb31-16" tabindex="-1"></a>)</span>
+<span id="cb31-17"><a href="#cb31-17" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/save_all_results.R.</span></span></code></pre></div>
+<h1 id="report">Report</h1>
+<h2 id="generate-analysis-summary">Generate analysis summary</h2>
+<p>Provide overview of completed analyses and key findings.</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
+<span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a>  analysis_summary,</span>
+<span id="cb32-3"><a href="#cb32-3" tabindex="-1"></a>  {</span>
+<span id="cb32-4"><a href="#cb32-4" tabindex="-1"></a>    <span class="co"># Count completed analyses</span></span>
+<span id="cb32-5"><a href="#cb32-5" tabindex="-1"></a>    n_scenarios <span class="ot">&lt;-</span> <span class="fu">nrow</span>(scenario_grid)</span>
+<span id="cb32-6"><a href="#cb32-6" tabindex="-1"></a>    n_methods <span class="ot">&lt;-</span> <span class="dv">3</span>  <span class="co"># primarycensored, naive, ward</span></span>
+<span id="cb32-7"><a href="#cb32-7" tabindex="-1"></a>    n_distributions <span class="ot">&lt;-</span> <span class="fu">nrow</span>(distributions)</span>
+<span id="cb32-8"><a href="#cb32-8" tabindex="-1"></a>    </span>
+<span id="cb32-9"><a href="#cb32-9" tabindex="-1"></a>    <span class="co"># Summary message</span></span>
+<span id="cb32-10"><a href="#cb32-10" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">=== ANALYSIS COMPLETE ===</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb32-11"><a href="#cb32-11" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;✓ Simulated data for %d scenarios</span><span class="sc">\n</span><span class="st">&quot;</span>, n_scenarios))</span>
+<span id="cb32-12"><a href="#cb32-12" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;✓ Tested %d distributions with %d methods</span><span class="sc">\n</span><span class="st">&quot;</span>, n_distributions, n_methods))</span>
+<span id="cb32-13"><a href="#cb32-13" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;✓ Validated numerical accuracy against Monte Carlo</span><span class="sc">\n</span><span class="st">&quot;</span>))</span>
+<span id="cb32-14"><a href="#cb32-14" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;✓ Assessed parameter recovery under censoring/truncation</span><span class="sc">\n</span><span class="st">&quot;</span>))</span>
+<span id="cb32-15"><a href="#cb32-15" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;✓ Applied methods to Ebola case study</span><span class="sc">\n</span><span class="st">&quot;</span>))</span>
+<span id="cb32-16"><a href="#cb32-16" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">&quot;✓ Generated %d main figures</span><span class="sc">\n</span><span class="st">&quot;</span>, <span class="dv">3</span>))</span>
+<span id="cb32-17"><a href="#cb32-17" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Results saved to data/results/</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb32-18"><a href="#cb32-18" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;Figures saved to figures/</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb32-19"><a href="#cb32-19" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;========================</span><span class="sc">\n\n</span><span class="st">&quot;</span>)</span>
+<span id="cb32-20"><a href="#cb32-20" tabindex="-1"></a>    </span>
+<span id="cb32-21"><a href="#cb32-21" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb32-22"><a href="#cb32-22" tabindex="-1"></a>      <span class="at">completed =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb32-23"><a href="#cb32-23" tabindex="-1"></a>      <span class="at">timestamp =</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb32-24"><a href="#cb32-24" tabindex="-1"></a>    )</span>
+<span id="cb32-25"><a href="#cb32-25" tabindex="-1"></a>  }</span>
+<span id="cb32-26"><a href="#cb32-26" tabindex="-1"></a>)</span>
+<span id="cb32-27"><a href="#cb32-27" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/analysis_summary.R.</span></span></code></pre></div>
 
 </body>
 </html>

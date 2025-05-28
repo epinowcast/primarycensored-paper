@@ -2,6 +2,7 @@ library(targets)
 library(tarchetypes)
 library(data.table)
 library(ggplot2)
+library(patchwork)
 library(purrr)
 library(here)
 
@@ -12,6 +13,6 @@ rm("functions")
 
 # Set targets options
 tar_option_set(
-  packages = c("data.table", "ggplot2", "purrr", "here"),
+  packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", "tidyr"),
   format = "rds"
 )
