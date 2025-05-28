@@ -1,0 +1,41 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Run the complete analysis pipeline
+    deps: [render, run]
+
+  render:
+    desc: Render the targets Rmarkdown document
+    cmds:
+      - echo "Rendering _targets.Rmd..."
+      - Rscript -e "rmarkdown::render('_targets.Rmd')"
+
+  run:
+    desc: Run the targets pipeline
+    cmds:
+      - echo "Running targets pipeline..."
+      - Rscript -e "targets::tar_make()"
+
+  visualize:
+    desc: Create a visualization of the pipeline
+    cmds:
+      - echo "Creating pipeline visualization..."
+      - Rscript -e "targets::tar_visnetwork()"
+
+  progress:
+    desc: Show pipeline progress
+    cmds:
+      - echo "Checking pipeline progress..."
+      - Rscript -e "targets::tar_progress()"
+
+  clean:
+    desc: Clean targets cache (use with caution!)
+    cmds:
+      - echo "This will delete all computed results. Are you sure? [y/N]"
+      - read -r ans && [ "$ans" = "y" ] && rm -rf _targets/
+
+  help:
+    desc: Show available commands
+    cmds:
+      - task --list

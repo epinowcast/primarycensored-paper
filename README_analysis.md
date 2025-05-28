@@ -17,7 +17,7 @@ This directory contains a reproducible analysis pipeline for the primarycensored
   - `results/`: Analysis results
 - `figures/`: Generated figures
 - `run_analysis.R`: R script to run the analysis
-- `Makefile`: Alternative way to run the analysis
+- `Taskfile.yml`: Task runner configuration for running the analysis
 
 ## Requirements
 
@@ -39,17 +39,20 @@ install.packages(c(
 
 There are three ways to run the analysis:
 
-### Option 1: Using R directly
+### Option 1: Using Task (recommended)
 
-```r
-# Render the targets document
-rmarkdown::render("_targets.Rmd")
+First install Task from https://taskfile.dev/installation/
 
-# Run the pipeline
-targets::tar_make()
+```bash
+# Run complete pipeline
+task
 
-# Visualize the pipeline
-targets::tar_visnetwork()
+# Individual steps
+task render      # Render _targets.Rmd
+task run         # Run pipeline
+task visualize   # Create visualization
+task progress    # Check progress
+task help        # Show available commands
 ```
 
 ### Option 2: Using the R script
@@ -68,18 +71,17 @@ Rscript run_analysis.R visualize
 Rscript run_analysis.R progress
 ```
 
-### Option 3: Using Make
+### Option 3: Using R directly
 
-```bash
-# Run complete pipeline
-make
+```r
+# Render the targets document
+rmarkdown::render("_targets.Rmd")
 
-# Individual steps
-make render      # Render _targets.Rmd
-make run         # Run pipeline
-make visualize   # Create visualization
-make progress    # Check progress
-make clean       # Clean cache (careful!)
+# Run the pipeline
+targets::tar_make()
+
+# Visualize the pipeline
+targets::tar_visnetwork()
 ```
 
 ## Analysis Steps
