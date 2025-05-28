@@ -1,0 +1,325 @@
+---
+title: "Analysis Pipeline: Primary Event Censored Distributions"
+output: github_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# Introduction
+
+This reproducible pipeline implements the analysis for the primarycensored paper, comparing methods for estimating delay distributions while accounting for primary event censoring.
+The workflow uses the `targets` package to ensure reproducibility and efficient computation.
+
+## Using this pipeline
+
+To render this document:
+```{r, eval = FALSE}
+rmarkdown::render("_targets.Rmd")
+```
+
+To run the complete pipeline:
+```{r, eval = FALSE}
+targets::tar_make()
+```
+
+To visualize the pipeline:
+```{r, eval = FALSE}
+targets::tar_visnetwork()
+```
+
+# Setup
+
+Load required packages and initialize the targets workflow.
+
+```{r}
+library(targets)
+library(tarchetypes)
+tar_unscript()
+```
+
+Define global options and load custom functions.
+
+```{targets globals, tar_globals = TRUE}
+library(targets)
+library(tarchetypes)
+library(data.table)
+library(ggplot2)
+library(purrr)
+library(here)
+
+# Source all R functions
+functions <- list.files(here("R"), full.names = TRUE, pattern = "\\.R$")
+walk(functions, source)
+rm("functions")
+
+# Set targets options
+tar_option_set(
+  packages = c("data.table", "ggplot2", "purrr", "here"),
+  format = "qs"
+)
+```
+
+# Data Preparation
+
+## Define scenarios
+
+We define different simulation scenarios to test model performance under various conditions.
+
+```{targets scenarios}
+tar_target(
+  scenarios,
+  data.frame(
+    scenario_id = c("base", "long_delay", "high_censoring"),
+    n = c(1000, 1000, 1000),
+    rate = c(0.1, 0.1, 0.1),
+    meanlog = c(1.5, 2.0, 1.5),
+    sdlog = c(0.5, 0.7, 0.5),
+    censoring_interval = c(1, 1, 7),
+    distribution = "lognormal",
+    seed = 123
+  )
+)
+```
+
+## Load real-world data
+
+```{targets real_data}
+# Placeholder for loading real-world data
+tar_target(
+  real_world_data,
+  {
+    # TODO: Load actual data
+    message("Loading real-world data...")
+    data.frame(
+      id = 1:10,
+      primary_time = 1:10,
+      secondary_time = 1:10 + rlnorm(10, 1.5, 0.5)
+    )
+  }
+)
+```
+
+# Simulation Studies
+
+## Generate simulated data
+
+For each scenario, we simulate primary and secondary events.
+
+```{targets simulate_data}
+tar_target(
+  simulated_data,
+  {
+    # Extract scenario parameters
+    params <- scenarios[scenarios$scenario_id == scenario_id, ]
+    
+    # Run simulation
+    primary_data <- simulate_primary_events(
+      n = params$n,
+      rate = params$rate,
+      seed = params$seed
+    )
+    
+    secondary_data <- simulate_secondary_events(
+      primary_data,
+      delay_params = list(meanlog = params$meanlog, sdlog = params$sdlog),
+      distribution = params$distribution
+    )
+    
+    # Apply censoring
+    censored_data <- apply_censoring(
+      secondary_data, 
+      censoring_interval = params$censoring_interval
+    )
+    
+    # Add scenario ID
+    censored_data$scenario_id <- scenario_id
+    
+    censored_data
+  },
+  pattern = map(scenario_id = scenarios$scenario_id)
+)
+```
+
+# Model Fitting
+
+## Fit primarycensored models
+
+```{targets fit_primarycensored}
+tar_target(
+  primarycensored_fits,
+  {
+    fit_primarycensored(simulated_data, formula = ~ 1)
+  },
+  pattern = map(simulated_data)
+)
+```
+
+## Fit comparison models
+
+```{targets fit_naive}
+tar_target(
+  naive_fits,
+  {
+    fit_naive_model(simulated_data)
+  },
+  pattern = map(simulated_data)
+)
+```
+
+## Combine model results
+
+```{targets combine_fits}
+tar_target(
+  all_model_fits,
+  {
+    list(
+      primarycensored = primarycensored_fits,
+      naive = naive_fits,
+      scenario_id = unique(simulated_data$scenario_id)
+    )
+  }
+)
+```
+
+# Model Evaluation
+
+## Calculate performance metrics
+
+```{targets metrics}
+tar_target(
+  performance_metrics,
+  {
+    # Extract true parameters from scenarios
+    scenario <- scenarios[scenarios$scenario_id == all_model_fits$scenario_id, ]
+    true_values <- data.frame(
+      parameter = c("meanlog", "sdlog"),
+      true_value = c(scenario$meanlog, scenario$sdlog)
+    )
+    
+    # Calculate metrics for each model
+    metrics_list <- list()
+    
+    if (!is.null(all_model_fits$primarycensored$estimates)) {
+      metrics_list$primarycensored <- calculate_metrics(
+        all_model_fits$primarycensored$estimates,
+        true_values
+      )
+    }
+    
+    if (!is.null(all_model_fits$naive$estimates)) {
+      # Note: naive model estimates mean/sd, not meanlog/sdlog
+      # This is a placeholder - actual implementation would handle this properly
+      metrics_list$naive <- all_model_fits$naive$estimates
+    }
+    
+    metrics_list
+  }
+)
+```
+
+## Model diagnostics
+
+```{targets diagnostics}
+tar_target(
+  model_diagnostics,
+  {
+    # Placeholder for model diagnostics
+    message("Running model diagnostics...")
+    list(
+      convergence = TRUE,
+      effective_sample_size = 1000
+    )
+  }
+)
+```
+
+# Visualization
+
+## Plot delay distribution comparisons
+
+```{targets plot_delays}
+tar_target(
+  delay_comparison_plot,
+  {
+    plot_delay_comparison(all_model_fits)
+  }
+)
+```
+
+## Plot simulation results
+
+```{targets plot_simulations}
+tar_target(
+  simulation_results_plot,
+  {
+    # Placeholder for simulation results visualization
+    ggplot2::ggplot() +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(title = "Simulation Results")
+  }
+)
+```
+
+## Save plots
+
+```{targets save_plots}
+tar_target(
+  saved_plots,
+  {
+    .save_plot(delay_comparison_plot, "delay_comparison.pdf")
+    .save_plot(simulation_results_plot, "simulation_results.pdf")
+    TRUE
+  }
+)
+```
+
+# Results Summary
+
+## Compile results tables
+
+```{targets results_tables}
+tar_target(
+  results_summary,
+  {
+    # Compile all results into summary tables
+    list(
+      scenarios = scenarios,
+      metrics = performance_metrics,
+      diagnostics = model_diagnostics
+    )
+  }
+)
+```
+
+## Save results
+
+```{targets save_results}
+tar_target(
+  saved_results,
+  {
+    .save_data(results_summary$scenarios, "scenarios.csv", path = "results")
+    if (!is.null(results_summary$metrics)) {
+      .save_data(results_summary$metrics, "metrics.csv", path = "results")
+    }
+    TRUE
+  }
+)
+```
+
+# Report
+
+## Generate final report
+
+```{targets report}
+tar_target(
+  analysis_complete,
+  {
+    message("Analysis pipeline complete!")
+    message("Results saved to data/results/")
+    message("Figures saved to figures/")
+    TRUE
+  }
+)
+```
