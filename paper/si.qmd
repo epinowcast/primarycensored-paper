@@ -10,71 +10,22 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 # Detailed analytical solutions
 
-## Survival function approach to primary event censoring
-
-The survival function approach provides an alternative but equivalent perspective to the marginalisation method described in the main text. Here, the focus is on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
-
-When reasoning about the distribution of the censored delay time $T_c$, it is useful to consider the time from the end (right) point of the primary censoring interval to the secondary time as a random variable,
-
-$$
-S_+ = S - (t_P + w_P) = T - ((t_P + w_P) - P) = T - C_P.
-$$
-
-Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = Pr(C_P < p) = Pr(P > t_P + w_P - p)$.
-
-With non-informative censoring, it is possible to derive the upper distribution function of $S_+$, or *survival function* of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
-
-$$
-\begin{equation}
-\begin{split}
-Q_{S_+}(t) &= Pr(S_+ > t) \\
-&= Pr(T > C_P + t) \\
-&= \mathbb{E}_{C_P} \Big[Q_T(t + C_P)\Big] \\
-&= \int_0^{w_P} Q_T(t + p) f_{C_P}(p) dp.
-\end{split}
-\end{equation}
-$$
-
-Using integration by parts gives:
-$$
-Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) F_{C_P}(p) dp.
-$$
-
-Where we have used that $Q^{'}_{T} = - f_T$, $Q_T$ is the survival function of the actual delay distribution of interest and $w_P$ is the length of the primary censoring window.
-
-This equation has the interpretation that the probability that the secondary event time is greater than $t$ after the end of the primary censoring window is the sum of two disjoint event probabilities:
-
-1. The probability that the *actual* delay time $T$ is greater than $t + w_P$.
-2. The probability that the *actual* delay time $T$ is between $t$ and $t + w_P$, and the primary event time $P$ occurred sufficiently close to the end of the primary censoring window that the secondary event occurred more than time $t$ after the end of the primary window.
-
-Having constructed the survival function of $S_+$, using numerical quadrature or in some other way, we can calculate the probability mass of a secondary event time falling within an observed secondary censoring window of length $w_S$ that begins at time $n - w_S$ *after* the primary censoring window. This is the probability that the censored delay time $T_c$ is $n$.
-
-This gives the censored delay time probability by integrating over censored values:
-
-$$
-Pr(S_+ \in [n - w_S, n)) = Q_{S_+}(n-w_S) - Q_{S_+}(n).
-$$
-
-Note that the censored secondary event time can also occur within the primary censoring window. This happens with probability,
-$$
-Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = Pr(T< C_P).
-$$
-
+For any delay distribution with an available CDF, we can solve for the adjusted delay time CDF $F_{\text{adj}}$ by evaluating a single integral (see main text; equation ?). For distributions with particularly advantageous properties, we can derive fully analytical solutions that avoid numerical integration entirely.
 ## General framework for analytical solutions
 
-For any delay distribution with an analytically available CDF, we can solve for the adjusted delay time CDF by evaluating a single integral. For distributions with particularly advantageous properties, we can derive fully analytical solutions that avoid numerical integration entirely.
+
 
 The key insight is that we can leverage the concept of *partial expectation* to derive these analytical solutions. The partial expectation of a distribution over an interval $[a, b]$ is defined as:
 
 $$
-\int_a^b z \cdot f(z) \, dz
+\int_a^b z \cdot f_T(z) \, dz
 $$
 
 where $f$ is the probability density function. This calculates the contribution to the mean from values within that specific interval.
 
 For certain distributions, we can express this partial expectation in terms of the CDF of a related distribution with slightly modified parameters. When this is possible, we can derive fully analytical solutions for the adjusted delay time CDF.
 
-### When analytical solutions are possible
+## When analytical solutions are possible
 
 Analytical solutions are possible when:
 
@@ -345,7 +296,57 @@ $$
 
 Which was also found by Cori et al. [@cori2013new].
 
-## Connection to other approaches
+# Connection to other approaches
+
+## Survival function approach to primary event censoring
+
+The survival function approach provides an alternative but equivalent perspective to the marginalisation method described in the main text. Here, the focus is on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
+
+When reasoning about the distribution of the censored delay time $T_c$, it is useful to consider the time from the end (right) point of the primary censoring interval to the secondary time as a random variable,
+
+$$
+S_+ = S - (t_P + w_P) = T - ((t_P + w_P) - P) = T - C_P.
+$$
+
+Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = Pr(C_P < p) = Pr(P > t_P + w_P - p)$.
+
+With non-informative censoring, it is possible to derive the upper distribution function of $S_+$, or *survival function* of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
+
+$$
+\begin{equation}
+\begin{split}
+Q_{S_+}(t) &= Pr(S_+ > t) \\
+&= Pr(T > C_P + t) \\
+&= \mathbb{E}_{C_P} \Big[Q_T(t + C_P)\Big] \\
+&= \int_0^{w_P} Q_T(t + p) f_{C_P}(p) dp.
+\end{split}
+\end{equation}
+$$
+
+Using integration by parts gives:
+$$
+Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) F_{C_P}(p) dp.
+$$
+
+Where we have used that $Q^{'}_{T} = - f_T$, $Q_T$ is the survival function of the actual delay distribution of interest and $w_P$ is the length of the primary censoring window.
+
+This equation has the interpretation that the probability that the secondary event time is greater than $t$ after the end of the primary censoring window is the sum of two disjoint event probabilities:
+
+1. The probability that the *actual* delay time $T$ is greater than $t + w_P$.
+2. The probability that the *actual* delay time $T$ is between $t$ and $t + w_P$, and the primary event time $P$ occurred sufficiently close to the end of the primary censoring window that the secondary event occurred more than time $t$ after the end of the primary window.
+
+Having constructed the survival function of $S_+$, using numerical quadrature or in some other way, we can calculate the probability mass of a secondary event time falling within an observed secondary censoring window of length $w_S$ that begins at time $n - w_S$ *after* the primary censoring window. This is the probability that the censored delay time $T_c$ is $n$.
+
+This gives the censored delay time probability by integrating over censored values:
+
+$$
+Pr(S_+ \in [n - w_S, n)) = Q_{S_+}(n-w_S) - Q_{S_+}(n).
+$$
+
+Note that the censored secondary event time can also occur within the primary censoring window. This happens with probability,
+$$
+Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = Pr(T< C_P).
+$$
 
 ### Connection to Park et al. 2024
 
@@ -473,9 +474,9 @@ The combined effect of these biases typically results in systematic underestimat
 
 Comprehensive metrics showing the accuracy of our methods compared to Monte Carlo simulation across all distribution types, censoring scenarios, and truncation conditions.
 
-## Extended parameter recovery results
+# Extended parameter recovery results
 
-### Figure S3: Complete parameter recovery across all scenarios
+## Figure S3: Complete parameter recovery across all scenarios
 
 - **Panel A**: Gamma distribution parameter recovery
   - Scatter plot of true vs estimated parameter values
@@ -491,7 +492,7 @@ Comprehensive metrics showing the accuracy of our methods compared to Monte Carl
 - **Panel C**: Burr distribution parameter recovery
   - Same structure as Panel A but for all three Burr parameters
 
-### Figure S4: Effect of censoring and truncation on parameter bias
+## Figure S4: Effect of censoring and truncation on parameter bias
 
 - **Panel A**: Censoring window width effect
   - Line plots showing parameter bias vs censoring window width (1, 2, 3, 4 days)
@@ -504,7 +505,7 @@ Comprehensive metrics showing the accuracy of our methods compared to Monte Carl
   - Demonstrates robustness of PC method under increasing truncation
   - Shows increasing bias of naive method
 
-### Figure S5: MCMC diagnostics for Stan models
+## Figure S5: MCMC diagnostics for Stan models
 
 - **Panel A**: Trace plots for selected challenging scenarios
   - Multiple chains overlaid to show convergence
@@ -519,7 +520,7 @@ Comprehensive metrics showing the accuracy of our methods compared to Monte Carl
   - PC method vs Ward et al. approach
   - Stratified by distribution and scenario complexity
 
-### Table S2: Complete parameter recovery results
+## Table S2: Complete parameter recovery results
 
 | Distribution | Parameter | True Value | PC-Stan | PC-fitdistrplus | Naive-Stan | Naive-fitdistrplus |
 |--------------|-----------|------------|---------|-----------------|------------|-------------------|
@@ -528,9 +529,9 @@ Comprehensive metrics showing the accuracy of our methods compared to Monte Carl
 
 Full parameter estimates with 95% confidence/credible intervals, bias metrics, and coverage statistics for all distribution types and estimation methods across all censoring and truncation scenarios.
 
-## Extended case study results
+# Extended case study results
 
-### Figure S6: Complete Ebola case study parameter estimates
+## Figure S6: Complete Ebola case study parameter estimates
 
 - **Panel A**: Temporal evolution of gamma parameters
   - Line plots showing shape and scale parameters across the four observation periods
@@ -544,7 +545,7 @@ Full parameter estimates with 95% confidence/credible intervals, bias metrics, a
   - Four subpanels for each observation period
   - Compare methods side-by-side
 
-### Figure S7: Computational performance in Ebola case study
+## Figure S7: Computational performance in Ebola case study
 
 - **Panel A**: Effective samples per second
   - Bar chart comparing PC method vs Ward et al. approach
@@ -560,7 +561,7 @@ Full parameter estimates with 95% confidence/credible intervals, bias metrics, a
   - Bar chart showing peak memory usage for each method
   - Demonstrate resource efficiency advantage of PC method
 
-### Table S3: Complete EVD case study results
+## Table S3: Complete EVD case study results
 
 | Period | Analysis Type | Method | Shape Est. | Shape CI | Scale Est. | Scale CI | ESS/sec | Divergences |
 |--------|---------------|--------|------------|----------|------------|----------|---------|-------------|
