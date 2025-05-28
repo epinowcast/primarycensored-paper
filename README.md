@@ -25,6 +25,7 @@ install.packages(c(
   "tarchetypes", 
   "data.table",
   "ggplot2",
+  "patchwork",
   "purrr",
   "here",
   "rmarkdown"
