@@ -20,15 +20,15 @@ $$
 S_+ = S - (t_P + w_P) = T - ((t_P + w_P) - P) = T - C_P.
 $$
 
-Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = Pr(C_P < p) = Pr(P > t_P + w_P - p)$.
+Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = \Pr(C_P < p) = \Pr(P > t_P + w_P - p)$.
 
 With non-informative censoring, it is possible to derive the upper distribution function of $S_+$, or *survival function* of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
 
 $$
 \begin{equation}
 \begin{split}
-Q_{S_+}(t) &= Pr(S_+ > t) \\
-&= Pr(T > C_P + t) \\
+Q_{S_+}(t) &= \Pr(S_+ > t) \\
+&= \Pr(T > C_P + t) \\
 &= \mathbb{E}_{C_P} \Big[Q_T(t + C_P)\Big] \\
 &= \int_0^{w_P} Q_T(t + p) f_{C_P}(p) dp.
 \end{split}
@@ -52,12 +52,12 @@ Having constructed the survival function of $S_+$, using numerical quadrature or
 This gives the censored delay time probability by integrating over censored values:
 
 $$
-Pr(S_+ \in [n - w_S, n)) = Q_{S_+}(n-w_S) - Q_{S_+}(n).
+\Pr(S_+ \in [n - w_S, n)) = Q_{S_+}(n-w_S) - Q_{S_+}(n).
 $$
 
 Note that the censored secondary event time can also occur within the primary censoring window. This happens with probability,
 $$
-Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = Pr(T< C_P).
+Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = \Pr(T< C_P).
 $$
 
 ## General framework for analytical solutions
@@ -401,7 +401,7 @@ $$
 $$
 which is the same as our derived survival function equation.
 
-In this derivation, we have used that $G_P(x|t_P, t_P + w_P)$ is the distribution function from the time *from* the start of the primary interval *until* primary event time, and $F_{C_P}$ is the distribution function of the time *until* the end of the primary event window *from* the primary event time. Therefore, $G_P(t_P + w_P - p|t_P, t_P + w_P) = Pr(P < t_P + w_P - p | P \in (t_P, t_P + w_P)) = 1 - Pr(C_P \leq p) = 1 - F_{C_P}(p)$.
+In this derivation, we have used that $G_P(x|t_P, t_P + w_P)$ is the distribution function from the time *from* the start of the primary interval *until* primary event time, and $F_{C_P}$ is the distribution function of the time *until* the end of the primary event window *from* the primary event time. Therefore, $G_P(t_P + w_P - p|t_P, t_P + w_P) = \Pr(P < t_P + w_P - p | P \in (t_P, t_P + w_P)) = 1 - \Pr(C_P \leq p) = 1 - F_{C_P}(p)$.
 
 ### Mathematical details of the naive comparison model
 
@@ -409,13 +409,13 @@ For comparison purposes, we implemented a naive model that ignored both censorin
 
 The naive model assumes:
 
-$$P(T_c = t_S - t_P) = f_T(t_S - t_P; \theta)$$
+$$\Pr(T_c = t_S - t_P) = f_T(t_S - t_P; \theta)$$
 
 where $f_T$ is the probability density function of the true delay distribution with parameters $\theta$.
 
 For discrete observed delays, the naive model uses:
 
-$$P(T_c = n) = F_T(n+1; \theta) - F_T(n; \theta)$$
+$$\Pr(T_c = n) = F_T(n+1; \theta) - F_T(n; \theta)$$
 
 where $F_T$ is the cumulative distribution function of the true delay distribution.
 
