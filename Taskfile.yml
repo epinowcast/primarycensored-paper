@@ -112,42 +112,74 @@ tasks:
     cmds:
       - task --list
 
-  install:
-    desc: Install required R packages
+  renv-init:
+    desc: Initialize renv for dependency management
     cmds:
-      - echo "📦 Installing R packages..."
-      - Rscript -e "if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv', repos = 'https://cloud.r-project.org')"
-      - Rscript -e "if (file.exists('renv.lock')) renv::restore() else message('No renv.lock file found. Skipping restore.')"
-      - echo "✅ Package installation complete"
-
-  install-deps:
-    desc: Install all dependencies needed for the analysis
-    cmds:
-      - echo "📦 Installing project dependencies..."
+      - echo "🔧 Initializing renv..."
       - |
         Rscript -e '
-        repos <- "https://cloud.r-project.org"
-        pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
-                  "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
-                  "primarycensored", "cmdstanr", "fitdistrplus", "profvis", 
-                  "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "webshot2")
-        
-        # Install missing packages
-        missing <- pkgs[!pkgs %in% installed.packages()[,"Package"]]
-        if (length(missing) > 0) {
-          message("Installing: ", paste(missing, collapse = ", "))
-          install.packages(missing, repos = repos)
-        } else {
-          message("All required packages are already installed")
+        if (!requireNamespace("renv", quietly = TRUE)) {
+          install.packages("renv", repos = "https://cloud.r-project.org")
         }
         
-        # Special handling for cmdstanr (needs cmdstan)
-        if ("cmdstanr" %in% pkgs && !cmdstanr::cmdstan_version()) {
-          message("Installing CmdStan...")
-          cmdstanr::install_cmdstan()
+        # Initialize renv if not already done
+        if (!file.exists("renv.lock")) {
+          renv::init(bare = TRUE)
+          message("renv initialized. Use task install to add packages.")
+        } else {
+          message("renv already initialized.")
         }
         '
-      - echo "✅ All dependencies installed successfully"
+
+  install:
+    desc: Install/restore R packages using renv
+    cmds:
+      - echo "📦 Managing R packages with renv..."
+      - |
+        Rscript -e '
+        if (!requireNamespace("renv", quietly = TRUE)) {
+          install.packages("renv", repos = "https://cloud.r-project.org")
+        }
+        
+        if (file.exists("renv.lock")) {
+          # Restore from lockfile
+          message("Restoring packages from renv.lock...")
+          renv::restore(prompt = FALSE)
+        } else {
+          # No lockfile, install required packages
+          message("No renv.lock found. Installing required packages...")
+          
+          pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
+                    "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
+                    "primarycensored", "cmdstanr", "fitdistrplus", "profvis", 
+                    "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "webshot2")
+          
+          # Install packages
+          renv::install(pkgs)
+          
+          # Create initial lockfile
+          message("Creating renv.lock...")
+          renv::snapshot(prompt = FALSE)
+        }
+        
+        # Special handling for cmdstanr
+        if (requireNamespace("cmdstanr", quietly = TRUE)) {
+          tryCatch({
+            cmdstanr::cmdstan_version()
+          }, error = function(e) {
+            message("Installing CmdStan...")
+            cmdstanr::install_cmdstan()
+          })
+        }
+        '
+      - echo "✅ Package management complete"
+
+  renv-update:
+    desc: Update renv lockfile with current package versions
+    cmds:
+      - echo "📸 Updating renv lockfile..."
+      - Rscript -e "renv::snapshot(prompt = FALSE)"
+      - echo "✅ renv.lock updated"
 
   profile:
     desc: Profile the targets pipeline to identify performance bottlenecks

@@ -17,36 +17,37 @@ A repository for the paper "Modelling delays with primary Event Censored Distrib
 
 The analysis uses the `targets` R package for reproducibility. The pipeline is defined in `_targets.Rmd`.
 
-### Requirements
+### Getting Started
 
-```r
-install.packages(c(
-  "targets",
-  "tarchetypes", 
-  "data.table",
-  "ggplot2",
-  "patchwork",
-  "purrr",
-  "here",
-  "rmarkdown"
-))
+Install dependencies using the Task runner:
+
+```bash
+# Install Task from https://taskfile.dev/installation/
+# Then run:
+task install
 ```
+
+This will install all required R packages using renv for reproducible dependency management.
 
 ### Running the Analysis
 
-**Option 1: Using Task (recommended)**
-
-First install Task from https://taskfile.dev/installation/
-
 ```bash
-task           # Run complete pipeline
-task render    # Render _targets.Rmd
-task run       # Run targets pipeline
-task visualize # Create pipeline visualization
-task progress  # Check progress
+# Core workflow
+task           # Run complete pipeline (render + run)
+task render    # Render _targets.Rmd to create pipeline
+task run       # Execute the targets pipeline
+task clean     # Clean all computed results (with confirmation)
+
+# Visualization & monitoring
+task visualize # Create interactive pipeline graph
+task progress  # Check pipeline progress
+
+# Performance analysis
+task profile   # Profile pipeline performance
+# See PROFILING.md for detailed profiling documentation
 ```
 
-**Option 2: Using R directly**
+**Using R directly**
 
 ```r
 # Render the targets document
@@ -59,6 +60,13 @@ targets::tar_make()
 targets::tar_visnetwork()
 ```
 
+### Performance Profiling
+
+See [PROFILING.md](PROFILING.md) for detailed instructions on:
+- Profiling the pipeline to identify bottlenecks
+- Understanding flame graphs and optimization opportunities
+- Exporting pipeline visualizations
+
 ## Paper Compilation
 
 To compile the paper:
@@ -66,3 +74,7 @@ To compile the paper:
 ```bash
 quarto render paper/main.qmd --to pdf
 ```
+
+## Available Tasks
+
+Run `task help` to see all available commands with descriptions.
