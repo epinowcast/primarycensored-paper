@@ -32,27 +32,7 @@ tasks:
     desc: Create a visualization of the pipeline
     deps: [render]
     cmds:
-      - echo "🔍 Creating pipeline visualization..."
-      - |
-        Rscript -e '
-        if (!requireNamespace("visNetwork", quietly = TRUE)) {
-          stop("The visNetwork package is required. Run: task install-deps")
-        }
-        
-        # Create interactive visualization
-        vis <- targets::tar_visnetwork()
-        
-        # Save as HTML
-        htmlwidgets::saveWidget(
-          vis, 
-          "pipeline_visualization.html", 
-          selfcontained = TRUE
-        )
-        
-        message("✅ Pipeline visualization opened in browser")
-        message("   - HTML saved to: pipeline_visualization.html")
-        message("   - To convert to image, use: task visualize-png")
-        '
+      - Rscript scripts/visualize_pipeline.R
 
   visualize-png:
     desc: Convert pipeline visualization to PNG image
@@ -115,75 +95,13 @@ tasks:
   renv-init:
     desc: Initialize renv for dependency management
     cmds:
-      - echo "🔧 Initializing renv..."
-      - |
-        Rscript -e '
-        if (!requireNamespace("renv", quietly = TRUE)) {
-          install.packages("renv", repos = "https://cloud.r-project.org")
-        }
-        
-        # Initialize renv if not already done
-        if (!file.exists("renv.lock")) {
-          renv::init(bare = TRUE)
-          message("renv initialized. Use task install to add packages.")
-        } else {
-          message("renv already initialized.")
-        }
-        '
+      - Rscript scripts/setup_renv.R
 
   install:
     desc: Install/restore R packages using renv
     deps: [renv-init]
     cmds:
-      - echo "📦 Managing R packages with renv..."
-      - |
-        Rscript -e '
-        if (!requireNamespace("renv", quietly = TRUE)) {
-          install.packages("renv", repos = "https://cloud.r-project.org")
-        }
-        
-        if (file.exists("renv.lock")) {
-          # Restore from lockfile
-          message("Restoring packages from renv.lock...")
-          renv::restore(prompt = FALSE)
-        } else {
-          # No lockfile, install required packages
-          message("No renv.lock found. Installing required packages...")
-          
-          # Regular CRAN packages
-          cran_pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
-                         "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
-                         "primarycensored", "fitdistrplus", "profvis", 
-                         "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "webshot2")
-          
-          # Install CRAN packages
-          renv::install(cran_pkgs)
-          
-          # Install cmdstanr from GitHub (pinned to v0.9.0)
-          message("Installing cmdstanr from GitHub (v0.9.0)...")
-          renv::install("stan-dev/cmdstanr@v0.9.0")
-          
-          # Create initial lockfile
-          message("Creating renv.lock...")
-          renv::snapshot(prompt = FALSE)
-        }
-        
-        # Special handling for cmdstanr - install CmdStan v2.36.0
-        if (requireNamespace("cmdstanr", quietly = TRUE)) {
-          tryCatch({
-            version <- cmdstanr::cmdstan_version()
-            message("CmdStan version: ", version)
-          }, error = function(e) {
-            message("Installing CmdStan v2.36.0...")
-            cmdstanr::install_cmdstan(
-              version = "2.36.0",
-              overwrite = TRUE
-            )
-            message("CmdStan v2.36.0 installed successfully")
-          })
-        }
-        '
-      - echo "✅ Package management complete"
+      - Rscript scripts/install_packages.R
 
   renv-update:
     desc: Update renv lockfile with current package versions
@@ -195,51 +113,12 @@ tasks:
   profile:
     desc: Profile the targets pipeline to identify performance bottlenecks
     cmds:
-      - echo "🔍 Profiling targets pipeline..."
-      - |
-        Rscript -e '
-        if (!requireNamespace("profvis", quietly = TRUE)) {
-          stop("The profvis package is required. Run: task install-deps")
-        }
-        
-        message("Running pipeline with profiling enabled...")
-        message("This may take longer than normal execution.")
-        
-        # Run profiling
-        results <- profvis::profvis(
-          targets::tar_make(
-            callr_function = NULL,  # Run in current session
-            use_crew = FALSE,       # Disable parallel for accurate profiling
-            as_job = FALSE          # Run in foreground
-          )
-        )
-        
-        # Save results
-        saveRDS(results, "profile_results.rds")
-        
-        # Save HTML report
-        htmlwidgets::saveWidget(results, "profile_report.html", selfcontained = TRUE)
-        
-        message("\n✅ Profiling complete!")
-        message("   - Interactive viewer opened in browser")
-        message("   - Results saved to: profile_results.rds")
-        message("   - HTML report saved to: profile_report.html")
-        '
+      - Rscript scripts/profile_pipeline.R
 
   profile-view:
     desc: View previously saved profiling results
     cmds:
-      - echo "📊 Loading profiling results..."
-      - |
-        Rscript -e '
-        if (!file.exists("profile_results.rds")) {
-          stop("No profiling results found. Run: task profile")
-        }
-        
-        results <- readRDS("profile_results.rds")
-        print(results, aggregate = TRUE)
-        message("\n✅ Profile viewer opened in browser")
-        '
+      - Rscript scripts/view_profile.R
 
   manuscript:
     desc: Render the manuscript to PDF and HTML
@@ -266,12 +145,4 @@ tasks:
   check-quarto:
     desc: Check if Quarto is installed
     cmds:
-      - |
-        if ! command -v quarto &> /dev/null; then
-          echo "❌ Quarto is not installed"
-          echo "📥 Please install Quarto from: https://quarto.org/docs/get-started/"
-          echo "   Or use: brew install quarto (macOS)"
-          exit 1
-        else
-          echo "✅ Quarto is installed: $(quarto --version)"
-        fi
+      - Rscript scripts/check_quarto.R
