@@ -7,8 +7,7 @@ tar_target(
     .save_data(parameter_recovery, "parameter_recovery.csv", path = "results")
     .save_data(pmf_comparison, "pmf_comparison.csv", path = "results")
     .save_data(runtime_comparison, "runtime_comparison.csv", path = "results")
-    # TODO: Add ebola results when available
-    # .save_data(ebola_model_fits, "ebola_results.csv", path = "results")
+    .save_data(ebola_model_fits, "ebola_results.csv", path = "results")
     
     TRUE
   }

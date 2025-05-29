@@ -19,9 +19,19 @@ tar_target(
         )
       })["elapsed"]
       
-      # Numerical (placeholder - burr distribution)
-      # TODO: Implement when burr distribution is available
-      time_numerical <- NA
+      # Numerical (burr)
+      time_numerical <- system.time({
+        dprimarycensored(
+          x = 0:20,
+          pdist = function(q, ...) pburr(q, ...),
+          pwindow = 1,
+          swindow = 1,
+          D = Inf,
+          dprimary = dunif,
+          shape1 = 3, shape2 = 1.5, scale = 4,
+          use_numerical = TRUE
+        )
+      })["elapsed"]
       
       # Monte Carlo baseline
       time_mc <- system.time({

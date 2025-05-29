@@ -12,60 +12,37 @@ tar_target(
       
       # Analytical PMF (for gamma and lognormal)
       if (dist_info$has_analytical) {
-        if (dist_info$dist_family == "gamma") {
-          analytical_pmf <- dprimarycensored(
-            x = delays,
-            pdist = pgamma,
-            pwindow = 1,
-            swindow = 1,
-            D = Inf,
-            dprimary = dunif,
+        analytical_pmf <- dprimarycensored(
+          x = delays,
+          pdist = get(paste0("p", dist_info$dist_family)),
+          pwindow = 1,
+          swindow = 1,
+          D = Inf,
+          dprimary = dunif,
+          dist_params = list(
             shape = dist_info$param1,
             scale = dist_info$param2
           )
-        } else if (dist_info$dist_family == "lnorm") {
-          analytical_pmf <- dprimarycensored(
-            x = delays,
-            pdist = plnorm,
-            pwindow = 1,
-            swindow = 1,
-            D = Inf,
-            dprimary = dunif,
-            meanlog = dist_info$param1,
-            sdlog = dist_info$param2
-          )
-        }
+        )
       } else {
         analytical_pmf <- rep(NA, length(delays))
       }
       
       # Numerical PMF (all distributions)
-      # For now, we'll use the same calculation as analytical since we don't have burr
-      if(dist_name == "burr") {
-        numerical_pmf <- rep(NA, length(delays))
-      } else if (dist_info$dist_family == "gamma") {
-        numerical_pmf <- dprimarycensored(
-          x = delays,
-          pdist = pgamma,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          shape = dist_info$param1,
-          scale = dist_info$param2
-        )
-      } else if (dist_info$dist_family == "lnorm") {
-        numerical_pmf <- dprimarycensored(
-          x = delays,
-          pdist = plnorm,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          meanlog = dist_info$param1,
-          sdlog = dist_info$param2
-        )
-      }
+      numerical_pmf <- dprimarycensored(
+        x = delays,
+        pdist = get(paste0("p", dist_info$dist_family)),
+        pwindow = 1,
+        swindow = 1,
+        D = Inf,
+        dprimary = dunif,
+        dist_params = if(dist_name == "burr") {
+          list(shape1 = dist_info$param1, shape2 = dist_info$param2, scale = dist_info$param3)
+        } else {
+          list(shape = dist_info$param1, scale = dist_info$param2)
+        },
+        use_numerical = TRUE
+      )
       
       # Get Monte Carlo PMF
       mc_pmf <- monte_carlo_samples %>%

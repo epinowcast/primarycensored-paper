@@ -658,14 +658,13 @@ epidemic data from Sierra Leone</li>
 <span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/globals/globals.R.</span></span></code></pre></div>
 <h1 id="data-preparation">Data Preparation</h1>
 <h2 id="define-distributions">Define distributions</h2>
-<p>We test three distributions with a common mean of 5 days but varying
-variance: - <strong>Gamma</strong> (shape k=5, scale θ=1): Moderate
-variance scenario with analytical solution - <strong>Lognormal</strong>
-(location μ=1.5, scale σ=0.5): Higher variance with analytical
-solution</p>
+<p>We test two distributions with a common mean of 5 days but varying
+variance:</p>
 <ul>
-<li><strong>Burr</strong> (shape1 c=3, shape2 k=1.5, scale λ=4): Highest
-variance with heavy tail, requires numerical integration</li>
+<li><strong>Gamma</strong> (shape k=5, scale θ=1): Moderate variance
+scenario with analytical solution</li>
+<li><strong>Lognormal</strong> (location μ=1.5, scale σ=0.5): Higher
+variance with analytical solution</li>
 </ul>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  distributions,</span>
@@ -683,11 +682,15 @@ variance with heavy tail, requires numerical integration</li>
 <span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/targets/distributions.R.</span></span></code></pre></div>
 <h2 id="define-truncation-scenarios">Define truncation scenarios</h2>
 <p>We test three truncation scenarios representing different stages of
-outbreak analysis: - <strong>No truncation</strong>: Retrospective
-scenario with all events observable - <strong>Moderate
-truncation</strong>: Real-time scenario with 10-day observation window -
-<strong>Severe truncation</strong>: Challenging real-time scenario with
-5-day window</p>
+outbreak analysis:</p>
+<ul>
+<li><strong>No truncation</strong>: Retrospective scenario with all
+events observable</li>
+<li><strong>Moderate truncation</strong>: Real-time scenario with 10-day
+observation window</li>
+<li><strong>Severe truncation</strong>: Challenging real-time scenario
+with 5-day window</li>
+</ul>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">tar_target</span>(</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  truncation_scenarios,</span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>

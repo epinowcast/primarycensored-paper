@@ -69,12 +69,13 @@ tar_option_set(
 
 ## Define distributions
 
-We test three distributions with a common mean of 5 days but varying
-variance: - **Gamma** (shape k=5, scale θ=1): Moderate variance scenario
-with analytical solution - **Lognormal** (location μ=1.5, scale σ=0.5):
-Higher variance with analytical solution  
-- **Burr** (shape1 c=3, shape2 k=1.5, scale λ=4): Highest variance with
-heavy tail, requires numerical integration
+We test two distributions with a common mean of 5 days but varying
+variance:
+
+- **Gamma** (shape k=5, scale θ=1): Moderate variance scenario with
+  analytical solution
+- **Lognormal** (location μ=1.5, scale σ=0.5): Higher variance with
+  analytical solution
 
 ``` r
 tar_target(
@@ -96,10 +97,13 @@ tar_target(
 ## Define truncation scenarios
 
 We test three truncation scenarios representing different stages of
-outbreak analysis: - **No truncation**: Retrospective scenario with all
-events observable - **Moderate truncation**: Real-time scenario with
-10-day observation window - **Severe truncation**: Challenging real-time
-scenario with 5-day window
+outbreak analysis:
+
+- **No truncation**: Retrospective scenario with all events observable
+- **Moderate truncation**: Real-time scenario with 10-day observation
+  window
+- **Severe truncation**: Challenging real-time scenario with 5-day
+  window
 
 ``` r
 tar_target(

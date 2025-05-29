@@ -10,29 +10,14 @@ tar_target(
       
       purrr::map_dfr(sample_sizes, function(n) {
         # Generate large Monte Carlo sample
-        if (dist_info$dist_family == "gamma") {
-          mc_samples <- rprimarycensored(
-            n = n,
-            rdist = rgamma,
-            rprimary = runif,
-            pwindow = 1,
-            swindow = 1,
-            D = Inf,
-            shape = dist_info$param1,
-            scale = dist_info$param2
-          )
-        } else if (dist_info$dist_family == "lnorm") {
-          mc_samples <- rprimarycensored(
-            n = n,
-            rdist = rlnorm,
-            rprimary = runif,
-            pwindow = 1,
-            swindow = 1,
-            D = Inf,
-            meanlog = dist_info$param1,
-            sdlog = dist_info$param2
-          )
-        }
+        mc_samples <- rprimarycensored(
+          n = n,
+          rdist = get(paste0("r", dist_info$dist_family)),
+          rprimary = runif,
+          pwindow = 1,
+          swindow = 1,
+          D = Inf
+        )
         
         # Calculate empirical PMF
         pmf <- table(mc_samples) / n

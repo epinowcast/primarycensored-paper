@@ -21,4 +21,3 @@ htmlwidgets::saveWidget(
 
 message("✅ Pipeline visualization opened in browser")
 message("   - HTML saved to: pipeline_visualization.html")
-message("   - To convert to image, use: task visualize-png")
