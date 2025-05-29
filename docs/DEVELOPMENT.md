@@ -6,7 +6,7 @@ This document provides comprehensive information for developers working on the p
 
 ### Core Structure
 
-```
+```text
 primarycensored-paper/
 ├── paper/                  # Manuscript files
 │   ├── main.qmd           # Main manuscript (Quarto)

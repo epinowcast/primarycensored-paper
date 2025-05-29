@@ -24,3 +24,4 @@ pipeline_visualization.png
 # Compiled Stan models
 stan/*
 !stan/*.stan
+.task

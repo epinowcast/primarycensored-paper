@@ -92,6 +92,7 @@ tar_target(
 ## Define truncation scenarios
 
 We test three truncation scenarios representing different stages of outbreak analysis:
+
 - **No truncation**: Retrospective scenario with all events observable
 - **Moderate truncation**: Real-time scenario with 10-day observation window
 - **Severe truncation**: Challenging real-time scenario with 5-day window

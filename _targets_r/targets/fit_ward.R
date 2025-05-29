@@ -32,6 +32,22 @@ tar_target(
       ward_adjusted_delays <- ward_adjusted_delays[ward_adjusted_delays <= max_allowed]
     }
     
+    # Check if we have any data left
+    if (length(ward_adjusted_delays) == 0) {
+      return(data.frame(
+        scenario_id = simulated_data$scenario_id[1],
+        method = "ward",
+        param1_est = NA,
+        param1_se = NA,
+        param2_est = NA,
+        param2_se = NA,
+        param3_est = NA,
+        param3_se = NA,
+        convergence = 1,
+        loglik = NA
+      ))
+    }
+    
     # Method of moments with Ward adjustments
     if (simulated_data$distribution[1] == "gamma") {
       mean_delay <- mean(ward_adjusted_delays)

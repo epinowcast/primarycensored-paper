@@ -15,23 +15,13 @@ tar_target(
           swindow = 1,
           D = Inf,
           dprimary = dunif,
-          dist_params = list(shape = 5, scale = 1)
+          shape = 5, scale = 1
         )
       })["elapsed"]
       
-      # Numerical (burr)
-      time_numerical <- system.time({
-        dprimarycensored(
-          x = 0:20,
-          pdist = function(q, ...) pburr(q, ...),
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          dist_params = list(shape1 = 3, shape2 = 1.5, scale = 4),
-          use_numerical = TRUE
-        )
-      })["elapsed"]
+      # Numerical (placeholder - burr distribution)
+      # TODO: Implement when burr distribution is available
+      time_numerical <- NA
       
       # Monte Carlo baseline
       time_mc <- system.time({
