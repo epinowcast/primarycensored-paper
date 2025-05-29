@@ -19,21 +19,26 @@ The analysis uses the `targets` R package for reproducibility. The pipeline is d
 
 ### Getting Started
 
-Install dependencies using the Task runner:
+Install Task from https://taskfile.dev/installation/, then run:
 
 ```bash
-# Install Task from https://taskfile.dev/installation/
-# Then run:
-task install
+# Complete workflow (sets up renv + installs deps + runs analysis)
+task
+
+# Or step by step:
+task install   # Initialize renv and install all dependencies
+task render    # Render _targets.Rmd to create pipeline
+task run       # Execute the targets pipeline
 ```
 
-This will install all required R packages using renv for reproducible dependency management.
+The default `task` command automatically handles dependency setup and runs the complete analysis pipeline.
 
-### Running the Analysis
+### Available Commands
 
 ```bash
 # Core workflow
-task           # Run complete pipeline (render + run)
+task           # Complete pipeline (setup + render + run)
+task install   # Setup renv and install dependencies
 task render    # Render _targets.Rmd to create pipeline
 task run       # Execute the targets pipeline
 task clean     # Clean all computed results (with confirmation)

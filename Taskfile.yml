@@ -3,7 +3,7 @@ version: '3'
 tasks:
   default:
     desc: Run the complete analysis pipeline
-    deps: [render]
+    deps: [install, render]
     cmds:
       - task: run
 
@@ -133,6 +133,7 @@ tasks:
 
   install:
     desc: Install/restore R packages using renv
+    deps: [renv-init]
     cmds:
       - echo "📦 Managing R packages with renv..."
       - |
