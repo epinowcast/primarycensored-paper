@@ -12,6 +12,8 @@ tar_target(
         param1_se = NA,
         param2_est = NA,
         param2_se = NA,
+        param3_est = NA,
+        param3_se = NA,
         convergence = 1,
         loglik = NA
       ))
@@ -59,6 +61,8 @@ tar_target(
       param1_se = param1_se,
       param2_est = param2_est,
       param2_se = param2_se,
+      param3_est = NA,
+      param3_se = NA,
       convergence = 0,
       loglik = NA
     )

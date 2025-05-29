@@ -51,6 +51,10 @@ tar_target(
       distribution = params$distribution,
       truncation = params$truncation,
       censoring = params$censoring,
+      # Add columns needed for primarycensored fitting
+      pwindow = params$primary_width,
+      swindow = params$secondary_width,
+      max_delay = ifelse(is.infinite(params$max_delay), 20, params$max_delay),
       true_params = list(param1 = params$param1, param2 = params$param2)
     )
   },

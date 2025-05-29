@@ -11,6 +11,8 @@ tar_target(
       param1_se = 0.2,
       param2_est = 1.1,
       param2_se = 0.1,
+      param3_est = NA,
+      param3_se = NA,
       convergence = 0,
       loglik = -1000
     )
