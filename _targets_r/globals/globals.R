@@ -27,5 +27,5 @@ tar_option_set(
   memory = "transient",  # Free memory after each target completes
   garbage_collection = TRUE,  # Run garbage collection
   controller = controller,  # Use crew for parallel processing
-  repository = "qs2"  # Use qs2 backend for storage (faster serialization)
+  repository = "local"  # Use local backend for storage
 )

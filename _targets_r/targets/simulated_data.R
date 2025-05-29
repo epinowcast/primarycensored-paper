@@ -10,15 +10,30 @@ tar_target(
     growth_rate <- 0.2  # As per manuscript
     prim_times <- cumsum(rexp(n_obs, rate = growth_rate))
     
-    # Generate delays using rprimarycensored
-    delays <- rprimarycensored(
-      n = n_obs,
-      rdist = get(paste0("r", params$dist_family)),
-      rprimary = runif,  # Uniform primary distribution
-      pwindow = params$primary_width,
-      swindow = params$secondary_width,
-      D = params$max_delay
-    )
+    # Generate delays using rprimarycensored with distribution parameters
+    if (params$dist_family == "gamma") {
+      delays <- rprimarycensored(
+        n = n_obs,
+        rdist = rgamma,
+        rprimary = runif,
+        pwindow = params$primary_width,
+        swindow = params$secondary_width,
+        D = params$max_delay,
+        shape = params$param1,
+        scale = params$param2
+      )
+    } else if (params$dist_family == "lnorm") {
+      delays <- rprimarycensored(
+        n = n_obs,
+        rdist = rlnorm,
+        rprimary = runif,
+        pwindow = params$primary_width,
+        swindow = params$secondary_width,
+        D = params$max_delay,
+        meanlog = params$param1,
+        sdlog = params$param2
+      )
+    }
     
     # Create censored observations
     data.frame(

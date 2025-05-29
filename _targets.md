@@ -9,13 +9,14 @@ al. The analysis validates our novel statistical method for handling
 double interval censored data in epidemiological delay distribution
 estimation.
 
-The pipeline is structured to mirror the manuscript sections: 1.
-**Numerical validation** - Comparing our analytical and numerical
-solutions against Monte Carlo simulations 2. **Parameter recovery** -
-Evaluating bias and accuracy across different censoring and truncation
-scenarios  
-3. **Case study** - Applying methods to real Ebola epidemic data from
-Sierra Leone
+The pipeline is structured to mirror the manuscript sections:
+
+1.  **Numerical validation** - Comparing our analytical and numerical
+    solutions against Monte Carlo simulations
+2.  **Parameter recovery** - Evaluating bias and accuracy across
+    different censoring and truncation scenarios  
+3.  **Case study** - Applying methods to real Ebola epidemic data from
+    Sierra Leone
 
 # Setup
 

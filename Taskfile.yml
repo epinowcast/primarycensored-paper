@@ -3,7 +3,7 @@ version: '3'
 tasks:
   default:
     desc: Run the complete analysis pipeline
-    deps: [install, render]
+    deps: [render]
     cmds:
       - task: run
 

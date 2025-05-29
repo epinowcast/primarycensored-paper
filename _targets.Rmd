@@ -13,6 +13,7 @@ This reproducible pipeline implements the complete analysis for "Modelling delay
 The analysis validates our novel statistical method for handling double interval censored data in epidemiological delay distribution estimation.
 
 The pipeline is structured to mirror the manuscript sections:
+
 1. **Numerical validation** - Comparing our analytical and numerical solutions against Monte Carlo simulations
 2. **Parameter recovery** - Evaluating bias and accuracy across different censoring and truncation scenarios  
 3. **Case study** - Applying methods to real Ebola epidemic data from Sierra Leone
@@ -67,10 +68,10 @@ tar_option_set(
 
 ## Define distributions
 
-We test three distributions with a common mean of 5 days but varying variance:
+We test two distributions with a common mean of 5 days but varying variance:
+
 - **Gamma** (shape k=5, scale θ=1): Moderate variance scenario with analytical solution
-- **Lognormal** (location μ=1.5, scale σ=0.5): Higher variance with analytical solution  
-- **Burr** (shape1 c=3, shape2 k=1.5, scale λ=4): Highest variance with heavy tail, requires numerical integration
+- **Lognormal** (location μ=1.5, scale σ=0.5): Higher variance with analytical solution
 
 ```{targets distributions}
 tar_target(
