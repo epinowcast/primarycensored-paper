@@ -19,9 +19,8 @@ tar_target(
             pwindow = 1,
             swindow = 1,
             D = Inf,
-            dprimary = dunif,
             shape = dist_info$param1,
-            scale = dist_info$param2
+            rate = 1/dist_info$param2  # Convert scale to rate
           )
         } else if (dist_name == "lognormal") {
           analytical_pmf <- dprimarycensored(
@@ -30,7 +29,6 @@ tar_target(
             pwindow = 1,
             swindow = 1,
             D = Inf,
-            dprimary = dunif,
             meanlog = dist_info$param1,
             sdlog = dist_info$param2
           )
@@ -48,9 +46,8 @@ tar_target(
           pwindow = 1,
           swindow = 1,
           D = Inf,
-          dprimary = dunif,
           shape = dist_info$param1,
-          scale = dist_info$param2
+          rate = 1/dist_info$param2  # Convert scale to rate
         )
       } else if (dist_name == "lognormal") {
         numerical_pmf <- dprimarycensored(
@@ -59,7 +56,6 @@ tar_target(
           pwindow = 1,
           swindow = 1,
           D = Inf,
-          dprimary = dunif,
           meanlog = dist_info$param1,
           sdlog = dist_info$param2
         )

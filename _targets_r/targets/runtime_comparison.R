@@ -14,9 +14,8 @@ tar_target(
           pwindow = 1,
           swindow = 1,
           D = Inf,
-          dprimary = dunif,
           shape = 5, 
-          scale = 1
+          rate = 1  # Use rate parameterization
         )
       })["elapsed"]
       
@@ -29,9 +28,8 @@ tar_target(
           pwindow = 1,
           swindow = 1,
           D = Inf,
-          dprimary = dunif,
           shape = 5,
-          scale = 1
+          rate = 1  # Use rate parameterization
         )
       })["elapsed"]
       
@@ -45,7 +43,7 @@ tar_target(
           swindow = 1,
           D = Inf,
           shape = 5, 
-          scale = 1
+          rate = 1  # Use rate parameterization
         )
       })["elapsed"]
       

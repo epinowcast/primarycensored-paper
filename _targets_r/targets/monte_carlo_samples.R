@@ -19,7 +19,7 @@ tar_target(
             swindow = 1,
             D = Inf,
             shape = dist_info$param1,
-            scale = dist_info$param2
+            rate = 1/dist_info$param2  # Convert scale to rate
           )
         } else if (dist_name == "lognormal") {
           mc_samples <- rprimarycensored(
