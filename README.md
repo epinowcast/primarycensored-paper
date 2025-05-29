@@ -50,6 +50,11 @@ task progress  # Check pipeline progress
 # Performance analysis
 task profile   # Profile pipeline performance
 # See PROFILING.md for detailed profiling documentation
+
+# Manuscript rendering
+task manuscript     # Render manuscript to both PDF and HTML
+task manuscript-pdf # Render manuscript to PDF only
+task manuscript-html # Render manuscript to HTML only
 ```
 
 **Using R directly**
@@ -72,12 +77,22 @@ See [PROFILING.md](PROFILING.md) for detailed instructions on:
 - Understanding flame graphs and optimization opportunities
 - Exporting pipeline visualizations
 
-## Paper Compilation
+## Manuscript Compilation
 
-To compile the paper:
+Using Task (recommended):
 
 ```bash
-quarto render paper/main.qmd --to pdf
+task manuscript     # Render to both PDF and HTML
+task manuscript-pdf # PDF only
+task manuscript-html # HTML only
+```
+
+Using Quarto directly:
+
+```bash
+cd paper
+quarto render main.qmd --to pdf
+quarto render main.qmd --to html
 ```
 
 ## Available Tasks

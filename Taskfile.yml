@@ -150,26 +150,36 @@ tasks:
           # No lockfile, install required packages
           message("No renv.lock found. Installing required packages...")
           
-          pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
-                    "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
-                    "primarycensored", "cmdstanr", "fitdistrplus", "profvis", 
-                    "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "webshot2")
+          # Regular CRAN packages
+          cran_pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
+                         "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
+                         "primarycensored", "fitdistrplus", "profvis", 
+                         "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "webshot2")
           
-          # Install packages
-          renv::install(pkgs)
+          # Install CRAN packages
+          renv::install(cran_pkgs)
+          
+          # Install cmdstanr from GitHub (pinned to v0.9.0)
+          message("Installing cmdstanr from GitHub (v0.9.0)...")
+          renv::install("stan-dev/cmdstanr@v0.9.0")
           
           # Create initial lockfile
           message("Creating renv.lock...")
           renv::snapshot(prompt = FALSE)
         }
         
-        # Special handling for cmdstanr
+        # Special handling for cmdstanr - install CmdStan v2.36.0
         if (requireNamespace("cmdstanr", quietly = TRUE)) {
           tryCatch({
-            cmdstanr::cmdstan_version()
+            version <- cmdstanr::cmdstan_version()
+            message("CmdStan version: ", version)
           }, error = function(e) {
-            message("Installing CmdStan...")
-            cmdstanr::install_cmdstan()
+            message("Installing CmdStan v2.36.0...")
+            cmdstanr::install_cmdstan(
+              version = "2.36.0",
+              overwrite = TRUE
+            )
+            message("CmdStan v2.36.0 installed successfully")
           })
         }
         '
@@ -230,3 +240,38 @@ tasks:
         print(results, aggregate = TRUE)
         message("\n✅ Profile viewer opened in browser")
         '
+
+  manuscript:
+    desc: Render the manuscript to PDF and HTML
+    deps: [manuscript-html, manuscript-pdf]
+    cmds:
+      - echo "✅ Manuscript rendered successfully"
+
+  manuscript-pdf:
+    desc: Render the manuscript to PDF only
+    deps: [check-quarto]
+    cmds:
+      - echo "📄 Rendering manuscript to PDF..."
+      - cd paper && quarto render main.qmd --to pdf
+      - echo "✅ PDF rendered at paper/main.pdf"
+
+  manuscript-html:
+    desc: Render the manuscript to HTML only
+    deps: [check-quarto]
+    cmds:
+      - echo "📄 Rendering manuscript to HTML..."
+      - cd paper && quarto render main.qmd --to html
+      - echo "✅ HTML rendered at paper/main.html"
+
+  check-quarto:
+    desc: Check if Quarto is installed
+    cmds:
+      - |
+        if ! command -v quarto &> /dev/null; then
+          echo "❌ Quarto is not installed"
+          echo "📥 Please install Quarto from: https://quarto.org/docs/get-started/"
+          echo "   Or use: brew install quarto (macOS)"
+          exit 1
+        else
+          echo "✅ Quarto is installed: $(quarto --version)"
+        fi
