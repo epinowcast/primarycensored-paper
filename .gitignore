@@ -1,5 +1,6 @@
 primarycensored
 resources
+*.html
 paper/*.html
 paper/*.pdf
 paper/*.docx
