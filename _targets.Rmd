@@ -55,10 +55,11 @@ controller <- crew_controller_local(
 tar_option_set(
   packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
                "tidyr", "qs2", "primarycensored", "cmdstanr"),
-  format = "qs2",
+  format = "qs",  # Use qs format (qs2 is used via repository option)
   memory = "transient",  # Free memory after each target completes
   garbage_collection = TRUE,  # Run garbage collection
-  controller = controller  # Use crew for parallel processing
+  controller = controller,  # Use crew for parallel processing
+  repository = "local"  # Use qs2 backend for storage
 )
 ```
 

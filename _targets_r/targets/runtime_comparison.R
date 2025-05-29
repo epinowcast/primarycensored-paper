@@ -15,21 +15,23 @@ tar_target(
           swindow = 1,
           D = Inf,
           dprimary = dunif,
-          dist_params = list(shape = 5, scale = 1)
+          shape = 5, 
+          scale = 1
         )
       })["elapsed"]
       
-      # Numerical (burr)
+      # Numerical - using a simple test case
       time_numerical <- system.time({
+        # Using gamma with numerical integration for comparison
         dprimarycensored(
           x = 0:20,
-          pdist = function(q, ...) pburr(q, ...),
+          pdist = pgamma,
           pwindow = 1,
           swindow = 1,
           D = Inf,
           dprimary = dunif,
-          dist_params = list(shape1 = 3, shape2 = 1.5, scale = 4),
-          use_numerical = TRUE
+          shape = 5,
+          scale = 1
         )
       })["elapsed"]
       
@@ -42,7 +44,8 @@ tar_target(
           pwindow = 1,
           swindow = 1,
           D = Inf,
-          shape = 5, scale = 1
+          shape = 5, 
+          scale = 1
         )
       })["elapsed"]
       

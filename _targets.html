@@ -629,19 +629,31 @@ data from Sierra Leone</p>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="fu">library</span>(here)</span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a></span>
-<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># Source all R functions</span></span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>functions <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="fu">here</span>(<span class="st">&quot;R&quot;</span>), <span class="at">full.names =</span> <span class="cn">TRUE</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.R$&quot;</span>)</span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="fu">walk</span>(functions, source)</span>
-<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="fu">rm</span>(<span class="st">&quot;functions&quot;</span>)</span>
-<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a></span>
-<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co"># Set targets options</span></span>
-<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="fu">tar_option_set</span>(</span>
-<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>  <span class="at">packages =</span> <span class="fu">c</span>(<span class="st">&quot;data.table&quot;</span>, <span class="st">&quot;ggplot2&quot;</span>, <span class="st">&quot;patchwork&quot;</span>, <span class="st">&quot;purrr&quot;</span>, <span class="st">&quot;here&quot;</span>, <span class="st">&quot;dplyr&quot;</span>, </span>
-<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>               <span class="st">&quot;tidyr&quot;</span>, <span class="st">&quot;qs2&quot;</span>, <span class="st">&quot;primarycensored&quot;</span>, <span class="st">&quot;cmdstanr&quot;</span>),</span>
-<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;qs2&quot;</span></span>
-<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>)</span>
-<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/globals/globals.R.</span></span></code></pre></div>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">library</span>(crew)</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="co"># Source all R functions</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>functions <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="fu">here</span>(<span class="st">&quot;R&quot;</span>), <span class="at">full.names =</span> <span class="cn">TRUE</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.R$&quot;</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="fu">walk</span>(functions, source)</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="fu">rm</span>(<span class="st">&quot;functions&quot;</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co"># Set up crew controller for parallel processing</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>controller <span class="ot">&lt;-</span> <span class="fu">crew_controller_local</span>(</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>  <span class="at">name =</span> <span class="st">&quot;primarycensored_crew&quot;</span>,</span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>  <span class="at">workers =</span> parallel<span class="sc">::</span><span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>,  <span class="co"># Leave one core free</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>  <span class="at">seconds_idle =</span> <span class="dv">30</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>)</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co"># Set targets options</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="fu">tar_option_set</span>(</span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>  <span class="at">packages =</span> <span class="fu">c</span>(<span class="st">&quot;data.table&quot;</span>, <span class="st">&quot;ggplot2&quot;</span>, <span class="st">&quot;patchwork&quot;</span>, <span class="st">&quot;purrr&quot;</span>, <span class="st">&quot;here&quot;</span>, <span class="st">&quot;dplyr&quot;</span>, </span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>               <span class="st">&quot;tidyr&quot;</span>, <span class="st">&quot;qs2&quot;</span>, <span class="st">&quot;primarycensored&quot;</span>, <span class="st">&quot;cmdstanr&quot;</span>),</span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>  <span class="at">format =</span> <span class="st">&quot;qs&quot;</span>,  <span class="co"># Use qs format (qs2 is used via repository option)</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>  <span class="at">memory =</span> <span class="st">&quot;transient&quot;</span>,  <span class="co"># Free memory after each target completes</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>  <span class="at">garbage_collection =</span> <span class="cn">TRUE</span>,  <span class="co"># Run garbage collection</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>  <span class="at">controller =</span> controller,  <span class="co"># Use crew for parallel processing</span></span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a>  <span class="at">repository =</span> <span class="st">&quot;local&quot;</span>  <span class="co"># Use qs2 backend for storage</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a>)</span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a><span class="co">#&gt; Establish _targets.R and _targets_r/globals/globals.R.</span></span></code></pre></div>
 <h1 id="data-preparation">Data Preparation</h1>
 <h2 id="define-distributions">Define distributions</h2>
 <p>We test three distributions with a common mean of 5 days but varying

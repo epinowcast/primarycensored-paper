@@ -59,15 +59,14 @@ tasks:
       - Rscript -e "renv::restore()"
 
   profile:
-    desc: Profile the targets pipeline to identify bottlenecks
+    desc: Profile the targets pipeline with profvis to identify bottlenecks
     cmds:
-      - echo "Profiling targets pipeline..."
-      - Rscript -e "targets::tar_make(callr_function = NULL, reporter = 'performance')"
-      - echo "Check _targets/user/performance.csv for profiling results"
+      - echo "Profiling targets pipeline with profvis..."
+      - Rscript -e "library(profvis); results <- profvis(targets::tar_make(callr_function = NULL, use_crew = FALSE, as_job = FALSE)); saveRDS(results, 'profile_results.rds'); print(results, aggregate = TRUE)"
+      - echo "Profile results saved to profile_results.rds"
 
-  profile-viz:
-    desc: Visualize profiling results
-    deps: [profile]
+  profile-proffer:
+    desc: Profile the targets pipeline with proffer
     cmds:
-      - echo "Creating profiling visualization..."
-      - Rscript -e "library(targets); tar_performance(); ggsave('figures/targets_performance.pdf', width = 12, height = 8)"
+      - echo "Profiling targets pipeline with proffer..."
+      - Rscript -e "if (!requireNamespace('proffer', quietly = TRUE)) install.packages('proffer'); proffer::pprof(targets::tar_make(callr_function = NULL, use_crew = FALSE, as_job = FALSE))"

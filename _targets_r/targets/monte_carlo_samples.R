@@ -9,15 +9,41 @@ tar_target(
       dist_info <- distributions[distributions$dist_name == dist_name, ]
       
       purrr::map_dfr(sample_sizes, function(n) {
-        # Generate large Monte Carlo sample
-        mc_samples <- rprimarycensored(
-          n = n,
-          rdist = get(paste0("r", dist_info$dist_family)),
-          rprimary = runif,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf
-        )
+        # Generate large Monte Carlo sample based on distribution type
+        if (dist_name == "gamma") {
+          mc_samples <- rprimarycensored(
+            n = n,
+            rdist = rgamma,
+            rprimary = runif,
+            pwindow = 1,
+            swindow = 1,
+            D = Inf,
+            shape = dist_info$param1,
+            scale = dist_info$param2
+          )
+        } else if (dist_name == "lognormal") {
+          mc_samples <- rprimarycensored(
+            n = n,
+            rdist = rlnorm,
+            rprimary = runif,
+            pwindow = 1,
+            swindow = 1,
+            D = Inf,
+            meanlog = dist_info$param1,
+            sdlog = dist_info$param2
+          )
+        } else {
+          # For Burr distribution, skip for now
+          return(data.frame(
+            distribution = dist_name,
+            sample_size = n,
+            delay = NA,
+            probability = NA
+          ))
+        }
+        
+        # Round to integer delays for PMF
+        mc_samples <- round(mc_samples)
         
         # Calculate empirical PMF
         pmf <- table(mc_samples) / n

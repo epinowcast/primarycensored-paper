@@ -16,3 +16,5 @@ _targets/
 _targets.html
 figures/*.pdf
 data/results/*.csv
+profile_results.rds
+*.prof

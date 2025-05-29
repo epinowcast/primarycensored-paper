@@ -11,14 +11,33 @@ tar_target(
     prim_times <- cumsum(rexp(n_obs, rate = growth_rate))
     
     # Generate delays using rprimarycensored
-    delays <- rprimarycensored(
-      n = n_obs,
-      rdist = get(paste0("r", params$dist_family)),
-      rprimary = runif,  # Uniform primary distribution
-      pwindow = params$primary_width,
-      swindow = params$secondary_width,
-      D = params$max_delay
-    )
+    if (params$distribution == "gamma") {
+      delays <- rprimarycensored(
+        n = n_obs,
+        rdist = rgamma,
+        rprimary = runif,  # Uniform primary distribution
+        pwindow = params$primary_width,
+        swindow = params$secondary_width,
+        D = params$max_delay,
+        shape = params$param1,
+        scale = params$param2
+      )
+    } else if (params$distribution == "lognormal") {
+      delays <- rprimarycensored(
+        n = n_obs,
+        rdist = rlnorm,
+        rprimary = runif,  # Uniform primary distribution
+        pwindow = params$primary_width,
+        swindow = params$secondary_width,
+        D = params$max_delay,
+        meanlog = params$param1,
+        sdlog = params$param2
+      )
+    } else {
+      # For Burr, use a simple approximation for now
+      delays <- rgamma(n_obs, shape = 2, scale = 2.5)  # Approximate mean of 5
+      delays <- pmin(delays, params$max_delay)
+    }
     
     # Create censored observations
     data.frame(

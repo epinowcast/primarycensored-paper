@@ -1,13 +1,41 @@
 tar_target(
   saved_figures,
   {
+    # Create figures directory if it doesn't exist
+    if (!dir.exists(here("figures"))) {
+      dir.create(here("figures"))
+    }
+    
     # Main figures
-    .save_plot(figure1_numerical, "figure1_numerical_validation.pdf", width = 12, height = 4)
-    .save_plot(figure2_parameters, "figure2_parameter_recovery.pdf", width = 12, height = 4)
-    .save_plot(figure3_ebola, "figure3_ebola_case_study.pdf", width = 12, height = 4)
+    ggplot2::ggsave(
+      filename = here("figures", "figure1_numerical_validation.pdf"),
+      plot = figure1_numerical,
+      width = 12,
+      height = 4,
+      units = "in"
+    )
     
-    # Supplementary figures would be added here
+    ggplot2::ggsave(
+      filename = here("figures", "figure2_parameter_recovery.pdf"),
+      plot = figure2_parameters,
+      width = 12,
+      height = 4,
+      units = "in"
+    )
     
-    TRUE
+    ggplot2::ggsave(
+      filename = here("figures", "figure3_ebola_case_study.pdf"),
+      plot = figure3_ebola,
+      width = 12,
+      height = 4,
+      units = "in"
+    )
+    
+    # Return paths of saved figures
+    c(
+      "figures/figure1_numerical_validation.pdf",
+      "figures/figure2_parameter_recovery.pdf",
+      "figures/figure3_ebola_case_study.pdf"
+    )
   }
 )
