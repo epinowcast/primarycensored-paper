@@ -72,14 +72,14 @@ targets::tar_visnetwork()
 
 ### Performance Profiling
 
-See [PROFILING.md](PROFILING.md) for detailed instructions on:
+See [docs/PROFILING.md](docs/PROFILING.md) for detailed instructions on:
 - Profiling the pipeline to identify bottlenecks
 - Understanding flame graphs and optimization opportunities
 - Exporting pipeline visualizations
 
 ## Development
 
-For developers working on this repository, see [DEVELOPMENT.md](DEVELOPMENT.md) for:
+For developers working on this repository, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for:
 - Detailed repository architecture and structure
 - Development workflows and best practices
 - Adding new analysis components

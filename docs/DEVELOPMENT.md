@@ -50,12 +50,16 @@ primarycensored-paper/
 │   ├── view_profile.R     # Profile visualisation
 │   └── visualize_pipeline.R # Pipeline graph
 │
+├── docs/                  # Documentation
+│   ├── README.md          # Documentation index
+│   ├── DEVELOPMENT.md     # This file - comprehensive developer guide
+│   └── PROFILING.md       # Performance analysis guide
+│
 ├── _targets.R             # Main targets configuration
 ├── _targets.Rmd           # Literate pipeline documentation
 ├── _targets.md            # Rendered pipeline documentation
 ├── Taskfile.yml           # Task runner configuration
 ├── CLAUDE.md              # AI assistant instructions
-├── PROFILING.md           # Performance analysis guide
 └── renv.lock              # Package dependency lock file
 ```
 
@@ -251,5 +255,3 @@ Dependencies are managed using [`renv`](https://rstudio.github.io/renv/) for:
 4. **Test thoroughly** before submitting PR
 5. **Use UK English** in all documentation
 6. **Follow line length limits** (80 characters)
-
-For detailed style guidelines, see `CLAUDE.md`.
