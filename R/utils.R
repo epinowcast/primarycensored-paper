@@ -6,23 +6,65 @@
 #' @param width Numeric width in inches
 #' @param height Numeric height in inches
 #' @param ... Additional arguments passed to ggsave
+#' @return The full file path where the plot was saved, or NULL if saving failed
 .save_plot <- function(plot, filename, width = 8, height = 6, ...) {
-  ggplot2::ggsave(
-    filename = here::here("figures", filename),
-    plot = plot,
-    width = width,
-    height = height,
-    ...
-  )
+  # Ensure figures directory exists
+  figures_dir <- here::here("figures")
+  if (!dir.exists(figures_dir)) {
+    dir.create(figures_dir, recursive = TRUE)
+  }
+  
+  # Construct full file path
+  file_path <- file.path(figures_dir, filename)
+  
+  # Try to save the plot with error handling
+  tryCatch({
+    ggplot2::ggsave(
+      filename = file_path,
+      plot = plot,
+      width = width,
+      height = height,
+      ...
+    )
+    message("Plot saved successfully to: ", file_path)
+    return(file_path)
+  }, error = function(e) {
+    warning("Failed to save plot '", filename, "': ", e$message)
+    return(NULL)
+  })
 }
 
 #' Save a data frame as CSV
 #' @param data A data frame
 #' @param filename Character string for the filename
 #' @param path Character string for subdirectory in data/
+#' @return The full file path where the data was saved
 .save_data <- function(data, filename, path = "processed") {
+  # Validate inputs
+  if (!is.data.frame(data) && !data.table::is.data.table(data)) {
+    stop("'data' must be a data frame or data.table")
+  }
+  
+  if (!is.character(filename) || length(filename) != 1 || 
+      nchar(trimws(filename)) == 0) {
+    stop("'filename' must be a non-empty character string")
+  }
+  
+  # Construct full file path
+  dir_path <- here::here("data", path)
+  file_path <- file.path(dir_path, filename)
+  
+  # Create directory if it doesn't exist
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+  }
+  
+  # Save the data
   data.table::fwrite(
     x = data,
-    file = here::here("data", path, filename)
+    file = file_path
   )
+  
+  # Return the full file path
+  return(file_path)
 }

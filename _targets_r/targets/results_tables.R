@@ -19,13 +19,21 @@ tar_target(
       )
     
     # Table 3: Computational performance
+    # First get the Monte Carlo runtime at 10k sample size for comparison
+    mc_runtime_10k <- runtime_comparison |>
+      dplyr::filter(method == "monte_carlo", sample_size == 10000) |>
+      dplyr::pull(runtime_seconds) |>
+      dplyr::first()
+    
     table3_performance <- runtime_comparison |>
+      dplyr::filter(sample_size == 10000) |>
       dplyr::group_by(method) |>
       dplyr::summarise(
-        runtime_10k = runtime_seconds[sample_size == 10000],
-        relative_to_mc = runtime_seconds[sample_size == 10000] / 
-                         runtime_seconds[method == "monte_carlo" & sample_size == 10000],
+        runtime_10k = dplyr::first(runtime_seconds),
         .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        relative_to_mc = runtime_10k / mc_runtime_10k
       )
     
     list(
