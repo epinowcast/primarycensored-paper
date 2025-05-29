@@ -1,5 +1,6 @@
 primarycensored
 resources
+*.html
 paper/*.html
 paper/*.pdf
 paper/*.docx
@@ -11,4 +12,29 @@ paper/*.xlsx
 paper/main_files
 primarycensored-paper.code-workspace
 claude.md
+epidist-paper
+_targets/
+_targets.html
+figures/*.pdf
+data/results/*.csv
+profile_results.rds
+profile_report.html
+*.prof
+pipeline_visualization.html
+pipeline_visualization.png
+# Compiled Stan models
+stan/*
+!stan/*.stan
+.task/*
+.task/checksum/*
+paper/main.aux
+paper/main.log
+paper/main.tex
+paper/main.bbl
+paper/main.blg
+paper/main.out
+paper/main.toc
+paper/main.lof
+paper/main.lot
+paper/main.fls
 .vscode/settings.json

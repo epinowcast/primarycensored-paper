@@ -1,0 +1,119 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Run the complete analysis pipeline
+    deps: [render]
+    cmds:
+      - task: run
+
+  render:
+    desc: Render the targets Rmarkdown document
+    sources:
+      - _targets.Rmd
+      - R/**/*.R
+    generates:
+      - _targets.md
+    cmds:
+      - echo "Rendering _targets.Rmd..."
+      - Rscript -e "rmarkdown::render('_targets.Rmd')"
+
+  run:
+    desc: Run the targets pipeline
+    sources:
+      - _targets.R
+      - R/**/*.R
+      - _targets_r/**/*.R
+    cmds:
+      - echo "Running targets pipeline..."
+      - Rscript -e "targets::tar_make()"
+
+  visualize:
+    desc: Create a visualization of the pipeline
+    deps: [render]
+    cmds:
+      - Rscript scripts/visualize_pipeline.R
+
+  progress:
+    desc: Show pipeline progress
+    cmds:
+      - echo "Checking pipeline progress..."
+      - Rscript -e "targets::tar_progress()"
+
+  clean:
+    desc: Clean targets cache (use with caution!)
+    interactive: true
+    cmds:
+      - |
+        echo "⚠️  WARNING: This will delete all computed results in _targets/"
+        echo "   This action cannot be undone."
+        echo ""
+        printf "   Are you sure you want to continue? [y/N] "
+        read -r REPLY
+        if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
+          echo "🗑️  Removing _targets/ directory..."
+          rm -rf _targets/
+          echo "✅ Targets cache cleaned successfully"
+        else
+          echo "❌ Clean operation cancelled"
+        fi
+
+  help:
+    desc: Show available commands
+    cmds:
+      - task --list
+
+  renv-init:
+    desc: Initialize renv for dependency management
+    cmds:
+      - Rscript scripts/setup_renv.R
+
+  install:
+    desc: Install/restore R packages using renv
+    deps: [renv-init]
+    cmds:
+      - Rscript scripts/install_packages.R
+
+  renv-update:
+    desc: Update renv lockfile with current package versions
+    cmds:
+      - echo "📸 Updating renv lockfile..."
+      - Rscript -e "renv::snapshot(prompt = FALSE)"
+      - echo "✅ renv.lock updated"
+
+  profile:
+    desc: Profile the targets pipeline to identify performance bottlenecks
+    cmds:
+      - Rscript scripts/profile_pipeline.R
+
+  profile-view:
+    desc: View previously saved profiling results
+    cmds:
+      - Rscript scripts/view_profile.R
+
+  manuscript:
+    desc: Render the manuscript to PDF and HTML
+    deps: [manuscript-html, manuscript-pdf]
+    cmds:
+      - echo "✅ Manuscript rendered successfully"
+
+  manuscript-pdf:
+    desc: Render the manuscript to PDF only
+    deps: [check-quarto]
+    cmds:
+      - echo "📄 Rendering manuscript to PDF..."
+      - cd paper && quarto render main.qmd --to pdf
+      - echo "✅ PDF rendered at paper/main.pdf"
+
+  manuscript-html:
+    desc: Render the manuscript to HTML only
+    deps: [check-quarto]
+    cmds:
+      - echo "📄 Rendering manuscript to HTML..."
+      - cd paper && quarto render main.qmd --to html
+      - echo "✅ HTML rendered at paper/main.html"
+
+  check-quarto:
+    desc: Check if Quarto is installed
+    cmds:
+      - Rscript scripts/check_quarto.R
