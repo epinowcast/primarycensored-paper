@@ -13,6 +13,7 @@ rm("functions")
 
 # Set targets options
 tar_option_set(
-  packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", "tidyr"),
-  format = "rds"
+  packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
+               "tidyr", "qs2", "primarycensored", "cmdstanr"),
+  format = "qs2"
 )

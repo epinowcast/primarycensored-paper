@@ -5,8 +5,8 @@ tar_target(
     # Assume gamma distribution as per manuscript
     
     list(
-      window_id = rep(ebola_analysis_data$window_id, each = 2),
-      analysis_type = rep(c("real-time", "retrospective"), times = nrow(ebola_analysis_data)),
+      window_id = ebola_analysis_data$window_id,
+      analysis_type = rep(c("real-time", "retrospective"), each = nrow(ebola_analysis_data)),
       primarycensored = list(shape = 2.5, scale = 3.2),
       naive = list(shape = 2.1, scale = 2.8),
       ward = list(shape = 2.6, scale = 3.3),

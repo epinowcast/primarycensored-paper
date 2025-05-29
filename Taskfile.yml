@@ -3,22 +3,34 @@ version: '3'
 tasks:
   default:
     desc: Run the complete analysis pipeline
-    deps: [render, run]
+    deps: [render]
+    cmds:
+      - task: run
 
   render:
     desc: Render the targets Rmarkdown document
+    sources:
+      - _targets.Rmd
+      - R/**/*.R
+    generates:
+      - _targets.md
     cmds:
       - echo "Rendering _targets.Rmd..."
       - Rscript -e "rmarkdown::render('_targets.Rmd')"
 
   run:
     desc: Run the targets pipeline
+    sources:
+      - _targets.R
+      - R/**/*.R
+      - _targets_r/**/*.R
     cmds:
       - echo "Running targets pipeline..."
       - Rscript -e "targets::tar_make()"
 
   visualize:
     desc: Create a visualization of the pipeline
+    deps: [render]
     cmds:
       - echo "Creating pipeline visualization..."
       - Rscript -e "targets::tar_visnetwork()"
@@ -39,3 +51,23 @@ tasks:
     desc: Show available commands
     cmds:
       - task --list
+
+  install:
+    desc: Install required R packages
+    cmds:
+      - Rscript -e "if (!requireNamespace('renv', quietly = TRUE)) install.packages('renv')"
+      - Rscript -e "renv::restore()"
+
+  profile:
+    desc: Profile the targets pipeline to identify bottlenecks
+    cmds:
+      - echo "Profiling targets pipeline..."
+      - Rscript -e "targets::tar_make(callr_function = NULL, reporter = 'performance')"
+      - echo "Check _targets/user/performance.csv for profiling results"
+
+  profile-viz:
+    desc: Visualize profiling results
+    deps: [profile]
+    cmds:
+      - echo "Creating profiling visualization..."
+      - Rscript -e "library(targets); tar_performance(); ggsave('figures/targets_performance.pdf', width = 12, height = 8)"

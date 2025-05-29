@@ -4,19 +4,17 @@ tar_target(
     # Prepare data for each observation window
     # Real implementation would handle date calculations properly
     
-    # Compute minimum symptom onset date once to avoid repeated calculations
-    min_onset_date <- min(ebola_data$symptom_onset_date)
-    
-    # Use vectorized operations instead of rowwise
     observation_windows |>
+      dplyr::rowwise() |>
       dplyr::mutate(
-        data = purrr::map2(start_day, end_day, function(start, end) {
+        data = list(
           ebola_data |>
             dplyr::filter(
-              symptom_onset_date >= min_onset_date + start,
-              symptom_onset_date <= min_onset_date + end  # Using inclusive interval
+              symptom_onset_date >= min(ebola_data$symptom_onset_date) + start_day,
+              symptom_onset_date < min(ebola_data$symptom_onset_date) + end_day
             )
-        })
-      )
+        )
+      ) |>
+      dplyr::ungroup()
   }
 )

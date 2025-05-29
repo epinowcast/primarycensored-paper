@@ -17,26 +17,6 @@ scenarios
 3. **Case study** - Applying methods to real Ebola epidemic data from
 Sierra Leone
 
-## Using this pipeline
-
-To render this document:
-
-``` r
-rmarkdown::render("_targets.Rmd")
-```
-
-To run the complete pipeline:
-
-``` r
-targets::tar_make()
-```
-
-To visualize the pipeline:
-
-``` r
-targets::tar_visnetwork()
-```
-
 # Setup
 
 Load required packages and initialize the targets workflow.
@@ -65,8 +45,9 @@ rm("functions")
 
 # Set targets options
 tar_option_set(
-  packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", "tidyr"),
-  format = "rds"
+  packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
+               "tidyr", "qs2", "primarycensored", "cmdstanr"),
+  format = "qs2"
 )
 #> Establish _targets.R and _targets_r/globals/globals.R.
 ```
@@ -75,10 +56,9 @@ tar_option_set(
 
 ## Define distributions
 
-Following the manuscript (Methods lines 259-264), we test three
-distributions with a common mean of 5 days but varying variance: -
-**Gamma** (shape k=5, scale θ=1): Moderate variance scenario with
-analytical solution - **Lognormal** (location μ=1.5, scale σ=0.5):
+We test three distributions with a common mean of 5 days but varying
+variance: - **Gamma** (shape k=5, scale θ=1): Moderate variance scenario
+with analytical solution - **Lognormal** (location μ=1.5, scale σ=0.5):
 Higher variance with analytical solution  
 - **Burr** (shape1 c=3, shape2 k=1.5, scale λ=4): Highest variance with
 heavy tail, requires numerical integration
@@ -102,11 +82,10 @@ tar_target(
 
 ## Define truncation scenarios
 
-Following the manuscript (Methods lines 266-271), we test three
-truncation scenarios representing different stages of outbreak
-analysis: - **No truncation**: Retrospective scenario with all events
-observable - **Moderate truncation**: Real-time scenario with 10-day
-observation window - **Severe truncation**: Challenging real-time
+We test three truncation scenarios representing different stages of
+outbreak analysis: - **No truncation**: Retrospective scenario with all
+events observable - **Moderate truncation**: Real-time scenario with
+10-day observation window - **Severe truncation**: Challenging real-time
 scenario with 5-day window
 
 ``` r
@@ -124,7 +103,7 @@ tar_target(
 ## Define censoring patterns
 
 Both primary and secondary events have censoring windows ranging from
-1-4 days (Methods line 272).
+1-4 days.
 
 ``` r
 tar_target(
@@ -208,12 +187,12 @@ tar_target(
 #> Establish _targets.R and _targets_r/targets/observation_windows.R.
 ```
 
-# Simulation Studies
+# Numerical Validation
 
 ## Generate simulated datasets
 
-Following the generative process described in Methods (lines 88-113), we
-simulate data for each scenario combination.
+We simulate data for each scenario combination using the primarycensored
+package.
 
 ``` r
 # Create a list for dynamic branching over all scenario combinations
@@ -237,31 +216,38 @@ tar_target(
 tar_target(
   simulated_data,
   {
-    # Extract scenario parameters
+    library(primarycensored)
     params <- scenario_list[[1]]
+    set.seed(params$seed)
     
-    # Placeholder for full simulation following manuscript Methods
-    # Real implementation would:
-    # 1. Generate primary event times with appropriate growth rate
-    # 2. Generate delays from specified distribution
-    # 3. Apply interval censoring to both events
-    # 4. Apply right truncation based on scenario
-    
-    message(paste("Simulating data for scenario:", params$scenario_id))
-    
-    # Simplified simulation
+    # Generate primary event times with exponential growth
     n_obs <- params$n
+    growth_rate <- 0.2  # As per manuscript
+    prim_times <- cumsum(rexp(n_obs, rate = growth_rate))
+    
+    # Generate delays using rprimarycensored
+    delays <- rprimarycensored(
+      n = n_obs,
+      rdist = get(paste0("r", params$dist_family)),
+      rprimary = runif,  # Uniform primary distribution
+      pwindow = params$primary_width,
+      swindow = params$secondary_width,
+      D = params$max_delay
+    )
+    
+    # Create censored observations
     data.frame(
       obs_id = seq_len(n_obs),
       scenario_id = params$scenario_id,
-      prim_cens_start = floor(runif(n_obs, 0, 100)),
-      prim_cens_end = floor(runif(n_obs, 0, 100)) + params$primary_width,
-      sec_cens_start = floor(runif(n_obs, 5, 105)),  
-      sec_cens_end = floor(runif(n_obs, 5, 105)) + params$secondary_width,
-      true_delay = 5,  # Placeholder - would sample from distribution
+      prim_cens_lower = floor(prim_times),
+      prim_cens_upper = floor(prim_times) + params$primary_width,
+      delay_observed = delays,
+      sec_cens_lower = floor(prim_times + delays),
+      sec_cens_upper = floor(prim_times + delays) + params$secondary_width,
       distribution = params$distribution,
       truncation = params$truncation,
-      censoring = params$censoring
+      censoring = params$censoring,
+      true_params = list(param1 = params$param1, param2 = params$param2)
     )
   },
   pattern = map(scenario_list)
@@ -271,38 +257,217 @@ tar_target(
 
 ## Generate Monte Carlo reference samples
 
-For numerical validation (Methods lines 274-278), we need Monte Carlo
-samples at different sizes.
+We need Monte Carlo samples at different sizes for numerical validation.
 
 ``` r
 tar_target(
   monte_carlo_samples,
   {
+    library(primarycensored)
     sample_sizes <- c(10, 100, 1000, 10000)
     
-    # Placeholder for Monte Carlo sampling
-    # Real implementation would generate empirical PMFs
-    
-    list(
-      sample_sizes = sample_sizes,
-      message = "Monte Carlo reference samples would be generated here"
-    )
+    # Generate Monte Carlo samples for each distribution and sample size
+    purrr::map_dfr(distributions$dist_name, function(dist_name) {
+      dist_info <- distributions[distributions$dist_name == dist_name, ]
+      
+      purrr::map_dfr(sample_sizes, function(n) {
+        # Generate large Monte Carlo sample
+        mc_samples <- rprimarycensored(
+          n = n,
+          rdist = get(paste0("r", dist_info$dist_family)),
+          rprimary = runif,
+          pwindow = 1,
+          swindow = 1,
+          D = Inf
+        )
+        
+        # Calculate empirical PMF
+        pmf <- table(mc_samples) / n
+        
+        data.frame(
+          distribution = dist_name,
+          sample_size = n,
+          delay = as.numeric(names(pmf)),
+          probability = as.numeric(pmf)
+        )
+      })
+    })
   }
 )
 #> Establish _targets.R and _targets_r/targets/monte_carlo_samples.R.
 ```
 
-# Model Fitting
+## Compare PMF calculations
+
+We validate our analytical and numerical solutions against Monte Carlo.
+
+``` r
+tar_target(
+  pmf_comparison,
+  {
+    library(primarycensored)
+    
+    # Compare analytical, numerical, and Monte Carlo PMFs
+    purrr::map_dfr(distributions$dist_name, function(dist_name) {
+      dist_info <- distributions[distributions$dist_name == dist_name, ]
+      
+      # Define delay values to evaluate
+      delays <- 0:20
+      
+      # Analytical PMF (for gamma and lognormal)
+      if (dist_info$has_analytical) {
+        analytical_pmf <- dprimarycensored(
+          x = delays,
+          pdist = get(paste0("p", dist_info$dist_family)),
+          pwindow = 1,
+          swindow = 1,
+          D = Inf,
+          dprimary = dunif,
+          dist_params = list(
+            shape = dist_info$param1,
+            scale = dist_info$param2
+          )
+        )
+      } else {
+        analytical_pmf <- rep(NA, length(delays))
+      }
+      
+      # Numerical PMF (all distributions)
+      numerical_pmf <- dprimarycensored(
+        x = delays,
+        pdist = get(paste0("p", dist_info$dist_family)),
+        pwindow = 1,
+        swindow = 1,
+        D = Inf,
+        dprimary = dunif,
+        dist_params = if(dist_name == "burr") {
+          list(shape1 = dist_info$param1, shape2 = dist_info$param2, scale = dist_info$param3)
+        } else {
+          list(shape = dist_info$param1, scale = dist_info$param2)
+        },
+        use_numerical = TRUE
+      )
+      
+      # Get Monte Carlo PMF
+      mc_pmf <- monte_carlo_samples %>%
+        dplyr::filter(distribution == dist_name, sample_size == 10000) %>%
+        dplyr::filter(delay %in% delays) %>%
+        dplyr::pull(probability)
+      
+      # Calculate total variation distance
+      tvd_analytical <- if(any(!is.na(analytical_pmf))) {
+        sum(abs(analytical_pmf - mc_pmf)) / 2
+      } else { NA }
+      
+      tvd_numerical <- sum(abs(numerical_pmf - mc_pmf)) / 2
+      
+      data.frame(
+        distribution = dist_name,
+        method = c("analytical", "numerical"),
+        total_variation_distance = c(tvd_analytical, tvd_numerical)
+      )
+    })
+  }
+)
+#> Establish _targets.R and _targets_r/targets/pmf_comparison.R.
+```
+
+## Runtime comparison
+
+Measure computational efficiency across methods.
+
+``` r
+tar_target(
+  runtime_comparison,
+  {
+    library(primarycensored)
+    sample_sizes <- c(10, 100, 1000, 10000)
+    
+    # Measure runtime for different methods
+    purrr::map_dfr(sample_sizes, function(n) {
+      # Analytical (gamma)
+      time_analytical <- system.time({
+        dprimarycensored(
+          x = 0:20,
+          pdist = pgamma,
+          pwindow = 1,
+          swindow = 1,
+          D = Inf,
+          dprimary = dunif,
+          dist_params = list(shape = 5, scale = 1)
+        )
+      })["elapsed"]
+      
+      # Numerical (burr)
+      time_numerical <- system.time({
+        dprimarycensored(
+          x = 0:20,
+          pdist = function(q, ...) pburr(q, ...),
+          pwindow = 1,
+          swindow = 1,
+          D = Inf,
+          dprimary = dunif,
+          dist_params = list(shape1 = 3, shape2 = 1.5, scale = 4),
+          use_numerical = TRUE
+        )
+      })["elapsed"]
+      
+      # Monte Carlo baseline
+      time_mc <- system.time({
+        rprimarycensored(
+          n = n,
+          rdist = rgamma,
+          rprimary = runif,
+          pwindow = 1,
+          swindow = 1,
+          D = Inf,
+          shape = 5, scale = 1
+        )
+      })["elapsed"]
+      
+      data.frame(
+        method = c("analytical", "numerical", "monte_carlo"),
+        sample_size = n,
+        runtime_seconds = c(time_analytical, time_numerical, time_mc)
+      )
+    })
+  }
+)
+#> Establish _targets.R and _targets_r/targets/runtime_comparison.R.
+```
+
+# Parameter Recovery
 
 ## Fit primary censored models
 
 Our method that accounts for double interval censoring through
-analytical marginalisation (Methods lines 280-286).
+analytical marginalisation.
 
 ``` r
 tar_target(
   primarycensored_fits,
-  fit_primarycensored(simulated_data, formula = ~ 1),
+  {
+    library(primarycensored)
+    
+    # Fit using fitdistr for maximum likelihood
+    fit_result <- fitdistcens(
+      censdata = simulated_data,
+      distr = simulated_data$distribution[1],
+      start = list(shape = 4, scale = 1)  # Initial values
+    )
+    
+    # Extract estimates
+    data.frame(
+      scenario_id = simulated_data$scenario_id[1],
+      method = "primarycensored",
+      param1_est = fit_result$estimate[1],
+      param1_se = fit_result$sd[1],
+      param2_est = fit_result$estimate[2],
+      param2_se = fit_result$sd[2],
+      convergence = fit_result$convergence,
+      loglik = fit_result$loglik
+    )
+  },
   pattern = map(simulated_data)
 )
 #> Establish _targets.R and _targets_r/targets/fit_primarycensored.R.
@@ -310,13 +475,67 @@ tar_target(
 
 ## Fit naive models
 
-Baseline comparison that ignores censoring and truncation (Methods line
-282).
+Baseline comparison that ignores primary event censoring.
 
 ``` r
 tar_target(
   naive_fits,
-  fit_naive_model(simulated_data),
+  {
+    library(cmdstanr)
+    
+    # Map distribution names to IDs
+    dist_map <- c("gamma" = 1, "lognormal" = 2)
+    dist_id <- dist_map[simulated_data$distribution[1]]
+    
+    # Skip Burr distribution (no analytical form in naive model)
+    if (is.na(dist_id)) {
+      return(data.frame(
+        scenario_id = simulated_data$scenario_id[1],
+        method = "naive",
+        param1_est = NA,
+        param1_se = NA,
+        param2_est = NA,
+        param2_se = NA,
+        convergence = 1,
+        loglik = NA
+      ))
+    }
+    
+    # Prepare data for Stan
+    stan_data <- list(
+      N = nrow(simulated_data),
+      delay_lower = simulated_data$sec_cens_lower - simulated_data$prim_cens_lower,
+      delay_upper = simulated_data$sec_cens_upper - simulated_data$prim_cens_upper,
+      dist_id = dist_id
+    )
+    
+    # Compile and fit model
+    mod <- cmdstan_model(here("stan/naive_delay_model.stan"))
+    
+    fit <- mod$sample(
+      data = stan_data,
+      seed = 123,
+      chains = 2,
+      parallel_chains = 2,
+      iter_warmup = 500,
+      iter_sampling = 1000,
+      refresh = 0
+    )
+    
+    # Extract estimates
+    draws <- fit$draws(variables = c("param1", "param2"), format = "df")
+    
+    data.frame(
+      scenario_id = simulated_data$scenario_id[1],
+      method = "naive",
+      param1_est = mean(draws$param1),
+      param1_se = sd(draws$param1),
+      param2_est = mean(draws$param2),
+      param2_se = sd(draws$param2),
+      convergence = max(fit$summary()$rhat, na.rm = TRUE) < 1.01,
+      loglik = NA
+    )
+  },
   pattern = map(simulated_data)
 )
 #> Establish _targets.R and _targets_r/targets/fit_naive.R.
@@ -324,12 +543,26 @@ tar_target(
 
 ## Fit Ward et al. latent variable models
 
-Current best practice method for comparison (Methods lines 282, 346).
+Current best practice method for comparison.
 
 ``` r
 tar_target(
   ward_fits,
-  fit_ward_model(simulated_data),
+  {
+    # Placeholder for Ward et al. Stan model
+    # Would implement latent variable approach
+    
+    data.frame(
+      scenario_id = simulated_data$scenario_id[1],
+      method = "ward",
+      param1_est = 5.1,
+      param1_se = 0.2,
+      param2_est = 1.1,
+      param2_se = 0.1,
+      convergence = 0,
+      loglik = -1000
+    )
+  },
   pattern = map(simulated_data)
 )
 #> Establish _targets.R and _targets_r/targets/fit_ward.R.
@@ -343,75 +576,14 @@ Aggregate results from all methods for comparison.
 tar_target(
   all_model_fits,
   {
-    # Placeholder for combined model results
-    # Real implementation would properly extract and combine fit results
-    
-    # Create placeholder combined results
-    expand.grid(
-      method = c("primarycensored", "naive", "ward"),
-      scenario_id = paste0("scenario_", 1:27),
-      parameter = c("param1", "param2")
-    ) |>
-      dplyr::mutate(
-        estimate = ifelse(method == "primarycensored", 5.0, 
-                         ifelse(method == "naive", 4.5, 5.1)),
-        se = 0.1
-      )
+    dplyr::bind_rows(
+      primarycensored_fits,
+      naive_fits,
+      ward_fits
+    )
   }
 )
 #> Establish _targets.R and _targets_r/targets/combine_model_fits.R.
-```
-
-# Numerical Validation
-
-## Compare PMF calculations
-
-Following Methods lines 274-278, we validate our analytical and
-numerical solutions against Monte Carlo.
-
-``` r
-tar_target(
-  pmf_comparison,
-  {
-    # Placeholder for PMF comparisons
-    # Real implementation would:
-    # 1. Calculate PMFs using analytical solutions (gamma, lognormal)
-    # 2. Calculate PMFs using numerical quadrature (all distributions)
-    # 3. Compare against Monte Carlo empirical PMFs
-    
-    data.frame(
-      distribution = c("gamma", "lognormal", "burr"),
-      method = rep(c("analytical", "numerical", "monte_carlo"), each = 3),
-      sample_size = 10000,
-      total_variation_distance = runif(9, 0, 0.01)
-    )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/pmf_comparison.R.
-```
-
-## Runtime comparison
-
-Measure computational efficiency across methods (Results lines 308-309).
-
-``` r
-tar_target(
-  runtime_comparison,
-  {
-    # Placeholder for runtime measurements
-    data.frame(
-      method = c("analytical", "numerical", "monte_carlo", "ward"),
-      sample_size = rep(c(10, 100, 1000, 10000), each = 4),
-      runtime_seconds = c(
-        0.001, 0.01, 0.1, 1,      # analytical
-        0.01, 0.1, 1, 10,          # numerical  
-        0.1, 1, 10, 100,           # monte_carlo
-        1, 10, 100, 1000           # ward latent
-      )
-    )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/runtime_comparison.R.
 ```
 
 # Model Evaluation
@@ -639,51 +811,6 @@ tar_target(
 
 # Results Summary
 
-## Compile main results tables
-
-Create tables summarizing key findings across all analyses.
-
-``` r
-tar_target(
-  results_tables,
-  {
-    # Table 1: Numerical validation results
-    table1_validation <- pmf_comparison |>
-      dplyr::group_by(distribution, method) |>
-      dplyr::summarise(
-        mean_tvd = mean(total_variation_distance),
-        .groups = "drop"
-      )
-    
-    # Table 2: Parameter recovery summary
-    table2_recovery <- parameter_recovery |>
-      dplyr::group_by(method) |>
-      dplyr::summarise(
-        mean_bias = mean(c(bias_param1, bias_param2)),
-        mean_coverage = mean(c(coverage_param1, coverage_param2)),
-        .groups = "drop"
-      )
-    
-    # Table 3: Computational performance
-    table3_performance <- runtime_comparison |>
-      dplyr::group_by(method) |>
-      dplyr::summarise(
-        runtime_10k = runtime_seconds[sample_size == 10000],
-        relative_to_mc = runtime_seconds[sample_size == 10000] / 
-                         runtime_seconds[method == "monte_carlo" & sample_size == 10000],
-        .groups = "drop"
-      )
-    
-    list(
-      validation = table1_validation,
-      recovery = table2_recovery,
-      performance = table3_performance
-    )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/results_tables.R.
-```
-
 ## Generate supplementary results
 
 Additional analyses for supporting information.
@@ -714,14 +841,12 @@ Export results in various formats for manuscript and reproducibility.
 tar_target(
   saved_results,
   {
-    # Save main results tables
-    .save_data(results_tables$validation, "table1_validation.csv", path = "results")
-    .save_data(results_tables$recovery, "table2_recovery.csv", path = "results")
-    .save_data(results_tables$performance, "table3_performance.csv", path = "results")
-    
     # Save detailed results for reproducibility
     .save_data(scenario_grid, "scenario_definitions.csv", path = "results")
     .save_data(all_model_fits, "all_model_fits.csv", path = "results")
+    .save_data(parameter_recovery, "parameter_recovery.csv", path = "results")
+    .save_data(pmf_comparison, "pmf_comparison.csv", path = "results")
+    .save_data(runtime_comparison, "runtime_comparison.csv", path = "results")
     .save_data(ebola_model_fits, "ebola_results.csv", path = "results")
     
     TRUE
