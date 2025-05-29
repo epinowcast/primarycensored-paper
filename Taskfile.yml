@@ -32,8 +32,15 @@ tasks:
     desc: Create a visualization of the pipeline
     deps: [render]
     cmds:
-      - echo "Creating pipeline visualization..."
-      - Rscript -e "targets::tar_visnetwork()"
+      - echo "🔍 Creating pipeline visualization..."
+      - |
+        Rscript -e '
+        if (!requireNamespace("visNetwork", quietly = TRUE)) {
+          stop("The visNetwork package is required. Run: task install-deps")
+        }
+        targets::tar_visnetwork()
+        message("✅ Pipeline visualization opened in browser")
+        '
 
   progress:
     desc: Show pipeline progress
@@ -82,7 +89,7 @@ tasks:
         pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
                   "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
                   "primarycensored", "cmdstanr", "fitdistrplus", "profvis", 
-                  "rmarkdown", "knitr")
+                  "rmarkdown", "knitr", "visNetwork")
         
         # Install missing packages
         missing <- pkgs[!pkgs %in% installed.packages()[,"Package"]]
