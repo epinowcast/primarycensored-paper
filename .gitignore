@@ -9,6 +9,7 @@ paper/*.txt
 paper/*.csv
 paper/*.xlsx
 paper/main_files
+paper/si_files
 primarycensored-paper.code-workspace
 claude.md
 .vscode/settings.json
