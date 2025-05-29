@@ -77,6 +77,15 @@ See [PROFILING.md](PROFILING.md) for detailed instructions on:
 - Understanding flame graphs and optimization opportunities
 - Exporting pipeline visualizations
 
+## Development
+
+For developers working on this repository, see [DEVELOPMENT.md](DEVELOPMENT.md) for:
+- Detailed repository architecture and structure
+- Development workflows and best practices
+- Adding new analysis components
+- Performance optimisation guidelines
+- Troubleshooting common issues
+
 ## Manuscript Compilation
 
 Using Task (recommended):
