@@ -18,3 +18,6 @@ figures/*.pdf
 data/results/*.csv
 profile_results.rds
 *.prof
+# Compiled Stan models
+stan/*
+!stan/*.stan
