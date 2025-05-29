@@ -43,9 +43,21 @@ tasks:
 
   clean:
     desc: Clean targets cache (use with caution!)
+    interactive: true
     cmds:
-      - echo "This will delete all computed results. Are you sure? [y/N]"
-      - read -r ans && [ "$ans" = "y" ] && rm -rf _targets/
+      - |
+        echo "⚠️  WARNING: This will delete all computed results in _targets/"
+        echo "   This action cannot be undone."
+        echo ""
+        printf "   Are you sure you want to continue? [y/N] "
+        read -r REPLY
+        if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
+          echo "🗑️  Removing _targets/ directory..."
+          rm -rf _targets/
+          echo "✅ Targets cache cleaned successfully"
+        else
+          echo "❌ Clean operation cancelled"
+        fi
 
   help:
     desc: Show available commands
