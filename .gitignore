@@ -17,7 +17,10 @@ _targets.html
 figures/*.pdf
 data/results/*.csv
 profile_results.rds
+profile_report.html
 *.prof
+pipeline_visualization.html
+pipeline_visualization.png
 # Compiled Stan models
 stan/*
 !stan/*.stan

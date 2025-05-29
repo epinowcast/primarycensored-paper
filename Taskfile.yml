@@ -38,8 +38,49 @@ tasks:
         if (!requireNamespace("visNetwork", quietly = TRUE)) {
           stop("The visNetwork package is required. Run: task install-deps")
         }
-        targets::tar_visnetwork()
+        
+        # Create interactive visualization
+        vis <- targets::tar_visnetwork()
+        
+        # Save as HTML
+        htmlwidgets::saveWidget(
+          vis, 
+          "pipeline_visualization.html", 
+          selfcontained = TRUE
+        )
+        
         message("✅ Pipeline visualization opened in browser")
+        message("   - HTML saved to: pipeline_visualization.html")
+        message("   - To convert to image, use: task visualize-png")
+        '
+
+  visualize-png:
+    desc: Convert pipeline visualization to PNG image
+    deps: [visualize]
+    cmds:
+      - echo "📸 Converting pipeline visualization to PNG..."
+      - |
+        Rscript -e '
+        if (!requireNamespace("webshot2", quietly = TRUE)) {
+          stop("The webshot2 package is required. Run: task install-deps")
+        }
+        
+        # Check if HTML exists
+        if (!file.exists("pipeline_visualization.html")) {
+          stop("No HTML visualization found. Run: task visualize")
+        }
+        
+        # Convert HTML to PNG
+        webshot2::webshot(
+          "pipeline_visualization.html",
+          "pipeline_visualization.png",
+          vwidth = 1200,
+          vheight = 800,
+          zoom = 2
+        )
+        
+        message("✅ Pipeline visualization saved as PNG")
+        message("   - Image saved to: pipeline_visualization.png")
         '
 
   progress:
@@ -89,7 +130,7 @@ tasks:
         pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
                   "purrr", "here", "dplyr", "tidyr", "qs", "qs2", "crew", 
                   "primarycensored", "cmdstanr", "fitdistrplus", "profvis", 
-                  "rmarkdown", "knitr", "visNetwork")
+                  "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "webshot2")
         
         # Install missing packages
         missing <- pkgs[!pkgs %in% installed.packages()[,"Package"]]
@@ -109,14 +150,50 @@ tasks:
       - echo "✅ All dependencies installed successfully"
 
   profile:
-    desc: Profile the targets pipeline with profvis to identify bottlenecks
+    desc: Profile the targets pipeline to identify performance bottlenecks
     cmds:
-      - echo "Profiling targets pipeline with profvis..."
-      - Rscript -e "library(profvis); results <- profvis(targets::tar_make(callr_function = NULL, use_crew = FALSE, as_job = FALSE)); saveRDS(results, 'profile_results.rds'); print(results, aggregate = TRUE)"
-      - echo "Profile results saved to profile_results.rds"
+      - echo "🔍 Profiling targets pipeline..."
+      - |
+        Rscript -e '
+        if (!requireNamespace("profvis", quietly = TRUE)) {
+          stop("The profvis package is required. Run: task install-deps")
+        }
+        
+        message("Running pipeline with profiling enabled...")
+        message("This may take longer than normal execution.")
+        
+        # Run profiling
+        results <- profvis::profvis(
+          targets::tar_make(
+            callr_function = NULL,  # Run in current session
+            use_crew = FALSE,       # Disable parallel for accurate profiling
+            as_job = FALSE          # Run in foreground
+          )
+        )
+        
+        # Save results
+        saveRDS(results, "profile_results.rds")
+        
+        # Save HTML report
+        htmlwidgets::saveWidget(results, "profile_report.html", selfcontained = TRUE)
+        
+        message("\n✅ Profiling complete!")
+        message("   - Interactive viewer opened in browser")
+        message("   - Results saved to: profile_results.rds")
+        message("   - HTML report saved to: profile_report.html")
+        '
 
-  profile-proffer:
-    desc: Profile the targets pipeline with proffer
+  profile-view:
+    desc: View previously saved profiling results
     cmds:
-      - echo "Profiling targets pipeline with proffer..."
-      - Rscript -e "if (!requireNamespace('proffer', quietly = TRUE)) install.packages('proffer'); proffer::pprof(targets::tar_make(callr_function = NULL, use_crew = FALSE, as_job = FALSE))"
+      - echo "📊 Loading profiling results..."
+      - |
+        Rscript -e '
+        if (!file.exists("profile_results.rds")) {
+          stop("No profiling results found. Run: task profile")
+        }
+        
+        results <- readRDS("profile_results.rds")
+        print(results, aggregate = TRUE)
+        message("\n✅ Profile viewer opened in browser")
+        '
