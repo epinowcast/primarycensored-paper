@@ -52,6 +52,12 @@ controller <- crew_controller_local(
   seconds_idle = 30
 )
 
+# Configuration values
+sample_sizes <- c(10, 100, 1000, 10000)
+growth_rate <- 0.2  # Exponential growth rate as per manuscript
+simulation_n <- 10000  # Number of observations per scenario
+base_seed <- 100  # Base seed for reproducibility
+
 # Set targets options
 tar_option_set(
   packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
@@ -78,19 +84,19 @@ variance:
   analytical solution
 
 ``` r
-tar_target(
-  distributions,
+tar_target(distributions, {
   data.frame(
     dist_name = c("gamma", "lognormal", "burr"),
-    dist_family = c("gamma", "lnorm", "burr"),
-    param1 = c(5, 1.5, 3),       # shape/meanlog/shape1
-    param2 = c(1, 0.5, 1.5),     # scale/sdlog/shape2
-    param3 = c(NA, NA, 4),       # NA/NA/scale
+    dist_family = c("gamma", "lnorm", "gamma"),  # Using gamma as placeholder for burr
+    param1 = c(5, 1.5, 5),       # shape/meanlog/shape (burr using gamma params)
+    param2 = c(1, 0.5, 1),       # scale/sdlog/scale (burr using gamma params)
+    param3 = c(NA, NA, NA),      # NA/NA/NA (burr params to be implemented later)
     mean = c(5, 5, 5),           # All have mean = 5 days
-    variance = c(5, 10, 10),     # Increasing variance
-    has_analytical = c(TRUE, TRUE, FALSE)
+    variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
+    has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
   )
-)
+})
+#> Define target distributions from chunk code.
 #> Establish _targets.R and _targets_r/targets/distributions.R.
 ```
 
@@ -106,31 +112,31 @@ outbreak analysis:
   window
 
 ``` r
-tar_target(
-  truncation_scenarios,
+tar_target(truncation_scenarios, {
   data.frame(
     trunc_name = c("none", "moderate", "severe"),
-    max_delay = c(Inf, 10, 5),
+    relative_obs_time = c(Inf, 10, 5),  # Days from primary event
     scenario_type = c("retrospective", "real-time", "real-time")
   )
-)
+})
+#> Define target truncation_scenarios from chunk code.
 #> Establish _targets.R and _targets_r/targets/truncation_scenarios.R.
 ```
 
 ## Define censoring patterns
 
 Both primary and secondary events have censoring windows ranging from
-1-4 days.
+1-7 days.
 
 ``` r
-tar_target(
-  censoring_scenarios,
+tar_target(censoring_scenarios, {
   data.frame(
     cens_name = c("daily", "medium", "weekly"),
-    primary_width = c(1, 2, 4),
-    secondary_width = c(1, 2, 4)
+    primary_width = c(1, 2, 7),
+    secondary_width = c(1, 2, 7)
   )
-)
+})
+#> Define target censoring_scenarios from chunk code.
 #> Establish _targets.R and _targets_r/targets/censoring_scenarios.R.
 ```
 
@@ -151,10 +157,10 @@ tar_target(
       stringsAsFactors = FALSE
     )
     
-    # Add details from component data frames
+    # Add scenario metadata
     grid$scenario_id <- paste(grid$distribution, grid$truncation, grid$censoring, sep = "_")
-    grid$n <- 10000  # 10,000 observations per scenario
-    grid$seed <- seq_len(nrow(grid)) + 100  # Unique seed per scenario
+    grid$n <- simulation_n
+    grid$seed <- seq_len(nrow(grid)) + base_seed
     
     grid
   }
@@ -164,26 +170,36 @@ tar_target(
 
 ## Load Ebola case study data
 
-Load the Sierra Leone Ebola data (2014-2016) for the case study analysis
-(Methods lines 288-292).
+Load the Sierra Leone Ebola data (2014-2016) for the case study
+analysis.
 
 ``` r
-tar_target(
-  ebola_data,
-  {
-    # Placeholder for Ebola linelist data
-    # Real implementation would load Fang et al. 2016 data
-    message("Loading Ebola case study data...")
-    
-    # Simulate example structure
-    data.frame(
-      case_id = 1:1000,
-      symptom_onset_date = as.Date("2014-05-01") + sample(0:500, 1000, replace = TRUE),
-      sample_date = as.Date("2014-05-01") + sample(5:510, 1000, replace = TRUE)
+tar_target(ebola_data, {
+  # Load Fang et al. 2016 Sierra Leone Ebola data
+  ebola_raw <- read.csv(
+    "data/raw/ebola_sierra_leone_2014_2016.csv",
+    stringsAsFactors = FALSE
+  )
+  
+  # Clean and format the data
+  ebola_raw |>
+    dplyr::rename(
+      symptom_onset_date = Date.of.symptom.onset,
+      sample_date = Date.of.sample.tested
     ) |>
-      dplyr::filter(sample_date > symptom_onset_date)
-  }
-)
+    dplyr::mutate(
+      case_id = ID,
+      symptom_onset_date = as.Date(symptom_onset_date, format = "%d-%b-%y"),
+      sample_date = as.Date(sample_date, format = "%d-%b-%y")
+    ) |>
+    dplyr::select(case_id, symptom_onset_date, sample_date) |>
+    dplyr::filter(
+      !is.na(symptom_onset_date),
+      !is.na(sample_date),
+      sample_date >= symptom_onset_date
+    )
+})
+#> Define target ebola_data from chunk code.
 #> Establish _targets.R and _targets_r/targets/ebola_data.R.
 ```
 
@@ -192,15 +208,15 @@ tar_target(
 Four 60-day windows as specified in the manuscript.
 
 ``` r
-tar_target(
-  observation_windows,
+tar_target(observation_windows, {
   data.frame(
     window_id = 1:4,
     start_day = c(0, 60, 120, 180),
     end_day = c(60, 120, 180, 240),
     window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
   )
-)
+})
+#> Define target observation_windows from chunk code.
 #> Establish _targets.R and _targets_r/targets/observation_windows.R.
 ```
 
@@ -212,20 +228,14 @@ We simulate data for each scenario combination using the primarycensored
 package.
 
 ``` r
-# Create a list for dynamic branching over all scenario combinations
-tar_target(
-  scenario_list,
-  {
-    # Join all scenario details
-    scenarios <- scenario_grid |>
-      dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>
-      dplyr::left_join(truncation_scenarios, by = c("truncation" = "trunc_name")) |>
-      dplyr::left_join(censoring_scenarios, by = c("censoring" = "cens_name"))
-    
-    # Split for branching
-    split(scenarios, scenarios$scenario_id)
-  }
-)
+tar_target(scenario_list, {
+  # Join all scenario details
+  scenario_grid |>
+    dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>
+    dplyr::left_join(truncation_scenarios, by = c("truncation" = "trunc_name")) |>
+    dplyr::left_join(censoring_scenarios, by = c("censoring" = "cens_name"))
+})
+#> Define target scenario_list from chunk code.
 #> Establish _targets.R and _targets_r/targets/scenario_list.R.
 ```
 
@@ -233,38 +243,40 @@ tar_target(
 tar_target(
   simulated_data,
   {
-    library(primarycensored)
-    params <- scenario_list[[1]]
-    set.seed(params$seed)
+    set.seed(scenario_list$seed)
     
-    # Generate primary event times with exponential growth
-    n_obs <- params$n
-    growth_rate <- 0.2  # As per manuscript
-    prim_times <- cumsum(rexp(n_obs, rate = growth_rate))
+    # Create distribution arguments for the delay distribution
+    n_obs <- scenario_list$n
+    dist_args <- list(n = n_obs)
+    if (!is.na(scenario_list$param1)) {
+      param_names <- names(formals(get(paste0("r", scenario_list$dist_family))))
+      dist_args[[param_names[2]]] <- scenario_list$param1
+      if (!is.na(scenario_list$param2)) {
+        dist_args[[param_names[3]]] <- scenario_list$param2
+      }
+    }
     
-    # Generate delays using rprimarycensored
+    # Generate delays using rprimarycensored with exponential growth primary distribution
     delays <- rprimarycensored(
       n = n_obs,
-      rdist = get(paste0("r", params$dist_family)),
-      rprimary = runif,  # Uniform primary distribution
-      pwindow = params$primary_width,
-      swindow = params$secondary_width,
-      D = params$max_delay
+      rdist = function(n) do.call(get(paste0("r", scenario_list$dist_family)), dist_args),
+      rprimary = rexpgrowth,  # Exponential growth distribution for primary events
+      rprimary_args = list(r = growth_rate),  # Pass growth rate to rexpgrowth
+      pwindow = scenario_list$primary_width,
+      swindow = scenario_list$secondary_width,
+      D = scenario_list$relative_obs_time
     )
     
     # Create censored observations
     data.frame(
       obs_id = seq_len(n_obs),
-      scenario_id = params$scenario_id,
-      prim_cens_lower = floor(prim_times),
-      prim_cens_upper = floor(prim_times) + params$primary_width,
+      scenario_id = scenario_list$scenario_id,
       delay_observed = delays,
-      sec_cens_lower = floor(prim_times + delays),
-      sec_cens_upper = floor(prim_times + delays) + params$secondary_width,
-      distribution = params$distribution,
-      truncation = params$truncation,
-      censoring = params$censoring,
-      true_params = list(param1 = params$param1, param2 = params$param2)
+      distribution = scenario_list$distribution,
+      truncation = scenario_list$truncation,
+      censoring = scenario_list$censoring,
+      true_param1 = scenario_list$param1,
+      true_param2 = scenario_list$param2
     )
   },
   pattern = map(scenario_list)
@@ -280,18 +292,19 @@ We need Monte Carlo samples at different sizes for numerical validation.
 tar_target(
   monte_carlo_samples,
   {
-    library(primarycensored)
-    sample_sizes <- c(10, 100, 1000, 10000)
-    
     # Generate Monte Carlo samples for each distribution and sample size
     purrr::map_dfr(distributions$dist_name, function(dist_name) {
       dist_info <- distributions[distributions$dist_name == dist_name, ]
       
       purrr::map_dfr(sample_sizes, function(n) {
-        # Generate large Monte Carlo sample
+        # Generate large Monte Carlo sample using do.call for parameters
+        dist_args <- list(n = n)
+        dist_args[[names(formals(get(paste0("r", dist_info$dist_family))))[2]]] <- dist_info$param1
+        dist_args[[names(formals(get(paste0("r", dist_info$dist_family))))[3]]] <- dist_info$param2
+        
         mc_samples <- rprimarycensored(
           n = n,
-          rdist = get(paste0("r", dist_info$dist_family)),
+          rdist = function(n) do.call(get(paste0("r", dist_info$dist_family)), dist_args),
           rprimary = runif,
           pwindow = 1,
           swindow = 1,

@@ -1,7 +1,7 @@
 tar_target(
   pmf_comparison,
   {
-    library(primarycensored)
+    # library(primarycensored) # Removed - should be in globals
     
     # Compare analytical, numerical, and Monte Carlo PMFs
     purrr::map_dfr(distributions$dist_name, function(dist_name) {
@@ -10,39 +10,32 @@ tar_target(
       # Define delay values to evaluate
       delays <- 0:20
       
+      # Build parameter list using stored parameter names
+      params <- list()
+      params[[dist_info$param1_name]] <- dist_info$param1
+      params[[dist_info$param2_name]] <- dist_info$param2
+      if (!is.na(dist_info$param3_name)) {
+        params[[dist_info$param3_name]] <- dist_info$param3
+      }
+      
+      # Get distribution function
+      pdist_func <- get(paste0("p", dist_info$dist_family))
+      
       # Analytical PMF (for gamma and lognormal)
       if (dist_info$has_analytical) {
-        analytical_pmf <- dprimarycensored(
-          x = delays,
-          pdist = get(paste0("p", dist_info$dist_family)),
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          dist_params = list(
-            shape = dist_info$param1,
-            scale = dist_info$param2
-          )
-        )
+        analytical_pmf <- do.call(dprimarycensored, c(
+          list(x = delays, pdist = pdist_func, pwindow = 1, swindow = 1, D = Inf, dprimary = dunif),
+          params
+        ))
       } else {
         analytical_pmf <- rep(NA, length(delays))
       }
       
-      # Numerical PMF (all distributions)
-      numerical_pmf <- dprimarycensored(
-        x = delays,
-        pdist = get(paste0("p", dist_info$dist_family)),
-        pwindow = 1,
-        swindow = 1,
-        D = Inf,
-        dprimary = dunif,
-        dist_params = if(dist_name == "burr") {
-          list(shape1 = dist_info$param1, shape2 = dist_info$param2, scale = dist_info$param3)
-        } else {
-          list(shape = dist_info$param1, scale = dist_info$param2)
-        },
-        use_numerical = TRUE
-      )
+      # Numerical PMF (all distributions) - same parameters as analytical
+      numerical_pmf <- do.call(dprimarycensored, c(
+        list(x = delays, pdist = pdist_func, pwindow = 1, swindow = 1, D = Inf, dprimary = dunif),
+        params
+      ))
       
       # Get Monte Carlo PMF
       mc_pmf <- monte_carlo_samples %>%

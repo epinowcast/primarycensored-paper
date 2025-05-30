@@ -18,6 +18,22 @@ tasks:
       - echo "Rendering _targets.Rmd..."
       - Rscript -e "rmarkdown::render('_targets.Rmd')"
 
+  render-custom:
+    desc: "Render with custom parameters (usage: task render-custom PARAMS='simulation_n=1000')"
+    cmds:
+      - echo "Rendering _targets.Rmd with custom parameters..."
+      - |
+        if [ -n "{{.PARAMS}}" ]; then
+          echo "Using parameters: {{.PARAMS}}"
+          Rscript -e "
+          custom_params <- list({{.PARAMS}})
+          rmarkdown::render('_targets.Rmd', params = custom_params)
+          "
+        else
+          echo "No parameters provided, using defaults"
+          Rscript -e "rmarkdown::render('_targets.Rmd')"
+        fi
+
   run:
     desc: Run the targets pipeline
     sources:

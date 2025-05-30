@@ -1,38 +1,40 @@
 tar_target(
   simulated_data,
   {
-    library(primarycensored)
-    params <- scenario_list[[1]]
-    set.seed(params$seed)
+    set.seed(scenario_list$seed)
     
-    # Generate primary event times with exponential growth
-    n_obs <- params$n
-    growth_rate <- 0.2  # As per manuscript
-    prim_times <- cumsum(rexp(n_obs, rate = growth_rate))
+    # Create distribution arguments for the delay distribution
+    n_obs <- scenario_list$n
+    dist_args <- list(n = n_obs)
+    if (!is.na(scenario_list$param1)) {
+      param_names <- names(formals(get(paste0("r", scenario_list$dist_family))))
+      dist_args[[param_names[2]]] <- scenario_list$param1
+      if (!is.na(scenario_list$param2)) {
+        dist_args[[param_names[3]]] <- scenario_list$param2
+      }
+    }
     
-    # Generate delays using rprimarycensored
+    # Generate delays using rprimarycensored with exponential growth primary distribution
     delays <- rprimarycensored(
       n = n_obs,
-      rdist = get(paste0("r", params$dist_family)),
-      rprimary = runif,  # Uniform primary distribution
-      pwindow = params$primary_width,
-      swindow = params$secondary_width,
-      D = params$max_delay
+      rdist = function(n) do.call(get(paste0("r", scenario_list$dist_family)), dist_args),
+      rprimary = rexpgrowth,  # Exponential growth distribution for primary events
+      rprimary_args = list(r = growth_rate),  # Pass growth rate to rexpgrowth
+      pwindow = scenario_list$primary_width,
+      swindow = scenario_list$secondary_width,
+      D = scenario_list$relative_obs_time
     )
     
     # Create censored observations
     data.frame(
       obs_id = seq_len(n_obs),
-      scenario_id = params$scenario_id,
-      prim_cens_lower = floor(prim_times),
-      prim_cens_upper = floor(prim_times) + params$primary_width,
+      scenario_id = scenario_list$scenario_id,
       delay_observed = delays,
-      sec_cens_lower = floor(prim_times + delays),
-      sec_cens_upper = floor(prim_times + delays) + params$secondary_width,
-      distribution = params$distribution,
-      truncation = params$truncation,
-      censoring = params$censoring,
-      true_params = list(param1 = params$param1, param2 = params$param2)
+      distribution = scenario_list$distribution,
+      truncation = scenario_list$truncation,
+      censoring = scenario_list$censoring,
+      true_param1 = scenario_list$param1,
+      true_param2 = scenario_list$param2
     )
   },
   pattern = map(scenario_list)

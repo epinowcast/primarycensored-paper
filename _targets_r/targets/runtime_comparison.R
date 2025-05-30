@@ -1,48 +1,43 @@
 tar_target(
   runtime_comparison,
   {
-    library(primarycensored)
+    # library(primarycensored) # Removed - should be in globals
     sample_sizes <- c(10, 100, 1000, 10000)
+    
+    # Use gamma distribution parameters from distributions data frame
+    gamma_dist <- distributions[distributions$dist_name == "gamma", ]
+    gamma_params <- list()
+    gamma_params[[gamma_dist$param1_name]] <- gamma_dist$param1
+    gamma_params[[gamma_dist$param2_name]] <- gamma_dist$param2
     
     # Measure runtime for different methods
     purrr::map_dfr(sample_sizes, function(n) {
       # Analytical (gamma)
       time_analytical <- system.time({
-        dprimarycensored(
-          x = 0:20,
-          pdist = pgamma,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          shape = 5, scale = 1
-        )
+        do.call(dprimarycensored, c(
+          list(x = 0:20, pdist = pgamma, pwindow = 1, swindow = 1, D = Inf, dprimary = dunif),
+          gamma_params
+        ))
       })["elapsed"]
       
-      # Numerical (burr)
+      # Numerical (using different gamma parameters for comparison)
+      numerical_params <- list(shape = 3, scale = 1.5)
       time_numerical <- system.time({
-        dprimarycensored(
-          x = 0:20,
-          pdist = function(q, ...) pburr(q, ...),
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          shape1 = 3, shape2 = 1.5, scale = 4,
-          use_numerical = TRUE
-        )
+        do.call(dprimarycensored, c(
+          list(x = 0:20, pdist = pgamma, pwindow = 1, swindow = 1, D = Inf, dprimary = dunif),
+          numerical_params
+        ))
       })["elapsed"]
       
       # Monte Carlo baseline
       time_mc <- system.time({
         rprimarycensored(
           n = n,
-          rdist = rgamma,
+          rdist = function(n) do.call(rgamma, c(list(n = n), gamma_params)),
           rprimary = runif,
           pwindow = 1,
           swindow = 1,
-          D = Inf,
-          shape = 5, scale = 1
+          D = Inf
         )
       })["elapsed"]
       

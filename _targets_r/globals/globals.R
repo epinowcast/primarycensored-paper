@@ -19,6 +19,12 @@ controller <- crew_controller_local(
   seconds_idle = 30
 )
 
+# Configuration values
+sample_sizes <- c(10, 100, 1000, 10000)
+growth_rate <- 0.2  # Exponential growth rate as per manuscript
+simulation_n <- 10000  # Number of observations per scenario
+base_seed <- 100  # Base seed for reproducibility
+
 # Set targets options
 tar_option_set(
   packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
