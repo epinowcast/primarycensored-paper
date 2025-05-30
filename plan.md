@@ -33,8 +33,11 @@ All major data preparation targets implemented successfully.
 - ✅ Fixed truncation scenarios back to relative_obs_time (was reverted to max_delay)
 - ✅ Fixed scenario_grid to use globals (simulation_n, base_seed)
 - ✅ Tested all basic data frame targets successfully 
-- 🔄 Add runtime recording as side effects stored as targets (future task)
-- 🔄 Add tar_simple = TRUE investigation (may not be available in current targets version)
+- ✅ Added parameter names to distributions target (param1_name, param2_name)
+- ✅ Created analytical_pmf target using stored dist_params from distributions
+- ✅ Restructured pmf_comparison to use analytical_pmf and monte_carlo_pmf targets
+- ✅ Added runtime measurement using tictoc to simulated_data, monte_carlo_pmf, analytical_pmf, pmf_comparison
+- ✅ Removed standalone runtime_comparison target
 
 ### Implementation Approach:
 1. Split pmf_comparison into multiple targets that operate over existing scenarios
@@ -43,15 +46,15 @@ All major data preparation targets implemented successfully.
 4. Pause after each step to verify functionality
 
 ### Next Steps Plan:
-1. 🔄 Commit current improvements (parameterization and fixes)
-2. 🔄 Check primarycensored vignette for multi-scenario PMF comparison approach
-3. 🔄 Restructure PMF validation targets:
-   - **monte_carlo_pmf**: Extract empirical PMFs from simulated_data at different sample sizes
-   - **analytical_pmf**: Single target using stored dist_params from distributions, operates across scenarios
-   - **pmf_comparison**: Compare analytical vs Monte Carlo PMFs across scenarios
-4. 🔄 Add runtime measurement using tictoc package in simulation and PMF targets
-5. 🔄 Simplify render task with optional customization
-6. 🔄 Remove standalone runtime_comparison target (integrate timing into other targets)
+1. ✅ Commit current improvements (parameterization and fixes)
+2. 🔄 Check primarycensored vignette for multi-scenario PMF comparison approach  
+3. ✅ Restructure PMF validation targets:
+   - ✅ **monte_carlo_pmf**: Extract empirical PMFs from simulated_data at different sample sizes
+   - ✅ **analytical_pmf**: Single target using stored dist_params from distributions, operates across scenarios
+   - ✅ **pmf_comparison**: Compare analytical vs Monte Carlo PMFs across scenarios
+4. ✅ Add runtime measurement using tictoc package in simulation and PMF targets
+5. ✅ Simplify render task with optional customization
+6. ✅ Remove standalone runtime_comparison target (integrate timing into other targets)
 7. 🔄 Test each change with task commands
 8. 🔄 Final commit and PR push
 

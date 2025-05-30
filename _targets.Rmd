@@ -74,16 +74,16 @@ controller <- crew_controller_local(
   seconds_idle = 30
 )
 
-# Configuration values from parameters
-sample_sizes <- params$sample_sizes
-growth_rate <- params$growth_rate  # Exponential growth rate as per manuscript
-simulation_n <- params$simulation_n  # Number of observations per scenario
-base_seed <- params$base_seed  # Base seed for reproducibility
+# Configuration values from parameters (with fallbacks for direct targets execution)
+sample_sizes <- if(exists("params")) params$sample_sizes else c(10, 100, 1000, 10000)
+growth_rate <- if(exists("params")) params$growth_rate else 0.2  # Exponential growth rate as per manuscript
+simulation_n <- if(exists("params")) params$simulation_n else 10000  # Number of observations per scenario
+base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for reproducibility
 
 # Set targets options
 tar_option_set(
   packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
-               "tidyr", "qs2", "primarycensored", "cmdstanr"),
+               "tidyr", "qs2", "primarycensored", "cmdstanr", "tictoc"),
   format = "qs",  # Use qs format (qs2 is used via repository option)
   memory = "transient",  # Free memory after each target completes
   garbage_collection = TRUE,  # Run garbage collection
@@ -108,6 +108,8 @@ data.frame(
   param1 = c(5, 1.5, 5),       # shape/meanlog/shape (burr using gamma params)
   param2 = c(1, 0.5, 1),       # scale/sdlog/scale (burr using gamma params)
   param3 = c(NA, NA, NA),      # NA/NA/NA (burr params to be implemented later)
+  param1_name = c("shape", "meanlog", "shape"),
+  param2_name = c("scale", "sdlog", "scale"),
   mean = c(5, 5, 5),           # All have mean = 5 days
   variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
   has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
@@ -229,6 +231,7 @@ scenario_grid |>
 tar_target(
   simulated_data,
   {
+    tictoc::tic("simulated_data")
     set.seed(scenario_list$seed)
     
     # Create distribution arguments for the delay distribution
@@ -253,8 +256,10 @@ tar_target(
       D = scenario_list$relative_obs_time
     )
     
-    # Create censored observations
-    data.frame(
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    # Create censored observations with runtime info
+    result <- data.frame(
       obs_id = seq_len(n_obs),
       scenario_id = scenario_list$scenario_id,
       delay_observed = delays,
@@ -264,6 +269,9 @@ tar_target(
       true_param1 = scenario_list$param1,
       true_param2 = scenario_list$param2
     )
+    
+    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    result
   },
   pattern = map(scenario_list)
 )
@@ -273,40 +281,117 @@ tar_target(
 
 We need Monte Carlo samples at different sizes for numerical validation.
 
-```{targets monte_carlo_samples}
+```{targets monte_carlo_pmf}
 tar_target(
-  monte_carlo_samples,
+  monte_carlo_pmf,
   {
-    # Generate Monte Carlo samples for each distribution and sample size
-    purrr::map_dfr(distributions$dist_name, function(dist_name) {
-      dist_info <- distributions[distributions$dist_name == dist_name, ]
-      
-      purrr::map_dfr(sample_sizes, function(n) {
-        # Generate large Monte Carlo sample using do.call for parameters
-        dist_args <- list(n = n)
-        dist_args[[names(formals(get(paste0("r", dist_info$dist_family))))[2]]] <- dist_info$param1
-        dist_args[[names(formals(get(paste0("r", dist_info$dist_family))))[3]]] <- dist_info$param2
-        
-        mc_samples <- rprimarycensored(
-          n = n,
-          rdist = function(n) do.call(get(paste0("r", dist_info$dist_family)), dist_args),
-          rprimary = runif,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf
-        )
-        
-        # Calculate empirical PMF
-        pmf <- table(mc_samples) / n
-        
-        data.frame(
-          distribution = dist_name,
-          sample_size = n,
-          delay = as.numeric(names(pmf)),
-          probability = as.numeric(pmf)
-        )
+    # Extract empirical PMFs from simulated_data at different sample sizes
+    tictoc::tic("monte_carlo_pmf")
+    
+    result <- purrr::map_dfr(sample_sizes, function(n) {
+      # Get subset of simulated_data for this sample size
+      sampled_data <- purrr::map_dfr(simulated_data, function(scenario_data) {
+        if (nrow(scenario_data) >= n) {
+          sampled <- scenario_data[1:n, ]
+          
+          # Create empirical PMF for delays 0:20
+          delays <- 0:20
+          empirical_pmf <- sapply(delays, function(d) {
+            mean(floor(sampled$delay_observed) == d)
+          })
+          
+          data.frame(
+            scenario_id = unique(sampled$scenario_id)[1],
+            distribution = unique(sampled$distribution)[1],
+            truncation = unique(sampled$truncation)[1],
+            censoring = unique(sampled$censoring)[1],
+            sample_size = n,
+            delay = delays,
+            probability = empirical_pmf
+          )
+        } else {
+          NULL
+        }
       })
     })
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    
+    result
+  }
+)
+```
+
+## Generate analytical PMF
+
+Calculate analytical PMF using stored distribution parameters across all scenarios.
+
+```{targets analytical_pmf}
+tar_target(
+  analytical_pmf,
+  {
+    tictoc::tic("analytical_pmf")
+    
+    result <- purrr::map_dfr(seq_len(nrow(scenario_list)), function(i) {
+      scenario <- scenario_list[i, ]
+      
+      # Get distribution info with parameter names
+      dist_info <- distributions[distributions$dist_name == scenario$distribution, ]
+      
+      # Define delay values to evaluate (ensure x + swindow <= D)
+      max_delay <- if(is.finite(scenario$relative_obs_time)) {
+        pmin(20, scenario$relative_obs_time - scenario$secondary_width)
+      } else {
+        20
+      }
+      
+      # Skip scenarios where truncation is smaller than censoring window
+      if(max_delay < 0) {
+        return(data.frame(
+          scenario_id = scenario$scenario_id,
+          distribution = scenario$distribution,
+          truncation = scenario$truncation,
+          censoring = scenario$censoring,
+          method = "analytical",
+          delay = 0,
+          probability = NA
+        ))
+      }
+      
+      delays <- 0:max_delay
+      
+      # Calculate analytical PMF using dprimarycensored
+      args <- list(
+        x = delays,
+        pdist = get(paste0("p", dist_info$dist_family)),
+        pwindow = scenario$primary_width,
+        swindow = scenario$secondary_width,
+        D = scenario$relative_obs_time,
+        dprimary = dexpgrowth,
+        dprimary_args = list(r = growth_rate)
+      )
+      # Add distribution parameters using named arguments
+      args[[dist_info$param1_name]] <- dist_info$param1
+      args[[dist_info$param2_name]] <- dist_info$param2
+      
+      analytical_pmf <- do.call(dprimarycensored, args)
+      
+      data.frame(
+        scenario_id = scenario$scenario_id,
+        distribution = scenario$distribution,
+        truncation = scenario$truncation,
+        censoring = scenario$censoring,
+        method = "analytical",
+        delay = delays,
+        probability = analytical_pmf
+      )
+    })
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    
+    result
   }
 )
 ```
@@ -319,134 +404,43 @@ We validate our analytical and numerical solutions against Monte Carlo.
 tar_target(
   pmf_comparison,
   {
-    library(primarycensored)
+    tictoc::tic("pmf_comparison")
     
-    # Compare analytical, numerical, and Monte Carlo PMFs
-    purrr::map_dfr(distributions$dist_name, function(dist_name) {
-      dist_info <- distributions[distributions$dist_name == dist_name, ]
-      
-      # Define delay values to evaluate
-      delays <- 0:20
-      
-      # Analytical PMF (for gamma and lognormal)
-      if (dist_info$has_analytical) {
-        analytical_pmf <- dprimarycensored(
-          x = delays,
-          pdist = get(paste0("p", dist_info$dist_family)),
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          dist_params = list(
-            shape = dist_info$param1,
-            scale = dist_info$param2
-          )
-        )
-      } else {
-        analytical_pmf <- rep(NA, length(delays))
-      }
-      
-      # Numerical PMF (all distributions)
-      numerical_pmf <- dprimarycensored(
-        x = delays,
-        pdist = get(paste0("p", dist_info$dist_family)),
-        pwindow = 1,
-        swindow = 1,
-        D = Inf,
-        dprimary = dunif,
-        dist_params = if(dist_name == "burr") {
-          list(shape1 = dist_info$param1, shape2 = dist_info$param2, scale = dist_info$param3)
-        } else {
-          list(shape = dist_info$param1, scale = dist_info$param2)
-        },
-        use_numerical = TRUE
+    # Combine analytical and monte carlo PMFs for comparison
+    combined_pmf <- dplyr::bind_rows(
+      analytical_pmf,
+      monte_carlo_pmf |> 
+        dplyr::mutate(method = "monte_carlo") |>
+        dplyr::select(scenario_id, distribution, truncation, censoring, method, delay, probability)
+    )
+    
+    # Calculate total variation distance between analytical and Monte Carlo
+    result <- combined_pmf |>
+      dplyr::group_by(scenario_id, distribution, truncation, censoring, delay) |>
+      dplyr::summarise(
+        analytical_prob = probability[method == "analytical"],
+        monte_carlo_prob = probability[method == "monte_carlo" & sample_size == 10000],
+        .groups = "drop"
+      ) |>
+      dplyr::filter(!is.na(analytical_prob), !is.na(monte_carlo_prob)) |>
+      dplyr::group_by(scenario_id, distribution, truncation, censoring) |>
+      dplyr::summarise(
+        total_variation_distance = sum(abs(analytical_prob - monte_carlo_prob)) / 2,
+        .groups = "drop"
       )
-      
-      # Get Monte Carlo PMF
-      mc_pmf <- monte_carlo_samples %>%
-        dplyr::filter(distribution == dist_name, sample_size == 10000) %>%
-        dplyr::filter(delay %in% delays) %>%
-        dplyr::pull(probability)
-      
-      # Calculate total variation distance
-      tvd_analytical <- if(any(!is.na(analytical_pmf))) {
-        sum(abs(analytical_pmf - mc_pmf)) / 2
-      } else { NA }
-      
-      tvd_numerical <- sum(abs(numerical_pmf - mc_pmf)) / 2
-      
-      data.frame(
-        distribution = dist_name,
-        method = c("analytical", "numerical"),
-        total_variation_distance = c(tvd_analytical, tvd_numerical)
-      )
-    })
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    
+    # Also return the combined PMF data for plotting
+    list(
+      comparison_metrics = result,
+      combined_pmf = combined_pmf
+    )
   }
 )
 ```
 
-## Runtime comparison
-
-Measure computational efficiency across methods.
-
-```{targets runtime_comparison}
-tar_target(
-  runtime_comparison,
-  {
-    library(primarycensored)
-    sample_sizes <- c(10, 100, 1000, 10000)
-    
-    # Measure runtime for different methods
-    purrr::map_dfr(sample_sizes, function(n) {
-      # Analytical (gamma)
-      time_analytical <- system.time({
-        dprimarycensored(
-          x = 0:20,
-          pdist = pgamma,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          dist_params = list(shape = 5, scale = 1)
-        )
-      })["elapsed"]
-      
-      # Numerical (burr)
-      time_numerical <- system.time({
-        dprimarycensored(
-          x = 0:20,
-          pdist = function(q, ...) pburr(q, ...),
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          dprimary = dunif,
-          dist_params = list(shape1 = 3, shape2 = 1.5, scale = 4),
-          use_numerical = TRUE
-        )
-      })["elapsed"]
-      
-      # Monte Carlo baseline
-      time_mc <- system.time({
-        rprimarycensored(
-          n = n,
-          rdist = rgamma,
-          rprimary = runif,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf,
-          shape = 5, scale = 1
-        )
-      })["elapsed"]
-      
-      data.frame(
-        method = c("analytical", "numerical", "monte_carlo"),
-        sample_size = n,
-        runtime_seconds = c(time_analytical, time_numerical, time_mc)
-      )
-    })
-  }
-)
-```
 
 # Parameter Recovery
 

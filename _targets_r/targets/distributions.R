@@ -7,10 +7,8 @@ tar_target(distributions, {
     param3 = c(NA, NA, NA),      # NA/NA/NA (burr params to be implemented later)
     param1_name = c("shape", "meanlog", "shape"),
     param2_name = c("scale", "sdlog", "scale"),
-    param3_name = c(NA, NA, NA),
     mean = c(5, 5, 5),           # All have mean = 5 days
     variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
-    has_analytical = c(TRUE, TRUE, FALSE),  # burr will need numerical integration later
-    stringsAsFactors = FALSE
+    has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
   )
 })

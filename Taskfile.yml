@@ -8,7 +8,7 @@ tasks:
       - task: run
 
   render:
-    desc: Render the targets Rmarkdown document
+    desc: "Render the targets Rmarkdown document (optional: PARAMS='simulation_n=1000')"
     sources:
       - _targets.Rmd
       - R/**/*.R
@@ -16,21 +16,15 @@ tasks:
       - _targets.md
     cmds:
       - echo "Rendering _targets.Rmd..."
-      - Rscript -e "rmarkdown::render('_targets.Rmd')"
-
-  render-custom:
-    desc: "Render with custom parameters (usage: task render-custom PARAMS='simulation_n=1000')"
-    cmds:
-      - echo "Rendering _targets.Rmd with custom parameters..."
       - |
         if [ -n "{{.PARAMS}}" ]; then
-          echo "Using parameters: {{.PARAMS}}"
+          echo "Using custom parameters: {{.PARAMS}}"
           Rscript -e "
           custom_params <- list({{.PARAMS}})
           rmarkdown::render('_targets.Rmd', params = custom_params)
           "
         else
-          echo "No parameters provided, using defaults"
+          echo "Using default parameters"
           Rscript -e "rmarkdown::render('_targets.Rmd')"
         fi
 

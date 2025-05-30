@@ -1,6 +1,7 @@
 tar_target(
   simulated_data,
   {
+    tictoc::tic("simulated_data")
     set.seed(scenario_list$seed)
     
     # Create distribution arguments for the delay distribution
@@ -25,8 +26,10 @@ tar_target(
       D = scenario_list$relative_obs_time
     )
     
-    # Create censored observations
-    data.frame(
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    # Create censored observations with runtime info
+    result <- data.frame(
       obs_id = seq_len(n_obs),
       scenario_id = scenario_list$scenario_id,
       delay_observed = delays,
@@ -36,6 +39,9 @@ tar_target(
       true_param1 = scenario_list$param1,
       true_param2 = scenario_list$param2
     )
+    
+    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    result
   },
   pattern = map(scenario_list)
 )
