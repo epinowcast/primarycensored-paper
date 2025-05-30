@@ -1,12 +1,6 @@
 tar_target(ebola_data, {
-  # Load Fang et al. 2016 Sierra Leone Ebola data
-  ebola_raw <- read.csv(
-    "data/raw/ebola_sierra_leone_2014_2016.csv",
-    stringsAsFactors = FALSE
-  )
-  
-  # Clean and format the data
-  ebola_raw |>
+  # Clean and format the Ebola data
+  ebola_data_raw |>
     dplyr::rename(
       symptom_onset_date = Date.of.symptom.onset,
       sample_date = Date.of.sample.tested

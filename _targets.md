@@ -171,25 +171,23 @@ Combine all scenarios into a full factorial design (9 scenarios total as
 per manuscript).
 
 ``` r
-tar_target(
-  scenario_grid,
-  {
-    # Create all combinations
-    grid <- expand.grid(
-      distribution = distributions$dist_name,
-      truncation = truncation_scenarios$trunc_name,
-      censoring = censoring_scenarios$cens_name,
-      stringsAsFactors = FALSE
-    )
-    
-    # Add scenario metadata
-    grid$scenario_id <- paste(grid$distribution, grid$truncation, grid$censoring, sep = "_")
-    grid$n <- simulation_n
-    grid$seed <- seq_len(nrow(grid)) + base_seed
-    
-    grid
-  }
-)
+tar_target(scenario_grid, {
+  # Create all combinations
+  grid <- expand.grid(
+    distribution = distributions$dist_name,
+    truncation = truncation_scenarios$trunc_name,
+    censoring = censoring_scenarios$cens_name,
+    stringsAsFactors = FALSE
+  )
+  
+  # Add scenario metadata
+  grid$scenario_id <- paste(grid$distribution, grid$truncation, grid$censoring, sep = "_")
+  grid$n <- simulation_n
+  grid$seed <- seq_len(nrow(grid)) + base_seed
+  
+  grid
+})
+#> Define target scenario_grid from chunk code.
 #> Establish _targets.R and _targets_r/targets/scenario_grid.R.
 ```
 
@@ -199,15 +197,21 @@ Load the Sierra Leone Ebola data (2014-2016) for the case study
 analysis.
 
 ``` r
-tar_target(ebola_data, {
+tar_target(ebola_data_raw, {
   # Load Fang et al. 2016 Sierra Leone Ebola data
-  ebola_raw <- read.csv(
+  read.csv(
     "data/raw/ebola_sierra_leone_2014_2016.csv",
     stringsAsFactors = FALSE
   )
-  
-  # Clean and format the data
-  ebola_raw |>
+})
+#> Define target ebola_data_raw from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_data_raw.R.
+```
+
+``` r
+tar_target(ebola_data, {
+  # Clean and format the Ebola data
+  ebola_data_raw |>
     dplyr::rename(
       symptom_onset_date = Date.of.symptom.onset,
       sample_date = Date.of.sample.tested
@@ -253,15 +257,15 @@ We simulate data for each scenario combination using the primarycensored
 package.
 
 ``` r
-tar_target(scenario_list, {
+tar_target(scenarios, {
   # Join all scenario details
   scenario_grid |>
     dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>
     dplyr::left_join(truncation_scenarios, by = c("truncation" = "trunc_name")) |>
     dplyr::left_join(censoring_scenarios, by = c("censoring" = "cens_name"))
 })
-#> Define target scenario_list from chunk code.
-#> Establish _targets.R and _targets_r/targets/scenario_list.R.
+#> Define target scenarios from chunk code.
+#> Establish _targets.R and _targets_r/targets/scenarios.R.
 ```
 
 ``` r
@@ -269,28 +273,28 @@ tar_target(
   simulated_data,
   {
     tictoc::tic("simulated_data")
-    set.seed(scenario_list$seed)
+    set.seed(scenarios$seed)
     
     # Create distribution arguments for the delay distribution
-    n_obs <- scenario_list$n
+    n_obs <- scenarios$n
     dist_args <- list(n = n_obs)
-    if (!is.na(scenario_list$param1)) {
-      param_names <- names(formals(get(paste0("r", scenario_list$dist_family))))
-      dist_args[[param_names[2]]] <- scenario_list$param1
-      if (!is.na(scenario_list$param2)) {
-        dist_args[[param_names[3]]] <- scenario_list$param2
+    if (!is.na(scenarios$param1)) {
+      param_names <- names(formals(get(paste0("r", scenarios$dist_family))))
+      dist_args[[param_names[2]]] <- scenarios$param1
+      if (!is.na(scenarios$param2)) {
+        dist_args[[param_names[3]]] <- scenarios$param2
       }
     }
     
     # Generate delays using rprimarycensored with exponential growth primary distribution
     delays <- rprimarycensored(
       n = n_obs,
-      rdist = function(n) do.call(get(paste0("r", scenario_list$dist_family)), dist_args),
+      rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
       rprimary = rexpgrowth,  # Exponential growth distribution for primary events
       rprimary_args = list(r = growth_rate),  # Pass growth rate to rexpgrowth
-      pwindow = scenario_list$primary_width,
-      swindow = scenario_list$secondary_width,
-      D = scenario_list$relative_obs_time
+      pwindow = scenarios$primary_width,
+      swindow = scenarios$secondary_width,
+      D = scenarios$relative_obs_time
     )
     
     runtime <- tictoc::toc(quiet = TRUE)
@@ -298,19 +302,19 @@ tar_target(
     # Create censored observations with runtime info
     result <- data.frame(
       obs_id = seq_len(n_obs),
-      scenario_id = scenario_list$scenario_id,
+      scenario_id = scenarios$scenario_id,
       delay_observed = delays,
-      distribution = scenario_list$distribution,
-      truncation = scenario_list$truncation,
-      censoring = scenario_list$censoring,
-      true_param1 = scenario_list$param1,
-      true_param2 = scenario_list$param2
+      distribution = scenarios$distribution,
+      truncation = scenarios$truncation,
+      censoring = scenarios$censoring,
+      true_param1 = scenarios$param1,
+      true_param2 = scenarios$param2
     )
     
     attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
     result
   },
-  pattern = map(scenario_list)
+  pattern = map(scenarios)
 )
 #> Establish _targets.R and _targets_r/targets/simulated_data.R.
 ```
@@ -323,41 +327,39 @@ We need Monte Carlo samples at different sizes for numerical validation.
 tar_target(
   monte_carlo_pmf,
   {
-    # Extract empirical PMFs from simulated_data at different sample sizes
     tictoc::tic("monte_carlo_pmf")
     
+    # Extract empirical PMFs at different sample sizes for this scenario
     result <- purrr::map_dfr(sample_sizes, function(n) {
-      # Get subset of simulated_data for this sample size
-      sampled_data <- purrr::map_dfr(simulated_data, function(scenario_data) {
-        if (nrow(scenario_data) >= n) {
-          sampled <- scenario_data[1:n, ]
-          
-          # Create empirical PMF for delays 0:20
-          delays <- 0:20
-          empirical_pmf <- sapply(delays, function(d) {
-            mean(floor(sampled$delay_observed) == d)
-          })
-          
-          data.frame(
-            scenario_id = unique(sampled$scenario_id)[1],
-            distribution = unique(sampled$distribution)[1],
-            truncation = unique(sampled$truncation)[1],
-            censoring = unique(sampled$censoring)[1],
-            sample_size = n,
-            delay = delays,
-            probability = empirical_pmf
-          )
-        } else {
-          NULL
-        }
-      })
+      if (nrow(simulated_data) >= n) {
+        sampled <- simulated_data[1:n, ]
+        
+        # Create empirical PMF for delays 0:20
+        delays <- 0:20
+        empirical_pmf <- sapply(delays, function(d) {
+          mean(floor(sampled$delay_observed) == d)
+        })
+        
+        data.frame(
+          scenario_id = unique(sampled$scenario_id)[1],
+          distribution = unique(sampled$distribution)[1],
+          truncation = unique(sampled$truncation)[1],
+          censoring = unique(sampled$censoring)[1],
+          sample_size = n,
+          delay = delays,
+          probability = empirical_pmf
+        )
+      } else {
+        NULL
+      }
     })
     
     runtime <- tictoc::toc(quiet = TRUE)
-    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    result$runtime_seconds <- runtime$toc - runtime$tic
     
     result
-  }
+  },
+  pattern = map(scenarios, simulated_data)
 )
 #> Establish _targets.R and _targets_r/targets/monte_carlo_pmf.R.
 ```
@@ -373,114 +375,67 @@ tar_target(
   {
     tictoc::tic("analytical_pmf")
     
-    result <- purrr::map_dfr(seq_len(nrow(scenario_list)), function(i) {
-      scenario <- scenario_list[i, ]
-      
-      # Get distribution info with parameter names
-      dist_info <- distributions[distributions$dist_name == scenario$distribution, ]
-      
-      # Define delay values to evaluate (ensure x + swindow <= D)
-      max_delay <- if(is.finite(scenario$relative_obs_time)) {
-        pmin(20, scenario$relative_obs_time - scenario$secondary_width)
-      } else {
-        20
-      }
-      
-      # Skip scenarios where truncation is smaller than censoring window
-      if(max_delay < 0) {
-        return(data.frame(
-          scenario_id = scenario$scenario_id,
-          distribution = scenario$distribution,
-          truncation = scenario$truncation,
-          censoring = scenario$censoring,
-          method = "analytical",
-          delay = 0,
-          probability = NA
-        ))
-      }
-      
-      delays <- 0:max_delay
-      
-      # Calculate analytical PMF using dprimarycensored
-      args <- list(
-        x = delays,
-        pdist = get(paste0("p", dist_info$dist_family)),
-        pwindow = scenario$primary_width,
-        swindow = scenario$secondary_width,
-        D = scenario$relative_obs_time,
-        dprimary = dexpgrowth,
-        dprimary_args = list(r = growth_rate)
-      )
-      # Add distribution parameters using named arguments
-      args[[dist_info$param1_name]] <- dist_info$param1
-      args[[dist_info$param2_name]] <- dist_info$param2
-      
-      analytical_pmf <- do.call(dprimarycensored, args)
-      
-      data.frame(
-        scenario_id = scenario$scenario_id,
-        distribution = scenario$distribution,
-        truncation = scenario$truncation,
-        censoring = scenario$censoring,
+    # Get distribution info with parameter names
+    dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
+    
+    # Define delay values to evaluate (ensure x + swindow <= D)
+    max_delay <- if(is.finite(scenarios$relative_obs_time)) {
+      pmin(20, scenarios$relative_obs_time - scenarios$secondary_width)
+    } else {
+      20
+    }
+    
+    # Skip scenarios where truncation is smaller than censoring window
+    if(max_delay < 0) {
+      result <- data.frame(
+        scenario_id = scenarios$scenario_id,
+        distribution = scenarios$distribution,
+        truncation = scenarios$truncation,
+        censoring = scenarios$censoring,
         method = "analytical",
-        delay = delays,
-        probability = analytical_pmf
+        delay = 0,
+        probability = NA,
+        runtime_seconds = 0
       )
-    })
+      return(result)
+    }
+    
+    delays <- 0:max_delay
+    
+    # Calculate analytical PMF using dprimarycensored
+    args <- list(
+      x = delays,
+      pdist = get(paste0("p", dist_info$dist_family)),
+      pwindow = scenarios$primary_width,
+      swindow = scenarios$secondary_width,
+      D = scenarios$relative_obs_time,
+      dprimary = dexpgrowth,
+      dprimary_args = list(r = growth_rate)
+    )
+    # Add distribution parameters using named arguments
+    args[[dist_info$param1_name]] <- dist_info$param1
+    args[[dist_info$param2_name]] <- dist_info$param2
+    
+    analytical_pmf <- do.call(dprimarycensored, args)
     
     runtime <- tictoc::toc(quiet = TRUE)
-    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
+    
+    result <- data.frame(
+      scenario_id = scenarios$scenario_id,
+      distribution = scenarios$distribution,
+      truncation = scenarios$truncation,
+      censoring = scenarios$censoring,
+      method = "analytical",
+      delay = delays,
+      probability = analytical_pmf,
+      runtime_seconds = runtime$toc - runtime$tic
+    )
     
     result
-  }
+  },
+  pattern = map(scenarios)
 )
 #> Establish _targets.R and _targets_r/targets/analytical_pmf.R.
-```
-
-## Compare PMF calculations
-
-We validate our analytical and numerical solutions against Monte Carlo.
-
-``` r
-tar_target(
-  pmf_comparison,
-  {
-    tictoc::tic("pmf_comparison")
-    
-    # Combine analytical and monte carlo PMFs for comparison
-    combined_pmf <- dplyr::bind_rows(
-      analytical_pmf,
-      monte_carlo_pmf |> 
-        dplyr::mutate(method = "monte_carlo") |>
-        dplyr::select(scenario_id, distribution, truncation, censoring, method, delay, probability)
-    )
-    
-    # Calculate total variation distance between analytical and Monte Carlo
-    result <- combined_pmf |>
-      dplyr::group_by(scenario_id, distribution, truncation, censoring, delay) |>
-      dplyr::summarise(
-        analytical_prob = probability[method == "analytical"],
-        monte_carlo_prob = probability[method == "monte_carlo" & sample_size == 10000],
-        .groups = "drop"
-      ) |>
-      dplyr::filter(!is.na(analytical_prob), !is.na(monte_carlo_prob)) |>
-      dplyr::group_by(scenario_id, distribution, truncation, censoring) |>
-      dplyr::summarise(
-        total_variation_distance = sum(abs(analytical_prob - monte_carlo_prob)) / 2,
-        .groups = "drop"
-      )
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
-    
-    # Also return the combined PMF data for plotting
-    list(
-      comparison_metrics = result,
-      combined_pmf = combined_pmf
-    )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/pmf_comparison.R.
 ```
 
 # Parameter Recovery

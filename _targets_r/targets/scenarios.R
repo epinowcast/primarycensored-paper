@@ -1,4 +1,4 @@
-tar_target(scenario_list, {
+tar_target(scenarios, {
   # Join all scenario details
   scenario_grid |>
     dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>

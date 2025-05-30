@@ -47,16 +47,25 @@ All major data preparation targets implemented successfully.
 
 ### Next Steps Plan:
 1. ✅ Commit current improvements (parameterization and fixes)
-2. 🔄 Check primarycensored vignette for multi-scenario PMF comparison approach  
-3. ✅ Restructure PMF validation targets:
-   - ✅ **monte_carlo_pmf**: Extract empirical PMFs from simulated_data at different sample sizes
-   - ✅ **analytical_pmf**: Single target using stored dist_params from distributions, operates across scenarios
-   - ✅ **pmf_comparison**: Compare analytical vs Monte Carlo PMFs across scenarios
+2. ✅ Check primarycensored vignette for multi-scenario PMF comparison approach  
+3. ✅ Restructure PMF validation targets (NEEDS REFACTORING):
+   - 🔄 **monte_carlo_pmf**: Should loop over each scenario, not internally - store runtime per scenario
+   - 🔄 **analytical_pmf**: Should map over scenarios externally, not internally - store runtime per scenario  
+   - 🔄 **pmf_comparison**: Consider removing - just visualize instead
 4. ✅ Add runtime measurement using tictoc package in simulation and PMF targets
 5. ✅ Simplify render task with optional customization
 6. ✅ Remove standalone runtime_comparison target (integrate timing into other targets)
 7. 🔄 Test each change with task commands
 8. 🔄 Final commit and PR push
+
+### Current Refactoring Tasks:
+1. ✅ **ebola_data**: Split into multiple targets (ebola_data_raw, ebola_data) with tar_simple = TRUE
+2. ✅ **scenario_grid**: Made this a simple target with tar_simple = TRUE  
+3. ✅ **scenario_list**: Renamed to just "scenarios"
+4. ✅ **monte_carlo_pmf**: Restructured to map over scenarios externally using pattern = map(scenarios, simulated_data)
+5. ✅ **analytical_pmf**: Restructured to map over scenarios externally using pattern = map(scenarios)
+6. ✅ **pmf_comparison**: Removed section entirely - just visualize
+7. ✅ **Runtime measurement**: All targets now store runtime per scenario in dataframes
 
 ### Summary of Key Fixes:
 1. **Weekly censoring**: Fixed back to 7 days (was reverted to 4)
