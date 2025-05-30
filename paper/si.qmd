@@ -11,7 +11,30 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 # Detailed analytical solutions
 
 
-## General framework for analytical solutions
+## General framework for analytical solutions with exponentially tilted distributions
+
+We consider the general form of the CDF for the censoring adjusted delay time $F_{\text{adj}}$ [Equation 7; main manuscript] when we have an exponentially tilted distribution for the primary censored time [Equation 1; main manuscript] with some exponential tilt factor $r$.
+From a modelling point of view, having an exponential tilt $r$ models that the primary event incidence in the population is changing at exponential rate $r$ and therefore the likely time of the exact censored primary time $P$ will not be uniformly distributed in its window.
+Specifically, 
+
+$$
+\begin{aligned}
+f_P(t) & \propto \exp(rt) \mathbb{1}[t_P, t_P + w_P],\\
+F_{\text{adj}}(q) &= \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du.
+\end{aligned}
+$$ {#eq-tosolve}
+
+First, we can solve for $f_P(t_P + u)$ for any $u$ using standard integration,
+
+$$
+\begin{aligned}
+f_P(t_P + u) &= {\exp(r (t_P + u)) \over \int_{t_P}^{t_P + w_P} \exp(r (t_P + u')) du'  } \\
+ &= {r \exp(r (t_P + u)) \over \exp(r t_P)\left (\exp(r w_P) - 1 \right)  } \\
+ &= {r \exp(r u) \over \left (\exp(r w_P) - 1 \right)  }.
+\end{aligned}
+$$
+
+Note that with exponential tilting $f_P(t_P + u)$ does not depend on the actual start time of the primary window. Also note that, by using L'Hopital's rule or small $r$ expansion, $\lim_{r\to 0} f_P(t_P + u) = 1 / w_P$ recovering uniformly distributed censored primary times.
 
 The key insight is that we can leverage the concept of *partial expectation* to derive these analytical solutions. The partial expectation of a distribution over an interval $[a, b]$ is defined as:
 
