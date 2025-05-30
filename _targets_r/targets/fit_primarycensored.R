@@ -1,9 +1,6 @@
 tar_target(
   primarycensored_fits,
-  {
-    library(primarycensored)
-    library(dplyr)
-    
+  {  
     # Get all simulated data and filter to the specific scenario
     all_sim_data <- dplyr::bind_rows(simulated_data)
     full_data <- all_sim_data |>

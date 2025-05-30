@@ -118,7 +118,7 @@ tar_target(distributions, {
     param2_name = c("scale", "sdlog", "scale"),
     mean = c(5, 5, 5),           # All have mean = 5 days
     variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
-    has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
+    has_analytical = c(TRUE, TRUE, FALSE)
   )
 })
 #> Define target distributions from chunk code.
@@ -342,62 +342,12 @@ scenarios.
 ``` r
 tar_target(
   analytical_pmf,
-  {
-    tictoc::tic("analytical_pmf")
-    
-    # Get distribution info with parameter names
-    dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
-    
-    # Always evaluate delays 0:20 for consistency
-    delays <- 0:20
-    
-    # Define which delays are valid (ensure x + swindow <= D)
-    if(is.finite(scenarios$relative_obs_time)) {
-      # For finite truncation, only evaluate delays where delay + swindow <= D
-      valid_delays <- delays[delays + scenarios$secondary_width <= scenarios$relative_obs_time]
-    } else {
-      # For infinite truncation, all delays are valid
-      valid_delays <- delays
-    }
-    
-    # Initialize probability vector with NAs
-    analytical_pmf <- rep(NA_real_, length(delays))
-    
-    # Calculate PMF only for valid delays
-    if (length(valid_delays) > 0) {
-      args <- list(
-        x = valid_delays,
-        pdist = get(paste0("p", dist_info$dist_family)),
-        pwindow = scenarios$primary_width,
-        swindow = scenarios$secondary_width,
-        D = scenarios$relative_obs_time,
-        dprimary = dexpgrowth,
-        dprimary_args = list(r = growth_rate)
-      )
-      # Add distribution parameters using named arguments
-      args[[dist_info$param1_name]] <- dist_info$param1
-      args[[dist_info$param2_name]] <- dist_info$param2
-      
-      pmf_values <- do.call(dprimarycensored, args)
-      # Fill in the valid delays with calculated values
-      analytical_pmf[delays %in% valid_delays] <- pmf_values
-    }
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    result <- data.frame(
-      scenario_id = scenarios$scenario_id,
-      distribution = scenarios$distribution,
-      truncation = scenarios$truncation,
-      censoring = scenarios$censoring,
-      method = "analytical",
-      delay = delays,
-      probability = analytical_pmf,
-      runtime_seconds = runtime$toc - runtime$tic
-    )
-    
-    result
-  },
+  .calculate_pmf(
+    scenarios = scenarios,
+    distributions = distributions,
+    growth_rate = growth_rate,
+    method = "analytical"
+  ),
   pattern = map(scenarios)
 )
 #> Establish _targets.R and _targets_r/targets/analytical_pmf.R.
@@ -411,66 +361,12 @@ scenarios.
 ``` r
 tar_target(
   numerical_pmf,
-  {
-    tictoc::tic("numerical_pmf")
-    
-    # Get distribution info with parameter names
-    dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
-    
-    # Always evaluate delays 0:20 for consistency
-    delays <- 0:20
-    
-    # Define which delays are valid (ensure x + swindow <= D)
-    if(is.finite(scenarios$relative_obs_time)) {
-      # For finite truncation, only evaluate delays where delay + swindow <= D
-      valid_delays <- delays[delays + scenarios$secondary_width <= scenarios$relative_obs_time]
-    } else {
-      # For infinite truncation, all delays are valid
-      valid_delays <- delays
-    }
-    
-    # Initialize probability vector with NAs
-    numerical_pmf <- rep(NA_real_, length(delays))
-    
-    # Calculate PMF only for valid delays
-    if (length(valid_delays) > 0) {
-      # Set a dummy attribute to the distribution function to trigger numerical integration
-      pdistnumerical <- add_name_attribute(get(paste0("p", dist_info$dist_family)), "pdistnumerical")
-
-      # Calculate numerical PMF using dprimarycensored with use_numerical = TRUE
-      args <- list(
-        x = valid_delays,
-        pdist = pdistnumerical,
-        pwindow = scenarios$primary_width,
-        swindow = scenarios$secondary_width,
-        D = scenarios$relative_obs_time,
-        dprimary = dexpgrowth,
-        dprimary_args = list(r = growth_rate)
-      )
-      # Add distribution parameters using named arguments
-      args[[dist_info$param1_name]] <- dist_info$param1
-      args[[dist_info$param2_name]] <- dist_info$param2
-      
-      pmf_values <- do.call(dprimarycensored, args)
-      # Fill in the valid delays with calculated values
-      numerical_pmf[delays %in% valid_delays] <- pmf_values
-    }
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    result <- data.frame(
-      scenario_id = scenarios$scenario_id,
-      distribution = scenarios$distribution,
-      truncation = scenarios$truncation,
-      censoring = scenarios$censoring,
-      method = "numerical",
-      delay = delays,
-      probability = numerical_pmf,
-      runtime_seconds = runtime$toc - runtime$tic
-    )
-    
-    result
-  },
+  .calculate_pmf(
+    scenarios = scenarios,
+    distributions = distributions,
+    growth_rate = growth_rate,
+    method = "numerical"
+  ),
   pattern = map(scenarios)
 )
 #> Establish _targets.R and _targets_r/targets/numerical_pmf.R.
@@ -502,10 +398,7 @@ analytical marginalisation.
 ``` r
 tar_target(
   primarycensored_fits,
-  {
-    library(primarycensored)
-    library(dplyr)
-    
+  {  
     # Get all simulated data and filter to the specific scenario
     all_sim_data <- dplyr::bind_rows(simulated_data)
     full_data <- all_sim_data |>
@@ -990,12 +883,13 @@ tar_target(
   saved_results,
   {
     # Save detailed results for reproducibility
-    .save_data(scenario_grid, "scenario_definitions.csv", path = "results")
-    .save_data(simulated_model_fits, "simulated_model_fits.csv", path = "results")
-    .save_data(parameter_recovery, "parameter_recovery.csv", path = "results")
-    .save_data(pmf_comparison, "pmf_comparison.csv", path = "results")
-    .save_data(runtime_comparison, "runtime_comparison.csv", path = "results")
-    .save_data(ebola_model_fits, "ebola_results.csv", path = "results")
+    .save_data(scenario_grid, "scenario_definitions.csv")
+    .save_data(simulated_model_fits, "simulated_model_fits.csv")
+    # Note: parameter_recovery, pmf_comparison, runtime_comparison don't exist yet
+    # .save_data(parameter_recovery, "parameter_recovery.csv")
+    # .save_data(pmf_comparison, "pmf_comparison.csv")
+    # .save_data(runtime_comparison, "runtime_comparison.csv")
+    .save_data(ebola_model_fits, "ebola_results.csv")
     
     TRUE
   }

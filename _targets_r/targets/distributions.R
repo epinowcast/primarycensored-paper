@@ -9,6 +9,6 @@ tar_target(distributions, {
     param2_name = c("scale", "sdlog", "scale"),
     mean = c(5, 5, 5),           # All have mean = 5 days
     variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
-    has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
+    has_analytical = c(TRUE, TRUE, FALSE)
   )
 })

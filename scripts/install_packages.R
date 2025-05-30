@@ -21,7 +21,8 @@ if (file.exists("renv.lock")) {
   cran_pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
                  "purrr", "here", "dplyr", "tidyr", "qs2", "crew", 
                  "primarycensored", "fitdistrplus", "profvis", 
-                 "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "tictoc")
+                 "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "tictoc",
+                 "shiny")
   
   # Install CRAN packages
   renv::install(cran_pkgs)
