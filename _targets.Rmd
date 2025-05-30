@@ -79,19 +79,16 @@ We test two distributions with a common mean of 5 days but varying variance:
 - **Gamma** (shape k=5, scale θ=1): Moderate variance scenario with analytical solution
 - **Lognormal** (location μ=1.5, scale σ=0.5): Higher variance with analytical solution
 
-```{targets distributions}
-tar_target(
-  distributions,
-  data.frame(
-    dist_name = c("gamma", "lognormal", "burr"),
-    dist_family = c("gamma", "lnorm", "gamma"),  # Using gamma as placeholder for burr
-    param1 = c(5, 1.5, 5),       # shape/meanlog/shape (burr using gamma params)
-    param2 = c(1, 0.5, 1),       # scale/sdlog/scale (burr using gamma params)
-    param3 = c(NA, NA, NA),      # NA/NA/NA (burr params to be implemented later)
-    mean = c(5, 5, 5),           # All have mean = 5 days
-    variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
-    has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
-  )
+```{targets distributions, tar_simple = TRUE}
+data.frame(
+  dist_name = c("gamma", "lognormal", "burr"),
+  dist_family = c("gamma", "lnorm", "gamma"),  # Using gamma as placeholder for burr
+  param1 = c(5, 1.5, 5),       # shape/meanlog/shape (burr using gamma params)
+  param2 = c(1, 0.5, 1),       # scale/sdlog/scale (burr using gamma params)
+  param3 = c(NA, NA, NA),      # NA/NA/NA (burr params to be implemented later)
+  mean = c(5, 5, 5),           # All have mean = 5 days
+  variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
+  has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
 )
 ```
 
@@ -103,14 +100,11 @@ We test three truncation scenarios representing different stages of outbreak ana
 - **Moderate truncation**: Real-time scenario with 10-day observation window
 - **Severe truncation**: Challenging real-time scenario with 5-day window
 
-```{targets truncation_scenarios}
-tar_target(
-  truncation_scenarios,
-  data.frame(
-    trunc_name = c("none", "moderate", "severe"),
-    relative_obs_time = c(Inf, 10, 5),  # Days from primary event
-    scenario_type = c("retrospective", "real-time", "real-time")
-  )
+```{targets truncation_scenarios, tar_simple = TRUE}
+data.frame(
+  trunc_name = c("none", "moderate", "severe"),
+  relative_obs_time = c(Inf, 10, 5),  # Days from primary event
+  scenario_type = c("retrospective", "real-time", "real-time")
 )
 ```
 
@@ -118,14 +112,11 @@ tar_target(
 
 Both primary and secondary events have censoring windows ranging from 1-7 days.
 
-```{targets censoring_scenarios}
-tar_target(
-  censoring_scenarios,
-  data.frame(
-    cens_name = c("daily", "medium", "weekly"),
-    primary_width = c(1, 2, 7),
-    secondary_width = c(1, 2, 7)
-  )
+```{targets censoring_scenarios, tar_simple = TRUE}
+data.frame(
+  cens_name = c("daily", "medium", "weekly"),
+  primary_width = c(1, 2, 7),
+  secondary_width = c(1, 2, 7)
 )
 ```
 
@@ -196,15 +187,12 @@ tar_target(
 
 Four 60-day windows as specified in the manuscript.
 
-```{targets observation_windows}
-tar_target(
-  observation_windows,
-  data.frame(
-    window_id = 1:4,
-    start_day = c(0, 60, 120, 180),
-    end_day = c(60, 120, 180, 240),
-    window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
-  )
+```{targets observation_windows, tar_simple = TRUE}
+data.frame(
+  window_id = 1:4,
+  start_day = c(0, 60, 120, 180),
+  end_day = c(60, 120, 180, 240),
+  window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
 )
 ```
 
