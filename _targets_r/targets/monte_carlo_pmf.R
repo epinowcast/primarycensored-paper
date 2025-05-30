@@ -3,9 +3,10 @@ tar_target(
   {
     tictoc::tic("monte_carlo_pmf")
     
-    # Get scenario data for this scenario_id
-    scenario_idx <- which(scenarios$scenario_id == sample_size_grid$scenario_id)
-    scenario_data <- simulated_data[[scenario_idx]]
+    # Get all simulated data and filter to the specific scenario
+    all_sim_data <- dplyr::bind_rows(simulated_data)
+    scenario_data <- all_sim_data |>
+      dplyr::filter(scenario_id == sample_size_grid$scenario_id)
     n <- sample_size_grid$sample_size
     
     # Create base data frame structure

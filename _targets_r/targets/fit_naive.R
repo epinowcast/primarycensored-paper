@@ -1,9 +1,12 @@
 tar_target(
   naive_fits,
   {
-    # Get the full dataset for this scenario
-    scenario_idx <- which(scenarios$scenario_id == fitting_grid$scenario_id)
-    full_data <- simulated_data[[scenario_idx]]
+    library(dplyr)
+    
+    # Get all simulated data and filter to the specific scenario
+    all_sim_data <- dplyr::bind_rows(simulated_data)
+    full_data <- all_sim_data |>
+      filter(scenario_id == fitting_grid$scenario_id)
     
     # Sample the requested number of observations
     n <- fitting_grid$sample_size
