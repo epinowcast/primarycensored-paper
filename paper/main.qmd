@@ -67,15 +67,22 @@ In this paper, we aim to establish a standard approach for epidemiological delay
 
 For an individual, a primary event (e.g. infection) occurs at time $P_u$, followed by a secondary event (e.g. symptom onset) at time $S$. The true delay between these events is $T = S - P_u$, which follows some density $f_{T; \theta}(t)$ which has distribution parameters $\theta$ and a cumulative distribution function $F_{T; \theta}(t)$. 
 
-In practice, however, neither $P_u$ nor $S$ is typically observed. Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval. The censored delay time, $T_c$, is measured from the start of the primary window to the start of the secondary window: $T_c = t_S - t_P$.
+In practice, however, neither $P_u$ nor $S$ is typically observed. Instead, we observe that the primary event occurred within a window $[t_P, t_P + w_P]$, where $w_P$ is the width of the primary censoring interval (often one day in surveillance data). Similarly, the secondary event is observed to occur within $[t_S, t_S + w_S]$, where $w_S$ is the width of the secondary censoring interval.
+
+The secondary event time is naturally bounded below by $P_u$, whereas $P_u$ is in principle unconstrained. In the following analysis we also consider the censored primary event time,
+
+$$P = P_u \mid P_u \in [t_P, t_P + w_P].$$
+
+The censored primary event time $P$ is bounded below by the start of the primary window, which will be useful in the derivations below. 
+The observed censored delay time, $T_c$, is measured from the start of the primary window to the start of the secondary window: $T_c = t_S - t_P$.
 
 The statistical problem is two-fold: first, given some delay distribution $T \sim f_{T;\theta}$ what is the corresponding probability mass distribution (PMF) for the censored delays $\Pr(T_c \mid \theta)$? Second, is the inverse problem, given a collection of $N$ data items, each giving linked information about primary and secondary event pairs (e.g. a linelist of cases), what is the log-likelihood for the parameters of the underlying true delay distribution $\theta$?    
 
 #### Generative process and simulation for delay data
 
-With non-informative censoring (where the observation process is independent of the actual event times), we model the distribution of the primary event within its window as:
+With non-informative censoring (where the observation process is independent of the actual event times), we model the distribution of the censored primary event time as:
 
-$$f_P(p) = \frac{f_{P_u}(p)}{F_{P_u}(t_P + w_P) - F_{P_u}(t_P)}, \quad p \in [t_P, t_P + w_P]$$
+$$f_P(p) = f_{P_u \mid P_u \in [t_P, t_P + w_P]}(p) = \frac{f_{P_u}(p)}{F_{P_u}(t_P + w_P) - F_{P_u}(t_P)}, \quad p \in [t_P, t_P + w_P]$$
 
 In the simplest case, primary events occur uniformly within their censoring windows, but in real epidemiological situations, they often follow non-uniform patterns. During epidemic growth, for example, events are more likely to occur near the end of their censoring windows, while during decline, they are more likely to occur near the beginning. This can be modeled using an exponentially tilted distribution:
 
