@@ -68,3 +68,23 @@
   # Return the full file path
   return(file_path)
 }
+
+#' Create a PMF result data frame with consistent structure
+#' @param scenarios Scenario metadata
+#' @param method Character string indicating method ("analytical" or "numerical")
+#' @param delays Vector of delay values
+#' @param probability Vector of probabilities
+#' @param runtime_seconds Numeric runtime in seconds
+#' @return A data frame with consistent PMF result structure
+.create_pmf_result <- function(scenarios, method, delays, probability, runtime_seconds) {
+  data.frame(
+    scenario_id = scenarios$scenario_id,
+    distribution = scenarios$distribution,
+    truncation = scenarios$truncation,
+    censoring = scenarios$censoring,
+    method = method,
+    delay = delays,
+    probability = probability,
+    runtime_seconds = runtime_seconds
+  )
+}

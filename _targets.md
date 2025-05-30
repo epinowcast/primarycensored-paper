@@ -191,64 +191,6 @@ tar_target(scenario_grid, {
 #> Establish _targets.R and _targets_r/targets/scenario_grid.R.
 ```
 
-## Load Ebola case study data
-
-Load the Sierra Leone Ebola data (2014-2016) for the case study
-analysis.
-
-``` r
-tar_target(ebola_data_raw, {
-  # Load Fang et al. 2016 Sierra Leone Ebola data
-  read.csv(
-    "data/raw/ebola_sierra_leone_2014_2016.csv",
-    stringsAsFactors = FALSE
-  )
-})
-#> Define target ebola_data_raw from chunk code.
-#> Establish _targets.R and _targets_r/targets/ebola_data_raw.R.
-```
-
-``` r
-tar_target(ebola_data, {
-  # Clean and format the Ebola data
-  ebola_data_raw |>
-    dplyr::rename(
-      symptom_onset_date = Date.of.symptom.onset,
-      sample_date = Date.of.sample.tested
-    ) |>
-    dplyr::mutate(
-      case_id = ID,
-      symptom_onset_date = as.Date(symptom_onset_date, format = "%d-%b-%y"),
-      sample_date = as.Date(sample_date, format = "%d-%b-%y")
-    ) |>
-    dplyr::select(case_id, symptom_onset_date, sample_date) |>
-    dplyr::filter(
-      !is.na(symptom_onset_date),
-      !is.na(sample_date),
-      sample_date >= symptom_onset_date
-    )
-})
-#> Define target ebola_data from chunk code.
-#> Establish _targets.R and _targets_r/targets/ebola_data.R.
-```
-
-## Define observation windows for case study
-
-Four 60-day windows as specified in the manuscript.
-
-``` r
-tar_target(observation_windows, {
-  data.frame(
-    window_id = 1:4,
-    start_day = c(0, 60, 120, 180),
-    end_day = c(60, 120, 180, 240),
-    window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
-  )
-})
-#> Define target observation_windows from chunk code.
-#> Establish _targets.R and _targets_r/targets/observation_windows.R.
-```
-
 # Numerical Validation
 
 ## Generate simulated datasets
@@ -299,11 +241,17 @@ tar_target(
     
     runtime <- tictoc::toc(quiet = TRUE)
     
-    # Create censored observations with runtime info
+    # Create censored observations with runtime info and censoring intervals
     result <- data.frame(
       obs_id = seq_len(n_obs),
       scenario_id = scenarios$scenario_id,
       delay_observed = delays,
+      # Primary event censoring intervals [0, pwindow]
+      prim_cens_lower = 0,
+      prim_cens_upper = scenarios$primary_width,
+      # Secondary event censoring intervals [delay, delay + swindow]
+      sec_cens_lower = delays,
+      sec_cens_upper = delays + scenarios$secondary_width,
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
@@ -324,42 +272,65 @@ tar_target(
 We need Monte Carlo samples at different sizes for numerical validation.
 
 ``` r
+tar_target(sample_size_grid, {
+  # Create grid of scenarios and sample sizes for monte carlo PMF
+  expand.grid(
+    scenario_id = scenarios$scenario_id,
+    sample_size = sample_sizes,
+    stringsAsFactors = FALSE
+  )
+})
+#> Define target sample_size_grid from chunk code.
+#> Establish _targets.R and _targets_r/targets/sample_size_grid.R.
+```
+
+``` r
 tar_target(
   monte_carlo_pmf,
   {
     tictoc::tic("monte_carlo_pmf")
     
-    # Extract empirical PMFs at different sample sizes for this scenario
-    result <- purrr::map_dfr(sample_sizes, function(n) {
-      if (nrow(simulated_data) >= n) {
-        sampled <- simulated_data[1:n, ]
-        
-        # Create empirical PMF for delays 0:20
-        delays <- 0:20
-        empirical_pmf <- sapply(delays, function(d) {
-          mean(floor(sampled$delay_observed) == d)
-        })
-        
-        data.frame(
-          scenario_id = unique(sampled$scenario_id)[1],
-          distribution = unique(sampled$distribution)[1],
-          truncation = unique(sampled$truncation)[1],
-          censoring = unique(sampled$censoring)[1],
-          sample_size = n,
-          delay = delays,
-          probability = empirical_pmf
-        )
-      } else {
-        NULL
-      }
-    })
+    # Get scenario data for this scenario_id
+    scenario_idx <- which(scenarios$scenario_id == sample_size_grid$scenario_id)
+    scenario_data <- simulated_data[[scenario_idx]]
+    n <- sample_size_grid$sample_size
+    
+    # Create base data frame structure
+    delays <- 0:20
+    
+    # Calculate empirical PMF if we have enough data
+    if (nrow(scenario_data) >= n) {
+      sampled <- scenario_data[1:n, ]
+      empirical_pmf <- sapply(delays, function(d) {
+        mean(floor(sampled$delay_observed) == d)
+      })
+      distribution <- unique(sampled$distribution)[1]
+      truncation <- unique(sampled$truncation)[1]
+      censoring <- unique(sampled$censoring)[1]
+    } else {
+      empirical_pmf <- NA_real_
+      distribution <- NA_character_
+      truncation <- NA_character_
+      censoring <- NA_character_
+    }
+    
+    # Create result data frame with consistent structure
+    result <- data.frame(
+      scenario_id = sample_size_grid$scenario_id,
+      distribution = distribution,
+      truncation = truncation,
+      censoring = censoring,
+      sample_size = n,
+      delay = delays,
+      probability = empirical_pmf
+    )
     
     runtime <- tictoc::toc(quiet = TRUE)
     result$runtime_seconds <- runtime$toc - runtime$tic
     
     result
   },
-  pattern = map(scenarios, simulated_data)
+  pattern = map(sample_size_grid)
 )
 #> Establish _targets.R and _targets_r/targets/monte_carlo_pmf.R.
 ```
@@ -379,28 +350,17 @@ tar_target(
     dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
     
     # Define delay values to evaluate (ensure x + swindow <= D)
-    max_delay <- if(is.finite(scenarios$relative_obs_time)) {
-      pmin(20, scenarios$relative_obs_time - scenarios$secondary_width)
+    delay_upper_bound <- if(is.finite(scenarios$relative_obs_time)) {
+      pmax(0, scenarios$relative_obs_time - scenarios$secondary_width)
     } else {
       20
     }
     
-    # Skip scenarios where truncation is smaller than censoring window
-    if(max_delay < 0) {
-      result <- data.frame(
-        scenario_id = scenarios$scenario_id,
-        distribution = scenarios$distribution,
-        truncation = scenarios$truncation,
-        censoring = scenarios$censoring,
-        method = "analytical",
-        delay = 0,
-        probability = NA,
-        runtime_seconds = 0
-      )
-      return(result)
-    }
+    # Use minimum of 20 and the truncation-adjusted bound
+    max_delay_to_evaluate <- min(20, delay_upper_bound)
     
-    delays <- 0:max_delay
+    # For scenarios with severe constraints, still evaluate at least delay 0
+    delays <- 0:max(0, max_delay_to_evaluate)
     
     # Calculate analytical PMF using dprimarycensored
     args <- list(
@@ -436,6 +396,72 @@ tar_target(
   pattern = map(scenarios)
 )
 #> Establish _targets.R and _targets_r/targets/analytical_pmf.R.
+```
+
+## Generate numerical PMF
+
+Calculate numerical PMF using stored distribution parameters across all
+scenarios.
+
+``` r
+tar_target(
+  numerical_pmf,
+  {
+    tictoc::tic("numerical_pmf")
+    
+    # Get distribution info with parameter names
+    dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
+    
+    # Define delay values to evaluate (ensure x + swindow <= D)
+    delay_upper_bound <- if(is.finite(scenarios$relative_obs_time)) {
+      pmax(0, scenarios$relative_obs_time - scenarios$secondary_width)
+    } else {
+      20
+    }
+    
+    # Use minimum of 20 and the truncation-adjusted bound
+    max_delay_to_evaluate <- min(20, delay_upper_bound)
+    
+    # For scenarios with severe constraints, still evaluate at least delay 0
+    delays <- 0:max(0, max_delay_to_evaluate)
+    
+    # Set a dummy attribute to the distribution function to trigger numerical integration
+    pdistnumerical <- add_name_attribute(get(paste0("p", dist_info$dist_family)), "pdistnumerical")
+
+    # Calculate numerical PMF using dprimarycensored with use_numerical = TRUE
+    args <- list(
+      x = delays,
+      pdist = pdistnumerical,
+      pwindow = scenarios$primary_width,
+      swindow = scenarios$secondary_width,
+      D = scenarios$relative_obs_time,
+      dprimary = dexpgrowth,
+      dprimary_args = list(r = growth_rate)
+    )
+    # Add distribution parameters using named arguments
+    args[[dist_info$param1_name]] <- dist_info$param1
+    args[[dist_info$param2_name]] <- dist_info$param2
+    
+    numerical_pmf <- do.call(dprimarycensored, args)
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    result <- data.frame(
+      scenario_id = scenarios$scenario_id,
+      distribution = scenarios$distribution,
+      truncation = scenarios$truncation,
+      censoring = scenarios$censoring,
+      method = "numerical",
+      delay = delays,
+      probability = numerical_pmf,
+      runtime_seconds = runtime$toc - runtime$tic
+    )
+    
+    result
+  },
+  pattern = map(scenarios)
+)
+#> Establish _targets.R and _targets_r/targets/numerical_pmf.R.
 ```
 
 # Parameter Recovery
@@ -575,104 +601,141 @@ tar_target(
 Aggregate results from all methods for comparison.
 
 ``` r
-tar_target(
-  all_model_fits,
-  {
-    dplyr::bind_rows(
-      primarycensored_fits,
-      naive_fits,
-      ward_fits
-    )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/combine_model_fits.R.
-```
-
-# Model Evaluation
-
-## Calculate parameter recovery metrics
-
-Assess bias and accuracy of parameter estimates (Methods lines 280-286).
-
-``` r
-tar_target(
-  parameter_recovery,
-  {
-    # Calculate bias, coverage, RMSE for each method and scenario
-    # Real implementation would compare estimated vs true parameters
-    
-    all_model_fits |>
-      dplyr::group_by(method, scenario_id) |>
-      dplyr::summarise(
-        bias_param1 = mean(estimate[parameter == "param1"] - 5),
-        bias_param2 = mean(estimate[parameter == "param2"] - 1),
-        coverage_param1 = 0.95,  # Placeholder
-        coverage_param2 = 0.94,  # Placeholder
-        .groups = "drop"
-      )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/parameter_recovery.R.
-```
-
-## Extract convergence diagnostics
-
-Compile MCMC diagnostics for Bayesian models (Results line 318).
-
-``` r
-tar_target(
-  convergence_diagnostics,
-  {
-    # Placeholder for convergence diagnostics
-    # Real implementation would extract R-hat, divergences, ESS from Bayesian fits
-    
-    # Create placeholder data
-    data.frame(
-      method = c("primarycensored", "ward"),
-      mean_rhat = c(1.001, 1.005),
-      total_divergences = c(0, 54),
-      mean_ess = c(2000, 800),
-      mean_runtime = c(5, 150)
-    )
-  }
-)
-#> Establish _targets.R and _targets_r/targets/convergence_diagnostics.R.
+tar_target(all_model_fits, {
+  dplyr::bind_rows(
+    primarycensored_fits,
+    naive_fits,
+    ward_fits
+  )
+})
+#> Define target all_model_fits from chunk code.
+#> Establish _targets.R and _targets_r/targets/all_model_fits.R.
 ```
 
 # Case Study: Ebola Epidemic
 
+## Load Ebola case study data
+
+Load Fang et al. 2016 Sierra Leone Ebola data (2014-2016) for the case
+study analysis.
+
+``` r
+tar_file(ebola_data_file, "data/raw/ebola_sierra_leone_2014_2016.csv")
+#> Establish _targets.R and _targets_r/targets/ebola_data_file.R.
+```
+
+``` r
+tar_target(ebola_data_raw, {
+  read.csv(ebola_data_file, stringsAsFactors = FALSE)
+})
+#> Define target ebola_data_raw from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_data_raw.R.
+```
+
+Clean and format the Ebola data for analysis.
+
+``` r
+tar_target(ebola_data, {
+  ebola_data_raw |>
+    dplyr::rename(
+      symptom_onset_date = Date.of.symptom.onset,
+      sample_date = Date.of.sample.tested
+    ) |>
+    dplyr::mutate(
+      case_id = ID,
+      symptom_onset_date = as.Date(symptom_onset_date, format = "%d-%b-%y"),
+      sample_date = as.Date(sample_date, format = "%d-%b-%y")
+    ) |>
+    dplyr::select(case_id, symptom_onset_date, sample_date) |>
+    dplyr::filter(
+      !is.na(symptom_onset_date),
+      !is.na(sample_date),
+      sample_date >= symptom_onset_date
+    )
+})
+#> Define target ebola_data from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_data.R.
+```
+
+## Define observation windows for case study
+
+Four 60-day windows as specified in the manuscript.
+
+``` r
+tar_target(observation_windows, {
+  data.frame(
+    window_id = 1:4,
+    start_day = c(0, 60, 120, 180),
+    end_day = c(60, 120, 180, 240),
+    window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
+  )
+})
+#> Define target observation_windows from chunk code.
+#> Establish _targets.R and _targets_r/targets/observation_windows.R.
+```
+
+## Define analysis types for case study
+
+Real-time vs retrospective analysis types with different filtering
+logic.
+
+``` r
+tar_target(ebola_case_study_scenarios, {
+  data.frame(
+    analysis_type = c("real_time", "retrospective"),
+    description = c("Filter LHS on onset date, RHS on sample date", "Filter both LHS and RHS on onset date")
+  )
+})
+#> Define target ebola_case_study_scenarios from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_case_study_scenarios.R.
+```
+
 ## Prepare Ebola data for analysis
 
-Split data by observation windows for real-time and retrospective
-analyses.
+Split data by observation windows and analysis types for real-time and
+retrospective analyses.
 
 ``` r
 tar_target(
-  ebola_analysis_data,
+  ebola_case_study_data,
   {
-    # Prepare data for each observation window
-    # Real implementation would handle date calculations properly
+    # Get the base date (earliest symptom onset)
+    base_date <- min(ebola_data$symptom_onset_date)
     
-    observation_windows |>
-      dplyr::rowwise() |>
-      dplyr::mutate(
-        data = list(
-          ebola_data |>
-            dplyr::filter(
-              symptom_onset_date >= min(ebola_data$symptom_onset_date) + start_day,
-              symptom_onset_date < min(ebola_data$symptom_onset_date) + end_day
-            )
-        )
-      ) |>
-      dplyr::ungroup()
-  }
+    # Create window start and end dates
+    window_start <- base_date + ebola_case_study_scenarios$start_day
+    window_end <- base_date + ebola_case_study_scenarios$end_day
+    
+    # Filter data based on analysis type
+    filtered_data <- ebola_data |>
+      dplyr::filter(
+        symptom_onset_date >= window_start,  # LHS: based on onset date
+        if (ebola_case_study_scenarios$analysis_type == "real_time") {
+          sample_date < window_end  # RHS: based on sample date
+        } else {
+          symptom_onset_date < window_end  # RHS: based on onset date
+        }
+      )
+    # Return combined metadata and data
+    data.frame(
+      window_id = ebola_case_study_scenarios$window_id,
+      analysis_type = ebola_case_study_scenarios$analysis_type,
+      window_label = ebola_case_study_scenarios$window_label,
+      start_day = ebola_case_study_scenarios$start_day,
+      end_day = ebola_case_study_scenarios$end_day,
+      n_cases = nrow(filtered_data),
+      data = I(list(filtered_data))  # Use I() to store data frame in list column
+    )
+  },
+  pattern = cross(observation_windows, ebola_case_study_scenarios)
 )
-#> Establish _targets.R and _targets_r/targets/ebola_analysis_data.R.
+#> Establish _targets.R and _targets_r/targets/ebola_case_study_data.R.
 ```
 
 ## Fit models to Ebola data
 
-Apply all three methods to each observation window.
+Apply all three methods to each observation window and analysis type
+combination.
 
 ``` r
 tar_target(
@@ -682,8 +745,10 @@ tar_target(
     # Assume gamma distribution as per manuscript
     
     list(
-      window_id = ebola_analysis_data$window_id,
-      analysis_type = rep(c("real-time", "retrospective"), each = nrow(ebola_analysis_data)),
+      window_id = ebola_case_study_data$window_id,
+      analysis_type = ebola_case_study_data$analysis_type,
+      window_label = ebola_case_study_data$window_label,
+      n_cases = ebola_case_study_data$n_cases,
       primarycensored = list(shape = 2.5, scale = 3.2),
       naive = list(shape = 2.1, scale = 2.8),
       ward = list(shape = 2.6, scale = 3.3),
@@ -692,10 +757,50 @@ tar_target(
       ess_per_second_pc = 200,
       ess_per_second_ward = 10
     )
-  }
+  },
+  pattern = map(ebola_case_study_data)
 )
 #> Establish _targets.R and _targets_r/targets/ebola_model_fits.R.
 ```
+
+# Model Evaluation
+
+## Calculate parameter recovery metrics
+
+Assess bias and accuracy of parameter estimates (Methods lines 280-286).
+
+\`\`\`{targets parameter_recovery, tar_simple = TRUE \# Calculate bias,
+coverage, RMSE for each method and scenario \# Real implementation would
+compare estimated vs true parameters
+
+all_model_fits \|\> dplyr::group_by(method, scenario_id) \|\>
+dplyr::summarise( bias_param1 = mean(estimate\[parameter == “param1”\] -
+5), bias_param2 = mean(estimate\[parameter == “param2”\] - 1),
+coverage_param1 = 0.95, \# Placeholder coverage_param2 = 0.94, \#
+Placeholder .groups = “drop” )
+
+
+    ## Extract convergence diagnostics
+
+    Compile MCMC diagnostics for Bayesian models (Results line 318).
+
+
+    ``` r
+    tar_target(convergence_diagnostics, {
+      # Placeholder for convergence diagnostics
+      # Real implementation would extract R-hat, divergences, ESS from Bayesian fits
+      
+      # Create placeholder data
+      data.frame(
+        method = c("primarycensored", "ward"),
+        mean_rhat = c(1.001, 1.005),
+        total_divergences = c(0, 54),
+        mean_ess = c(2000, 800),
+        mean_runtime = c(5, 150)
+      )
+    })
+    #> Define target convergence_diagnostics from chunk code.
+    #> Establish _targets.R and _targets_r/targets/convergence_diagnostics.R.
 
 # Visualization
 

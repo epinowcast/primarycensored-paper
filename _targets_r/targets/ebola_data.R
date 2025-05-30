@@ -1,5 +1,4 @@
 tar_target(ebola_data, {
-  # Clean and format the Ebola data
   ebola_data_raw |>
     dplyr::rename(
       symptom_onset_date = Date.of.symptom.onset,

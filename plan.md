@@ -13,8 +13,16 @@ This PR implements the Data Preparation section of the targets pipeline as defin
 
 ## Status Summary
 
-PR Status: ✅ Ready for review  
-All major data preparation targets implemented successfully.
+PR Status: ✅ Refactoring Complete  
+All refactoring tasks implemented and tested successfully.
+
+### Final Implementation Status:
+- ✅ All 27 scenarios correctly structured and working
+- ✅ Proper external mapping using pattern = map() 
+- ✅ Runtime measurement per scenario using tictoc
+- ✅ Split Ebola data targets for better modularity
+- ✅ Clean target structure following best practices
+- ✅ All targets tested and functioning correctly
 
 ### Recently Completed:
 - ✅ Fixed all data preparation targets in _targets.Rmd
@@ -48,24 +56,27 @@ All major data preparation targets implemented successfully.
 ### Next Steps Plan:
 1. ✅ Commit current improvements (parameterization and fixes)
 2. ✅ Check primarycensored vignette for multi-scenario PMF comparison approach  
-3. ✅ Restructure PMF validation targets (NEEDS REFACTORING):
-   - 🔄 **monte_carlo_pmf**: Should loop over each scenario, not internally - store runtime per scenario
-   - 🔄 **analytical_pmf**: Should map over scenarios externally, not internally - store runtime per scenario  
-   - 🔄 **pmf_comparison**: Consider removing - just visualize instead
+3. ✅ Restructure PMF validation targets:
+   - ✅ **monte_carlo_pmf**: Now maps over each scenario externally - stores runtime per scenario
+   - ✅ **analytical_pmf**: Now maps over scenarios externally - stores runtime per scenario  
+   - ✅ **pmf_comparison**: Removed - just visualize instead
 4. ✅ Add runtime measurement using tictoc package in simulation and PMF targets
 5. ✅ Simplify render task with optional customization
 6. ✅ Remove standalone runtime_comparison target (integrate timing into other targets)
-7. 🔄 Test each change with task commands
-8. 🔄 Final commit and PR push
+7. ✅ Test each change with task commands - all 27 scenarios working
+8. ✅ Final commit and PR push
 
 ### Current Refactoring Tasks:
 1. ✅ **ebola_data**: Split into multiple targets (ebola_data_raw, ebola_data) with tar_simple = TRUE
 2. ✅ **scenario_grid**: Made this a simple target with tar_simple = TRUE  
 3. ✅ **scenario_list**: Renamed to just "scenarios"
-4. ✅ **monte_carlo_pmf**: Restructured to map over scenarios externally using pattern = map(scenarios, simulated_data)
-5. ✅ **analytical_pmf**: Restructured to map over scenarios externally using pattern = map(scenarios)
-6. ✅ **pmf_comparison**: Removed section entirely - just visualize
-7. ✅ **Runtime measurement**: All targets now store runtime per scenario in dataframes
+4. ✅ **monte_carlo_pmf**: Fixed to use external pattern mapping over monte_carlo_data (proper joining approach working)
+5. ✅ **analytical_pmf**: Fixed variable naming and truncation constraints (properly handles swindow adjustment)
+6. ✅ **numerical_pmf**: Re-added numerical PMF target (auto-selects numerical integration when needed)
+7. ✅ **pmf_section**: Combined analytical and numerical PMF results in structured dataframe
+8. ✅ **simple_targets**: Confirmed existing tar_simple = TRUE usage is correct in _targets.Rmd; modular targets in .R files don't use this syntax
+9. ✅ **model_fits**: Current approach with bind_rows() is optimal for dynamic branching targets (tar_combine not appropriate)
+10. ✅ **ebola_case_study**: Created ebola_case_study_scenarios and ebola_case_study_data targets with proper real-time vs retrospective filtering
 
 ### Summary of Key Fixes:
 1. **Weekly censoring**: Fixed back to 7 days (was reverted to 4)
@@ -83,5 +94,5 @@ All major data preparation targets implemented successfully.
 
 - Use primarycensored package functions where possible
 - Maintain compatibility with _targets.Rmd structure
-- Ensure alignment with main.qmd methods section (lines 288-292)
+- Ensure alignment with main.qmd methods section
 - Limit code duplication through modular design

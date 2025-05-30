@@ -1,7 +1,7 @@
 tar_target(
-  analytical_pmf,
+  numerical_pmf,
   {
-    tictoc::tic("analytical_pmf")
+    tictoc::tic("numerical_pmf")
     
     # Get distribution info with parameter names
     dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
@@ -19,10 +19,13 @@ tar_target(
     # For scenarios with severe constraints, still evaluate at least delay 0
     delays <- 0:max(0, max_delay_to_evaluate)
     
-    # Calculate analytical PMF using dprimarycensored
+    # Set a dummy attribute to the distribution function to trigger numerical integration
+    pdistnumerical <- add_name_attribute(get(paste0("p", dist_info$dist_family)), "pdistnumerical")
+
+    # Calculate numerical PMF using dprimarycensored with use_numerical = TRUE
     args <- list(
       x = delays,
-      pdist = get(paste0("p", dist_info$dist_family)),
+      pdist = pdistnumerical,
       pwindow = scenarios$primary_width,
       swindow = scenarios$secondary_width,
       D = scenarios$relative_obs_time,
@@ -33,7 +36,7 @@ tar_target(
     args[[dist_info$param1_name]] <- dist_info$param1
     args[[dist_info$param2_name]] <- dist_info$param2
     
-    analytical_pmf <- do.call(dprimarycensored, args)
+    numerical_pmf <- do.call(dprimarycensored, args)
     
     runtime <- tictoc::toc(quiet = TRUE)
     
@@ -42,9 +45,9 @@ tar_target(
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
-      method = "analytical",
+      method = "numerical",
       delay = delays,
-      probability = analytical_pmf,
+      probability = numerical_pmf,
       runtime_seconds = runtime$toc - runtime$tic
     )
     

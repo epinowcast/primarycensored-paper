@@ -28,11 +28,17 @@ tar_target(
     
     runtime <- tictoc::toc(quiet = TRUE)
     
-    # Create censored observations with runtime info
+    # Create censored observations with runtime info and censoring intervals
     result <- data.frame(
       obs_id = seq_len(n_obs),
       scenario_id = scenarios$scenario_id,
       delay_observed = delays,
+      # Primary event censoring intervals [0, pwindow]
+      prim_cens_lower = 0,
+      prim_cens_upper = scenarios$primary_width,
+      # Secondary event censoring intervals [delay, delay + swindow]
+      sec_cens_lower = delays,
+      sec_cens_upper = delays + scenarios$secondary_width,
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,

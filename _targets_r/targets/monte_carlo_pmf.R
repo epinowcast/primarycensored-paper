@@ -3,35 +3,45 @@ tar_target(
   {
     tictoc::tic("monte_carlo_pmf")
     
-    # Extract empirical PMFs at different sample sizes for this scenario
-    result <- purrr::map_dfr(sample_sizes, function(n) {
-      if (nrow(simulated_data) >= n) {
-        sampled <- simulated_data[1:n, ]
-        
-        # Create empirical PMF for delays 0:20
-        delays <- 0:20
-        empirical_pmf <- sapply(delays, function(d) {
-          mean(floor(sampled$delay_observed) == d)
-        })
-        
-        data.frame(
-          scenario_id = unique(sampled$scenario_id)[1],
-          distribution = unique(sampled$distribution)[1],
-          truncation = unique(sampled$truncation)[1],
-          censoring = unique(sampled$censoring)[1],
-          sample_size = n,
-          delay = delays,
-          probability = empirical_pmf
-        )
-      } else {
-        NULL
-      }
-    })
+    # Get scenario data for this scenario_id
+    scenario_idx <- which(scenarios$scenario_id == sample_size_grid$scenario_id)
+    scenario_data <- simulated_data[[scenario_idx]]
+    n <- sample_size_grid$sample_size
+    
+    # Create base data frame structure
+    delays <- 0:20
+    
+    # Calculate empirical PMF if we have enough data
+    if (nrow(scenario_data) >= n) {
+      sampled <- scenario_data[1:n, ]
+      empirical_pmf <- sapply(delays, function(d) {
+        mean(floor(sampled$delay_observed) == d)
+      })
+      distribution <- unique(sampled$distribution)[1]
+      truncation <- unique(sampled$truncation)[1]
+      censoring <- unique(sampled$censoring)[1]
+    } else {
+      empirical_pmf <- NA_real_
+      distribution <- NA_character_
+      truncation <- NA_character_
+      censoring <- NA_character_
+    }
+    
+    # Create result data frame with consistent structure
+    result <- data.frame(
+      scenario_id = sample_size_grid$scenario_id,
+      distribution = distribution,
+      truncation = truncation,
+      censoring = censoring,
+      sample_size = n,
+      delay = delays,
+      probability = empirical_pmf
+    )
     
     runtime <- tictoc::toc(quiet = TRUE)
     result$runtime_seconds <- runtime$toc - runtime$tic
     
     result
   },
-  pattern = map(scenarios, simulated_data)
+  pattern = map(sample_size_grid)
 )
