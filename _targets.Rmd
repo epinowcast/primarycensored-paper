@@ -134,13 +134,13 @@ data.frame(
 
 ## Define censoring patterns
 
-Both primary and secondary events have censoring windows ranging from 1-7 days.
+Both primary and secondary events have censoring windows ranging from 1-4 days.
 
 ```{targets censoring_scenarios, tar_simple = TRUE}
 data.frame(
   cens_name = c("daily", "medium", "weekly"),
-  primary_width = c(1, 2, 7),
-  secondary_width = c(1, 2, 7)
+  primary_width = c(1, 2, 4),
+  secondary_width = c(1, 2, 4)
 )
 ```
 
@@ -172,7 +172,6 @@ grid
 We simulate data for each scenario combination using the primarycensored package.
 
 ```{targets scenarios, tar_simple = TRUE}
-# Join all scenario details
 scenario_grid |>
   dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>
   dplyr::left_join(truncation_scenarios, by = c("truncation" = "trunc_name")) |>
@@ -225,10 +224,10 @@ tar_target(
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
       true_param1 = scenarios$param1,
-      true_param2 = scenarios$param2
+      true_param2 = scenarios$param2,
+      runtime_seconds = runtime$toc - runtime$tic
     )
     
-    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
     result
   },
   pattern = map(scenarios)
@@ -240,7 +239,6 @@ tar_target(
 We need Monte Carlo samples at different sizes for numerical validation.
 
 ```{targets sample_size_grid, tar_simple = TRUE}
-# Create grid of scenarios and sample sizes for monte carlo PMF
 expand.grid(
   scenario_id = scenarios$scenario_id,
   sample_size = sample_sizes,
@@ -311,34 +309,40 @@ tar_target(
     # Get distribution info with parameter names
     dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
     
-    # Define delay values to evaluate (ensure x + swindow <= D)
-    delay_upper_bound <- if(is.finite(scenarios$relative_obs_time)) {
-      pmax(0, scenarios$relative_obs_time - scenarios$secondary_width)
+    # Always evaluate delays 0:20 for consistency
+    delays <- 0:20
+    
+    # Define which delays are valid (ensure x + swindow <= D)
+    if(is.finite(scenarios$relative_obs_time)) {
+      # For finite truncation, only evaluate delays where delay + swindow <= D
+      valid_delays <- delays[delays + scenarios$secondary_width <= scenarios$relative_obs_time]
     } else {
-      20
+      # For infinite truncation, all delays are valid
+      valid_delays <- delays
     }
     
-    # Use minimum of 20 and the truncation-adjusted bound
-    max_delay_to_evaluate <- min(20, delay_upper_bound)
+    # Initialize probability vector with NAs
+    analytical_pmf <- rep(NA_real_, length(delays))
     
-    # For scenarios with severe constraints, still evaluate at least delay 0
-    delays <- 0:max(0, max_delay_to_evaluate)
-    
-    # Calculate analytical PMF using dprimarycensored
-    args <- list(
-      x = delays,
-      pdist = get(paste0("p", dist_info$dist_family)),
-      pwindow = scenarios$primary_width,
-      swindow = scenarios$secondary_width,
-      D = scenarios$relative_obs_time,
-      dprimary = dexpgrowth,
-      dprimary_args = list(r = growth_rate)
-    )
-    # Add distribution parameters using named arguments
-    args[[dist_info$param1_name]] <- dist_info$param1
-    args[[dist_info$param2_name]] <- dist_info$param2
-    
-    analytical_pmf <- do.call(dprimarycensored, args)
+    # Calculate PMF only for valid delays
+    if (length(valid_delays) > 0) {
+      args <- list(
+        x = valid_delays,
+        pdist = get(paste0("p", dist_info$dist_family)),
+        pwindow = scenarios$primary_width,
+        swindow = scenarios$secondary_width,
+        D = scenarios$relative_obs_time,
+        dprimary = dexpgrowth,
+        dprimary_args = list(r = growth_rate)
+      )
+      # Add distribution parameters using named arguments
+      args[[dist_info$param1_name]] <- dist_info$param1
+      args[[dist_info$param2_name]] <- dist_info$param2
+      
+      pmf_values <- do.call(dprimarycensored, args)
+      # Fill in the valid delays with calculated values
+      analytical_pmf[delays %in% valid_delays] <- pmf_values
+    }
     
     runtime <- tictoc::toc(quiet = TRUE)
     
@@ -372,37 +376,44 @@ tar_target(
     # Get distribution info with parameter names
     dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
     
-    # Define delay values to evaluate (ensure x + swindow <= D)
-    delay_upper_bound <- if(is.finite(scenarios$relative_obs_time)) {
-      pmax(0, scenarios$relative_obs_time - scenarios$secondary_width)
+    # Always evaluate delays 0:20 for consistency
+    delays <- 0:20
+    
+    # Define which delays are valid (ensure x + swindow <= D)
+    if(is.finite(scenarios$relative_obs_time)) {
+      # For finite truncation, only evaluate delays where delay + swindow <= D
+      valid_delays <- delays[delays + scenarios$secondary_width <= scenarios$relative_obs_time]
     } else {
-      20
+      # For infinite truncation, all delays are valid
+      valid_delays <- delays
     }
     
-    # Use minimum of 20 and the truncation-adjusted bound
-    max_delay_to_evaluate <- min(20, delay_upper_bound)
+    # Initialize probability vector with NAs
+    numerical_pmf <- rep(NA_real_, length(delays))
     
-    # For scenarios with severe constraints, still evaluate at least delay 0
-    delays <- 0:max(0, max_delay_to_evaluate)
-    
-    # Set a dummy attribute to the distribution function to trigger numerical integration
-    pdistnumerical <- add_name_attribute(get(paste0("p", dist_info$dist_family)), "pdistnumerical")
+    # Calculate PMF only for valid delays
+    if (length(valid_delays) > 0) {
+      # Set a dummy attribute to the distribution function to trigger numerical integration
+      pdistnumerical <- add_name_attribute(get(paste0("p", dist_info$dist_family)), "pdistnumerical")
 
-    # Calculate numerical PMF using dprimarycensored with use_numerical = TRUE
-    args <- list(
-      x = delays,
-      pdist = pdistnumerical,
-      pwindow = scenarios$primary_width,
-      swindow = scenarios$secondary_width,
-      D = scenarios$relative_obs_time,
-      dprimary = dexpgrowth,
-      dprimary_args = list(r = growth_rate)
-    )
-    # Add distribution parameters using named arguments
-    args[[dist_info$param1_name]] <- dist_info$param1
-    args[[dist_info$param2_name]] <- dist_info$param2
-    
-    numerical_pmf <- do.call(dprimarycensored, args)
+      # Calculate numerical PMF using dprimarycensored with use_numerical = TRUE
+      args <- list(
+        x = valid_delays,
+        pdist = pdistnumerical,
+        pwindow = scenarios$primary_width,
+        swindow = scenarios$secondary_width,
+        D = scenarios$relative_obs_time,
+        dprimary = dexpgrowth,
+        dprimary_args = list(r = growth_rate)
+      )
+      # Add distribution parameters using named arguments
+      args[[dist_info$param1_name]] <- dist_info$param1
+      args[[dist_info$param2_name]] <- dist_info$param2
+      
+      pmf_values <- do.call(dprimarycensored, args)
+      # Fill in the valid delays with calculated values
+      numerical_pmf[delays %in% valid_delays] <- pmf_values
+    }
     
     runtime <- tictoc::toc(quiet = TRUE)
     
@@ -425,6 +436,18 @@ tar_target(
 
 # Parameter Recovery
 
+## Create fitting grid
+
+We need to fit models to different sample sizes for each scenario.
+
+```{targets fitting_grid, tar_simple = TRUE}
+expand.grid(
+  scenario_id = scenarios$scenario_id,
+  sample_size = sample_sizes,
+  stringsAsFactors = FALSE
+)
+```
+
 ## Fit primary censored models
 
 Our method that accounts for double interval censoring through analytical marginalisation.
@@ -435,26 +458,56 @@ tar_target(
   {
     library(primarycensored)
     
+    # Get the full dataset for this scenario
+    scenario_idx <- which(scenarios$scenario_id == fitting_grid$scenario_id)
+    full_data <- simulated_data[[scenario_idx]]
+    
+    # Sample the requested number of observations
+    n <- fitting_grid$sample_size
+    if (n > nrow(full_data)) {
+      return(data.frame(
+        scenario_id = fitting_grid$scenario_id,
+        sample_size = n,
+        method = "primarycensored",
+        param1_est = NA,
+        param1_se = NA,
+        param2_est = NA,
+        param2_se = NA,
+        convergence = NA,
+        loglik = NA,
+        runtime_seconds = NA
+      ))
+    }
+    
+    sampled_data <- full_data[1:n, ]
+    
+    # Start timing after data preparation
+    tictoc::tic("fit_primarycensored")
+    
     # Fit using fitdistr for maximum likelihood
     fit_result <- fitdistcens(
-      censdata = simulated_data,
-      distr = simulated_data$distribution[1],
+      censdata = sampled_data,
+      distr = sampled_data$distribution[1],
       start = list(shape = 4, scale = 1)  # Initial values
     )
     
+    runtime <- tictoc::toc(quiet = TRUE)
+    
     # Extract estimates
     data.frame(
-      scenario_id = simulated_data$scenario_id[1],
+      scenario_id = fitting_grid$scenario_id,
+      sample_size = n,
       method = "primarycensored",
       param1_est = fit_result$estimate[1],
       param1_se = fit_result$sd[1],
       param2_est = fit_result$estimate[2],
       param2_se = fit_result$sd[2],
       convergence = fit_result$convergence,
-      loglik = fit_result$loglik
+      loglik = fit_result$loglik,
+      runtime_seconds = runtime$toc - runtime$tic
     )
   },
-  pattern = map(simulated_data)
+  pattern = map(fitting_grid)
 )
 ```
 
@@ -466,62 +519,38 @@ Baseline comparison that ignores primary event censoring.
 tar_target(
   naive_fits,
   {
-    library(cmdstanr)
+    # Get the full dataset for this scenario
+    scenario_idx <- which(scenarios$scenario_id == fitting_grid$scenario_id)
+    full_data <- simulated_data[[scenario_idx]]
     
-    # Map distribution names to IDs
-    dist_map <- c("gamma" = 1, "lognormal" = 2)
-    dist_id <- dist_map[simulated_data$distribution[1]]
-    
-    # Skip Burr distribution (no analytical form in naive model)
-    if (is.na(dist_id)) {
+    # Sample the requested number of observations
+    n <- fitting_grid$sample_size
+    if (n > nrow(full_data)) {
       return(data.frame(
-        scenario_id = simulated_data$scenario_id[1],
+        scenario_id = fitting_grid$scenario_id,
+        sample_size = n,
         method = "naive",
         param1_est = NA,
         param1_se = NA,
         param2_est = NA,
         param2_se = NA,
-        convergence = 1,
-        loglik = NA
+        convergence = NA,
+        loglik = NA,
+        runtime_seconds = NA
       ))
     }
     
-    # Prepare data for Stan
-    stan_data <- list(
-      N = nrow(simulated_data),
-      delay_lower = simulated_data$sec_cens_lower - simulated_data$prim_cens_lower,
-      delay_upper = simulated_data$sec_cens_upper - simulated_data$prim_cens_upper,
-      dist_id = dist_id
-    )
+    sampled_data <- full_data[1:n, ]
     
-    # Compile and fit model
-    mod <- cmdstan_model(here("stan/naive_delay_model.stan"))
-    
-    fit <- mod$sample(
-      data = stan_data,
-      seed = 123,
-      chains = 2,
-      parallel_chains = 2,
-      iter_warmup = 500,
-      iter_sampling = 1000,
-      refresh = 0
-    )
-    
-    # Extract estimates
-    draws <- fit$draws(variables = c("param1", "param2"), format = "df")
-    
-    data.frame(
-      scenario_id = simulated_data$scenario_id[1],
-      method = "naive",
-      param1_est = mean(draws$param1),
-      param1_se = sd(draws$param1),
-      param2_est = mean(draws$param2),
-      param2_se = sd(draws$param2),
-      convergence = max(fit$summary()$rhat, na.rm = TRUE) < 1.01,
-      loglik = NA
+    # Use the new function for cleaner code
+    .estimate_naive_delay_model(
+      data = sampled_data,
+      distribution = sampled_data$distribution[1],
+      scenario_id = fitting_grid$scenario_id,
+      sample_size = n
     )
   },
-  pattern = map(simulated_data)
+  pattern = map(fitting_grid)
 )
 ```
 
@@ -537,17 +566,19 @@ tar_target(
     # Would implement latent variable approach
     
     data.frame(
-      scenario_id = simulated_data$scenario_id[1],
+      scenario_id = fitting_grid$scenario_id,
+      sample_size = fitting_grid$sample_size,
       method = "ward",
       param1_est = 5.1,
       param1_se = 0.2,
       param2_est = 1.1,
       param2_se = 0.1,
       convergence = 0,
-      loglik = -1000
+      loglik = -1000,
+      runtime_seconds = 0.1  # Placeholder runtime
     )
   },
-  pattern = map(simulated_data)
+  pattern = map(fitting_grid)
 )
 ```
 
@@ -555,7 +586,7 @@ tar_target(
 
 Aggregate results from all methods for comparison.
 
-```{targets all_model_fits, tar_simple = TRUE}
+```{targets simulated_model_fits, tar_simple = TRUE}
 dplyr::bind_rows(
   primarycensored_fits,
   naive_fits,
@@ -701,7 +732,7 @@ Assess bias and accuracy of parameter estimates (Methods lines 280-286).
 # Calculate bias, coverage, RMSE for each method and scenario
 # Real implementation would compare estimated vs true parameters
 
-all_model_fits |>
+simulated_model_fits |>
   dplyr::group_by(method, scenario_id) |>
   dplyr::summarise(
     bias_param1 = mean(estimate[parameter == "param1"] - 5),
@@ -855,7 +886,7 @@ tar_target(
     
     list(
       convergence = convergence_diagnostics,
-      full_estimates = all_model_fits,
+      full_estimates = simulated_model_fits,
       message = "Additional supplementary analyses would go here"
     )
   }
@@ -872,7 +903,7 @@ tar_target(
   {
     # Save detailed results for reproducibility
     .save_data(scenario_grid, "scenario_definitions.csv", path = "results")
-    .save_data(all_model_fits, "all_model_fits.csv", path = "results")
+    .save_data(simulated_model_fits, "simulated_model_fits.csv", path = "results")
     .save_data(parameter_recovery, "parameter_recovery.csv", path = "results")
     .save_data(pmf_comparison, "pmf_comparison.csv", path = "results")
     .save_data(runtime_comparison, "runtime_comparison.csv", path = "results")

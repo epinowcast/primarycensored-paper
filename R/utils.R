@@ -1,90 +1,110 @@
-# Utility functions for primarycensored analysis
-
 #' Save a plot to the figures directory
-#' @param plot A ggplot object
-#' @param filename Character string for the filename
-#' @param width Numeric width in inches
-#' @param height Numeric height in inches
-#' @param ... Additional arguments passed to ggsave
-#' @return The full file path where the plot was saved, or NULL if saving failed
-.save_plot <- function(plot, filename, width = 8, height = 6, ...) {
-  # Ensure figures directory exists
-  figures_dir <- here::here("figures")
-  if (!dir.exists(figures_dir)) {
-    dir.create(figures_dir, recursive = TRUE)
-  }
-  
-  # Construct full file path
-  file_path <- file.path(figures_dir, filename)
-  
-  # Try to save the plot with error handling
-  tryCatch({
-    ggplot2::ggsave(
-      filename = file_path,
-      plot = plot,
-      width = width,
-      height = height,
-      ...
-    )
-    message("Plot saved successfully to: ", file_path)
-    return(file_path)
-  }, error = function(e) {
-    warning("Failed to save plot '", filename, "': ", e$message)
-    return(NULL)
-  })
+#'
+#' @param plot The plot object to save
+#' @param filename The filename (without path)
+#' @param width Width in inches
+#' @param height Height in inches
+#' @param dpi Resolution in dots per inch
+#' @export
+.save_plot <- function(plot, filename, width = 8, height = 6, dpi = 300) {
+  ggsave(
+    filename = here::here("figures", filename),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = dpi
+  )
 }
 
-#' Save a data frame as CSV
-#' @param data A data frame
-#' @param filename Character string for the filename
-#' @param path Character string for subdirectory in data/
-#' @return The full file path where the data was saved
-.save_data <- function(data, filename, path = "processed") {
-  # Validate inputs
-  if (!is.data.frame(data) && !data.table::is.data.table(data)) {
-    stop("'data' must be a data frame or data.table")
+#' Save data to the results directory
+#'
+#' @param data The data object to save
+#' @param filename The filename (without path)
+#' @export
+.save_data <- function(data, filename) {
+  write.csv(
+    data,
+    file = here::here("data/results", filename),
+    row.names = FALSE
+  )
+}
+
+#' Estimate delay distribution using naive model
+#'
+#' @param data Data frame with delay observations
+#' @param distribution Character string naming the distribution ("gamma" or "lognormal")
+#' @param scenario_id Scenario identifier
+#' @param sample_size Sample size
+#' @param seed Random seed for Stan
+#' @param chains Number of chains
+#' @param iter_warmup Number of warmup iterations
+#' @param iter_sampling Number of sampling iterations
+#' @return Data frame with estimates
+#' @export
+.estimate_naive_delay_model <- function(data, distribution, scenario_id, sample_size,
+                                        seed = 123, chains = 2, iter_warmup = 500, 
+                                        iter_sampling = 1000) {
+  library(cmdstanr)
+  
+  # Map distribution names to IDs
+  dist_map <- c("gamma" = 1, "lognormal" = 2)
+  dist_id <- dist_map[distribution]
+  
+  # Skip unsupported distributions
+  if (is.na(dist_id)) {
+    return(data.frame(
+      scenario_id = scenario_id,
+      sample_size = sample_size,
+      method = "naive",
+      param1_est = NA,
+      param1_se = NA,
+      param2_est = NA,
+      param2_se = NA,
+      convergence = NA,
+      loglik = NA,
+      runtime_seconds = NA
+    ))
   }
   
-  if (!is.character(filename) || length(filename) != 1 || 
-      nchar(trimws(filename)) == 0) {
-    stop("'filename' must be a non-empty character string")
-  }
-  
-  # Construct full file path
-  dir_path <- here::here("data", path)
-  file_path <- file.path(dir_path, filename)
-  
-  # Create directory if it doesn't exist
-  if (!dir.exists(dir_path)) {
-    dir.create(dir_path, recursive = TRUE)
-  }
-  
-  # Save the data
-  data.table::fwrite(
-    x = data,
-    file = file_path
+  # Prepare data for Stan
+  stan_data <- list(
+    N = nrow(data),
+    delay_lower = data$sec_cens_lower - data$prim_cens_lower,
+    delay_upper = data$sec_cens_upper - data$prim_cens_upper,
+    dist_id = dist_id
   )
   
-  # Return the full file path
-  return(file_path)
-}
-
-#' Create a PMF result data frame with consistent structure
-#' @param scenarios Scenario metadata
-#' @param method Character string indicating method ("analytical" or "numerical")
-#' @param delays Vector of delay values
-#' @param probability Vector of probabilities
-#' @param runtime_seconds Numeric runtime in seconds
-#' @return A data frame with consistent PMF result structure
-.create_pmf_result <- function(scenarios, method, delays, probability, runtime_seconds) {
+  # Compile model (not timed)
+  mod <- cmdstan_model(here::here("stan/naive_delay_model.stan"))
+  
+  # Start timing after compilation
+  tictoc::tic("naive_fit")
+  
+  fit <- mod$sample(
+    data = stan_data,
+    seed = seed,
+    chains = chains,
+    parallel_chains = chains,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    refresh = 0
+  )
+  
+  runtime <- tictoc::toc(quiet = TRUE)
+  
+  # Extract estimates
+  draws <- fit$draws(variables = c("param1", "param2"), format = "df")
+  
   data.frame(
-    scenario_id = scenarios$scenario_id,
-    distribution = scenarios$distribution,
-    truncation = scenarios$truncation,
-    censoring = scenarios$censoring,
-    method = method,
-    delay = delays,
-    probability = probability,
-    runtime_seconds = runtime_seconds
+    scenario_id = scenario_id,
+    sample_size = sample_size,
+    method = "naive",
+    param1_est = mean(draws$param1),
+    param1_se = sd(draws$param1),
+    param2_est = mean(draws$param2),
+    param2_se = sd(draws$param2),
+    convergence = max(fit$summary()$rhat, na.rm = TRUE) < 1.01,
+    loglik = NA,
+    runtime_seconds = runtime$toc - runtime$tic
   )
 }

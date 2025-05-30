@@ -43,10 +43,10 @@ tar_target(
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
       true_param1 = scenarios$param1,
-      true_param2 = scenarios$param2
+      true_param2 = scenarios$param2,
+      runtime_seconds = runtime$toc - runtime$tic
     )
     
-    attr(result, "runtime_seconds") <- runtime$toc - runtime$tic
     result
   },
   pattern = map(scenarios)

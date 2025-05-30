@@ -1,98 +1,131 @@
 # PR Plan: Implement Data Preparation targets for analysis pipeline #24
 
-## Issue Summary
+## Current Status
+We are in the middle of a PR for this issue and have made significant progress. We now need to fix several issues and make improvements to the pipeline.
 
-This PR implements the Data Preparation section of the targets pipeline as defined in _targets.Rmd. The tasks include:
+## Detailed Implementation Guide
 
-1. **Define distributions target** - gamma, lognormal, and burr distributions with mean = 5 days
-2. **Define truncation_scenarios target** - none, moderate (10-day), and severe (5-day) truncation
-3. **Define censoring_scenarios target** - daily, medium (2-day), and weekly (7-day) censoring patterns
-4. **Create scenario_grid target** - full factorial design combining all scenarios (27 total)
-5. **Implement ebola_data target** - load Sierra Leone Ebola data locally
-6. **Define observation_windows target** - four 60-day windows for case study analysis
+### 1. Fix Pipeline Error - Upper Truncation Point Issue (HIGH PRIORITY)
+**Problem**: Upper truncation point is greater than D. It is 7 and D is 5.
+**Root Cause**: When calculating PMF, we're asking for values where x + swindow > D, which violates the truncation constraint.
+**Solution**: In _targets.Rmd, modify the PMF calculation targets to ensure we only evaluate delays where delay + swindow <= D.
 
-## Status Summary
+**Implementation Steps**:
+1. Locate the PMF calculation sections in _targets.Rmd (analytical_pmf and numerical_pmf targets)
+2. Find where `delays` are calculated
+3. Modify to: `delays <- 0:min(max_delay_to_evaluate, pmax(0, D - swindow))`
+4. This ensures we never evaluate delays that would exceed the truncation point
 
-PR Status: ✅ Refactoring Complete  
-All refactoring tasks implemented and tested successfully.
+### 2. Audit and Clean R Functions (MEDIUM PRIORITY)
+**Task**: Check R folder for unused functions and remove them.
 
-### Final Implementation Status:
-- ✅ All 27 scenarios correctly structured and working
-- ✅ Proper external mapping using pattern = map() 
-- ✅ Runtime measurement per scenario using tictoc
-- ✅ Split Ebola data targets for better modularity
-- ✅ Clean target structure following best practices
-- ✅ All targets tested and functioning correctly
+**Implementation Steps**:
+1. List all functions defined in R/*.R files
+2. Search _targets.Rmd for usage of each function
+3. Remove any functions not referenced in the pipeline
+4. Ensure all remaining functions are properly documented
 
-### Recently Completed:
-- ✅ Fixed all data preparation targets in _targets.Rmd
-- ✅ Used tar_simple = TRUE for simple data frame targets
-- ✅ Converted scenario_list to return data frame directly instead of split list
-- ✅ Fixed weekly censoring to 7 days (was incorrectly 4)
-- ✅ Fixed rprimarycensored usage with proper rprimary_args structure
-- ✅ Fixed library() calls - moved to globals or removed from inside targets
-- ✅ Successfully tested key targets: ebola_data, scenario_list, simulated_data
-- ✅ All 27 simulated_data branches completed successfully
+### 3. Verify Censoring Windows Alignment (HIGH PRIORITY)
+**Task**: Ensure censoring windows in the pipeline match specifications in paper/main.qmd.
 
-### Current Task:
-- ✅ Fixed pmf_comparison target - removed library() call and fixed parameter passing 
-- ✅ Fixed runtime_comparison target - removed library() call and fixed parameter passing
-- ✅ Fixed weekly censoring back to 7 days (was reverted to 4)
-- ✅ Fixed truncation scenarios back to relative_obs_time (was reverted to max_delay)
-- ✅ Fixed scenario_grid to use globals (simulation_n, base_seed)
-- ✅ Tested all basic data frame targets successfully 
-- ✅ Added parameter names to distributions target (param1_name, param2_name)
-- ✅ Created analytical_pmf target using stored dist_params from distributions
-- ✅ Restructured pmf_comparison to use analytical_pmf and monte_carlo_pmf targets
-- ✅ Added runtime measurement using tictoc to simulated_data, monte_carlo_pmf, analytical_pmf, pmf_comparison
-- ✅ Removed standalone runtime_comparison target
+**Implementation Steps**:
+1. Open paper/main.qmd and find the censoring window specifications
+2. Compare with the censoring_scenarios definition in _targets.Rmd
+3. Update _targets.Rmd if there are any discrepancies
+4. Document the alignment in comments
 
-### Implementation Approach:
-1. Split pmf_comparison into multiple targets that operate over existing scenarios
-2. Add runtime recording targets that capture computation time as side effects
-3. Test each change incrementally to ensure everything works
-4. Pause after each step to verify functionality
+### 4. Add tictoc Package (MEDIUM PRIORITY)
+**Task**: Add tictoc to install_packages.R and update renv.
 
-### Next Steps Plan:
-1. ✅ Commit current improvements (parameterization and fixes)
-2. ✅ Check primarycensored vignette for multi-scenario PMF comparison approach  
-3. ✅ Restructure PMF validation targets:
-   - ✅ **monte_carlo_pmf**: Now maps over each scenario externally - stores runtime per scenario
-   - ✅ **analytical_pmf**: Now maps over scenarios externally - stores runtime per scenario  
-   - ✅ **pmf_comparison**: Removed - just visualize instead
-4. ✅ Add runtime measurement using tictoc package in simulation and PMF targets
-5. ✅ Simplify render task with optional customization
-6. ✅ Remove standalone runtime_comparison target (integrate timing into other targets)
-7. ✅ Test each change with task commands - all 27 scenarios working
-8. ✅ Final commit and PR push
+**Implementation Steps**:
+1. Add `"tictoc"` to the packages list in scripts/install_packages.R
+2. Run `task install` to install the package
+3. Run `renv::snapshot()` to update renv.lock
+4. Verify tictoc is available in the environment
 
-### Current Refactoring Tasks:
-1. ✅ **ebola_data**: Split into multiple targets (ebola_data_raw, ebola_data) with tar_simple = TRUE
-2. ✅ **scenario_grid**: Made this a simple target with tar_simple = TRUE  
-3. ✅ **scenario_list**: Renamed to just "scenarios"
-4. ✅ **monte_carlo_pmf**: Fixed to use external pattern mapping over monte_carlo_data (proper joining approach working)
-5. ✅ **analytical_pmf**: Fixed variable naming and truncation constraints (properly handles swindow adjustment)
-6. ✅ **numerical_pmf**: Re-added numerical PMF target (auto-selects numerical integration when needed)
-7. ✅ **pmf_section**: Combined analytical and numerical PMF results in structured dataframe
-8. ✅ **simple_targets**: Confirmed existing tar_simple = TRUE usage is correct in _targets.Rmd; modular targets in .R files don't use this syntax
-9. ✅ **model_fits**: Current approach with bind_rows() is optimal for dynamic branching targets (tar_combine not appropriate)
-10. ✅ **ebola_case_study**: Created ebola_case_study_scenarios and ebola_case_study_data targets with proper real-time vs retrospective filtering
+### 5. Refactor Simulated Data Runtime Storage (MEDIUM PRIORITY)
+**Task**: Store runtime in the data frame instead of as an attribute.
 
-### Summary of Key Fixes:
-1. **Weekly censoring**: Fixed back to 7 days (was reverted to 4)
-2. **Truncation scenarios**: Fixed back to relative_obs_time (was reverted to max_delay) 
-3. **Parameter passing**: Fixed dprimarycensored calls to use direct parameters instead of dist_params
-4. **Library calls**: Removed from runtime_comparison and pmf_comparison targets
-5. **Scenario grid**: Fixed to use global variables (simulation_n, base_seed)
-6. **Code duplication reduction**: Added parameter names to distributions data frame and used do.call() for dynamic parameter passing
-7. **Parameterized configuration**: Made _targets.Rmd parametrized with sample_sizes, growth_rate, simulation_n, and base_seed in YAML header
-8. **Documentation and workflows**: Added comprehensive docs in README, DEVELOPMENT.md, and _targets.Rmd for parameter customization
-9. **Task automation**: Added render-custom task for easy parameter overrides during development and testing
-10. **Comprehensive testing**: All 36 targets working correctly together
+**Implementation Steps**:
+1. In _targets.Rmd, find the simulated_data target
+2. Modify to use `tic()` before simulation and `toc()` after
+3. Add a `runtime` column to the resulting tibble with the elapsed time
+4. Remove any attribute-based runtime storage
 
-## Key Notes
+### 6. Verify monte_carlo_pmf Implementation (HIGH PRIORITY)
+**Task**: Ensure PMF creation matches primarycensored package vignettes.
 
+**Implementation Steps**:
+1. Check primarycensored package vignettes for correct PMF creation
+2. Compare with monte_carlo_pmf target in _targets.Rmd
+3. Update implementation to match vignette approach if needed
+4. Add validation tests if necessary
+
+### 7. Refactor monte_carlo_pmf Runtime Storage (MEDIUM PRIORITY)
+**Task**: Store runtime in the data frame instead of as an attribute.
+
+**Implementation Steps**:
+1. In _targets.Rmd, find the monte_carlo_pmf target
+2. Wrap the Monte Carlo simulation with tic/toc
+3. Add runtime as a column in the resulting tibble
+4. Remove attribute-based storage
+
+### 8. Update Model Fits Mapping (HIGH PRIORITY)
+**Task**: Map over both sample size and scenario for all model fits.
+
+**Implementation Steps**:
+1. Locate fit_naive, fit_primarycensored, and fit_ward targets in _targets.Rmd
+2. Modify each to use `cross_df()` or similar to create combinations of scenarios and sample sizes
+3. Update the mapping functions to handle both parameters
+4. Ensure results include both scenario and sample size identifiers
+
+### 9. Create estimate_delay_model Function (MEDIUM PRIORITY)
+**Task**: Create a reusable function for naive model fitting.
+
+**Implementation Steps**:
+1. Create `estimate_naive_delay_model()` function in R/models.R
+2. Move verbose fitting code from fit_naive target into this function
+3. Update fit_naive target to use the new function
+4. Apply similar refactoring to other model fits if applicable
+
+### 10. Rename all_model_fits Target (LOW PRIORITY)
+**Task**: Rename to simulated_model_fits for clarity.
+
+**Implementation Steps**:
+1. In _targets.Rmd, find all references to `all_model_fits`
+2. Rename to `simulated_model_fits`
+3. Update any downstream targets that depend on this
+4. Update documentation and comments
+
+### 11. Add Runtime Tracking to Model Fits (MEDIUM PRIORITY)
+**Task**: Track runtime (excluding compilation) for each model fit.
+
+**Implementation Steps**:
+1. For each fit target, add tic() after model compilation
+2. Add toc() after fitting completes
+3. Store runtime in the results tibble
+4. Ensure compilation time is excluded from measurement
+
+### 12. Replace data.frame with tibble (LOW PRIORITY)
+**Task**: Use tibble throughout the codebase for consistency.
+
+**Implementation Steps**:
+1. Search for all `data.frame()` calls in _targets.Rmd
+2. Replace with `tibble()` or `as_tibble()`
+3. Ensure tidyverse is loaded where needed
+4. Test that all targets still work correctly
+
+## Testing Strategy
+
+After each task:
+1. Run `task render` to update _targets.R from _targets.Rmd
+2. Run `task run` to test the pipeline
+3. If errors occur, use `targets::tar_make(target_name)` to debug specific targets
+4. Commit changes after each successful task completion
+
+## Key Principles
+- All changes must be made in _targets.Rmd, not in the generated files
 - Use primarycensored package functions where possible
-- Maintain compatibility with _targets.Rmd structure
-- Ensure alignment with main.qmd methods section
-- Limit code duplication through modular design
+- Maintain compatibility with existing structure
+- Test incrementally - one task at a time
+- Document changes clearly in code comments
