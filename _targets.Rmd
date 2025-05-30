@@ -78,13 +78,13 @@ tar_target(
   distributions,
   data.frame(
     dist_name = c("gamma", "lognormal", "burr"),
-    dist_family = c("gamma", "lnorm", "burr"),
-    param1 = c(5, 1.5, 3),       # shape/meanlog/shape1
-    param2 = c(1, 0.5, 1.5),     # scale/sdlog/shape2
-    param3 = c(NA, NA, 4),       # NA/NA/scale
+    dist_family = c("gamma", "lnorm", "gamma"),  # Using gamma as placeholder for burr
+    param1 = c(5, 1.5, 5),       # shape/meanlog/shape (burr using gamma params)
+    param2 = c(1, 0.5, 1),       # scale/sdlog/scale (burr using gamma params)
+    param3 = c(NA, NA, NA),      # NA/NA/NA (burr params to be implemented later)
     mean = c(5, 5, 5),           # All have mean = 5 days
-    variance = c(5, 10, 10),     # Increasing variance
-    has_analytical = c(TRUE, TRUE, FALSE)
+    variance = c(5, 10, 5),      # gamma, lognormal, burr (using gamma variance)
+    has_analytical = c(TRUE, TRUE, FALSE)  # burr will need numerical integration later
   )
 )
 ```
@@ -110,15 +110,15 @@ tar_target(
 
 ## Define censoring patterns
 
-Both primary and secondary events have censoring windows ranging from 1-4 days.
+Both primary and secondary events have censoring windows ranging from 1-7 days.
 
 ```{targets censoring_scenarios}
 tar_target(
   censoring_scenarios,
   data.frame(
     cens_name = c("daily", "medium", "weekly"),
-    primary_width = c(1, 2, 4),
-    secondary_width = c(1, 2, 4)
+    primary_width = c(1, 2, 7),
+    secondary_width = c(1, 2, 7)
   )
 )
 ```
@@ -157,17 +157,31 @@ Load the Sierra Leone Ebola data (2014-2016) for the case study analysis (Method
 tar_target(
   ebola_data,
   {
-    # Placeholder for Ebola linelist data
-    # Real implementation would load Fang et al. 2016 data
-    message("Loading Ebola case study data...")
+    # Load Fang et al. 2016 Sierra Leone Ebola data
+    ebola_raw <- read.csv(
+      "epidist-paper/data-raw/pnas.1518587113.sd02.csv",
+      stringsAsFactors = FALSE
+    )
     
-    # Simulate example structure
-    data.frame(
-      case_id = 1:1000,
-      symptom_onset_date = as.Date("2014-05-01") + sample(0:500, 1000, replace = TRUE),
-      sample_date = as.Date("2014-05-01") + sample(5:510, 1000, replace = TRUE)
-    ) |>
-      dplyr::filter(sample_date > symptom_onset_date)
+    # Clean and format the data
+    ebola_clean <- ebola_raw |>
+      dplyr::rename(
+        symptom_onset_date = Date.of.symptom.onset,
+        sample_date = Date.of.sample.tested
+      ) |>
+      dplyr::mutate(
+        case_id = ID,
+        symptom_onset_date = as.Date(symptom_onset_date, format = "%d-%b-%y"),
+        sample_date = as.Date(sample_date, format = "%d-%b-%y")
+      ) |>
+      dplyr::select(case_id, symptom_onset_date, sample_date) |>
+      dplyr::filter(
+        !is.na(symptom_onset_date),
+        !is.na(sample_date),
+        sample_date >= symptom_onset_date
+      )
+    
+    ebola_clean
   }
 )
 ```
