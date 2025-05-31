@@ -15,12 +15,13 @@ tar_target(
       }
     }
     
-    # Generate delays using rprimarycensored with exponential growth primary distribution
+    # Generate delays using rprimarycensored with appropriate primary distribution
+    # Use helper functions to select distribution based on growth rate
     delays <- rprimarycensored(
       n = n_obs,
       rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
-      rprimary = rexpgrowth,  # Exponential growth distribution for primary events
-      rprimary_args = list(r = growth_rate),  # Pass growth rate to rexpgrowth
+      rprimary = get_rprimary(scenarios$growth_rate),
+      rprimary_args = get_rprimary_args(scenarios$growth_rate),
       pwindow = scenarios$primary_width,
       swindow = scenarios$secondary_width,
       D = scenarios$relative_obs_time
@@ -42,6 +43,7 @@ tar_target(
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
+      growth_rate = scenarios$growth_rate,
       true_param1 = scenarios$param1,
       true_param2 = scenarios$param2,
       runtime_seconds = runtime$toc - runtime$tic

@@ -38,7 +38,7 @@ The default `task` command automatically handles dependency setup and runs the c
 The analysis pipeline is parameterized for easy customization. Key parameters include:
 
 - **`sample_sizes`**: Vector of sample sizes for Monte Carlo comparisons (default: c(10, 100, 1000, 10000))
-- **`growth_rate`**: Exponential growth rate for primary event distribution (default: 0.2)
+- **`growth_rates`**: Vector of exponential growth rates for primary event distribution (default: c(0, 0.2))
 - **`simulation_n`**: Number of observations per simulation scenario (default: 10000)
 - **`base_seed`**: Base seed for reproducible random number generation (default: 100)
 
@@ -48,7 +48,7 @@ The analysis pipeline is parameterized for easy customization. Key parameters in
 ```yaml
 params:
   sample_sizes: !r c(10, 100, 1000, 10000)
-  growth_rate: 0.2
+  growth_rates: !r c(0, 0.2)
   simulation_n: 5000  # Changed from default 10000
   base_seed: 100
 ```
@@ -58,7 +58,7 @@ params:
 # Render with custom parameters
 rmarkdown::render("_targets.Rmd", params = list(
   simulation_n = 5000,
-  growth_rate = 0.1
+  growth_rates = c(0, 0.1)
 ))
 
 # Then run the pipeline
