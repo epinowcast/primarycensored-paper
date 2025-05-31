@@ -16,30 +16,16 @@ tar_target(
     }
     
     # Generate delays using rprimarycensored with appropriate primary distribution
-    # Use uniform distribution when growth rate is 0, exponential growth otherwise
-    if (scenarios$growth_rate == 0) {
-      # For uniform primary distribution, use rprimarycensored with runif
-      delays <- rprimarycensored(
-        n = n_obs,
-        rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
-        rprimary = runif,  # Uniform distribution for primary events
-        rprimary_args = list(),  # runif uses pwindow for its bounds
-        pwindow = scenarios$primary_width,
-        swindow = scenarios$secondary_width,
-        D = scenarios$relative_obs_time
-      )
-    } else {
-      # For exponential growth primary distribution
-      delays <- rprimarycensored(
-        n = n_obs,
-        rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
-        rprimary = rexpgrowth,  # Exponential growth distribution for primary events
-        rprimary_args = list(r = scenarios$growth_rate),  # Pass growth rate from scenario
-        pwindow = scenarios$primary_width,
-        swindow = scenarios$secondary_width,
-        D = scenarios$relative_obs_time
-      )
-    }
+    # Use helper functions to select distribution based on growth rate
+    delays <- rprimarycensored(
+      n = n_obs,
+      rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
+      rprimary = get_rprimary(scenarios$growth_rate),
+      rprimary_args = get_rprimary_args(scenarios$growth_rate),
+      pwindow = scenarios$primary_width,
+      swindow = scenarios$secondary_width,
+      D = scenarios$relative_obs_time
+    )
     
     runtime <- tictoc::toc(quiet = TRUE)
     

@@ -230,30 +230,16 @@ tar_target(
     }
     
     # Generate delays using rprimarycensored with appropriate primary distribution
-    # Use uniform distribution when growth rate is 0, exponential growth otherwise
-    if (scenarios$growth_rate == 0) {
-      # For uniform primary distribution, use rprimarycensored with runif
-      delays <- rprimarycensored(
-        n = n_obs,
-        rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
-        rprimary = runif,  # Uniform distribution for primary events
-        rprimary_args = list(),  # runif uses pwindow for its bounds
-        pwindow = scenarios$primary_width,
-        swindow = scenarios$secondary_width,
-        D = scenarios$relative_obs_time
-      )
-    } else {
-      # For exponential growth primary distribution
-      delays <- rprimarycensored(
-        n = n_obs,
-        rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
-        rprimary = rexpgrowth,  # Exponential growth distribution for primary events
-        rprimary_args = list(r = scenarios$growth_rate),  # Pass growth rate from scenario
-        pwindow = scenarios$primary_width,
-        swindow = scenarios$secondary_width,
-        D = scenarios$relative_obs_time
-      )
-    }
+    # Use helper functions to select distribution based on growth rate
+    delays <- rprimarycensored(
+      n = n_obs,
+      rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
+      rprimary = get_rprimary(scenarios$growth_rate),
+      rprimary_args = get_rprimary_args(scenarios$growth_rate),
+      pwindow = scenarios$primary_width,
+      swindow = scenarios$secondary_width,
+      D = scenarios$relative_obs_time
+    )
     
     runtime <- tictoc::toc(quiet = TRUE)
     
@@ -302,22 +288,51 @@ tar_target(sample_size_grid, {
 
 ``` r
 tar_target(
-  monte_carlo_pmf,
+  monte_carlo_samples,
   {
-    tictoc::tic("monte_carlo_pmf")
-    
     # Get all simulated data and filter to the specific scenario
     all_sim_data <- dplyr::bind_rows(simulated_data)
     scenario_data <- all_sim_data |>
       dplyr::filter(scenario_id == sample_size_grid$scenario_id)
     n <- sample_size_grid$sample_size
     
+    # Sample the requested number of observations
+    if (nrow(scenario_data) >= n) {
+      sampled <- scenario_data[1:n, ]
+      data.frame(
+        sample_size_scenario = paste(sample_size_grid$scenario_id, n, sep = "_"),
+        scenario_id = sample_size_grid$scenario_id,
+        sample_size = n,
+        sampled
+      )
+    } else {
+      # Return empty data frame if not enough data
+      data.frame(
+        sample_size_scenario = paste(sample_size_grid$scenario_id, n, sep = "_"),
+        scenario_id = sample_size_grid$scenario_id,
+        sample_size = n
+      )
+    }
+  },
+  pattern = map(sample_size_grid)
+)
+#> Establish _targets.R and _targets_r/targets/monte_carlo_samples.R.
+```
+
+``` r
+tar_target(
+  monte_carlo_pmf,
+  {
+    tictoc::tic("monte_carlo_pmf")
+    
+    # Use the pre-sampled data
+    sampled <- monte_carlo_samples
+    
     # Create base data frame structure
     delays <- 0:20
     
-    # Calculate empirical PMF if we have enough data
-    if (nrow(scenario_data) >= n) {
-      sampled <- scenario_data[1:n, ]
+    # Calculate empirical PMF if we have data
+    if (nrow(sampled) > 0 && "delay_observed" %in% names(sampled)) {
       empirical_pmf <- sapply(delays, function(d) {
         mean(floor(sampled$delay_observed) == d)
       })
@@ -325,22 +340,26 @@ tar_target(
       truncation <- unique(sampled$truncation)[1]
       censoring <- unique(sampled$censoring)[1]
       growth_rate <- unique(sampled$growth_rate)[1]
+      scenario_id <- unique(sampled$scenario_id)[1]
+      sample_size <- unique(sampled$sample_size)[1]
     } else {
       empirical_pmf <- NA_real_
       distribution <- NA_character_
       truncation <- NA_character_
       censoring <- NA_character_
       growth_rate <- NA_real_
+      scenario_id <- unique(sampled$scenario_id)[1]
+      sample_size <- unique(sampled$sample_size)[1]
     }
     
     # Create result data frame with consistent structure
     result <- data.frame(
-      scenario_id = sample_size_grid$scenario_id,
+      scenario_id = scenario_id,
       distribution = distribution,
       truncation = truncation,
       censoring = censoring,
       growth_rate = growth_rate,
-      sample_size = n,
+      sample_size = sample_size,
       delay = delays,
       probability = empirical_pmf
     )
@@ -350,7 +369,7 @@ tar_target(
     
     result
   },
-  pattern = map(sample_size_grid)
+  pattern = map(monte_carlo_samples)
 )
 #> Establish _targets.R and _targets_r/targets/monte_carlo_pmf.R.
 ```
@@ -363,7 +382,7 @@ scenarios.
 ``` r
 tar_target(
   analytical_pmf,
-  .calculate_pmf(
+  calculate_pmf(
     scenarios = scenarios,
     distributions = distributions,
     growth_rate = scenarios$growth_rate,
@@ -382,7 +401,7 @@ scenarios.
 ``` r
 tar_target(
   numerical_pmf,
-  .calculate_pmf(
+  calculate_pmf(
     scenarios = scenarios,
     distributions = distributions,
     growth_rate = scenarios$growth_rate,
@@ -420,17 +439,16 @@ analytical marginalisation.
 tar_target(
   primarycensored_fits,
   {  
-    # Get all simulated data and filter to the specific scenario
-    all_sim_data <- dplyr::bind_rows(simulated_data)
-    full_data <- all_sim_data |>
-      filter(scenario_id == fitting_grid$scenario_id)
+    # Use pre-sampled data
+    sample_key <- paste(fitting_grid$scenario_id, fitting_grid$sample_size, sep = "_")
+    sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
+      dplyr::filter(sample_size_scenario == sample_key)
     
-    # Sample the requested number of observations
-    n <- fitting_grid$sample_size
-    if (n > nrow(full_data)) {
+    # Check if we have data
+    if (nrow(sampled_data) == 0 || !"delay_observed" %in% names(sampled_data)) {
       return(data.frame(
         scenario_id = fitting_grid$scenario_id,
-        sample_size = n,
+        sample_size = fitting_grid$sample_size,
         method = "primarycensored",
         param1_est = NA,
         param1_se = NA,
@@ -441,8 +459,6 @@ tar_target(
         runtime_seconds = NA
       ))
     }
-    
-    sampled_data <- full_data[1:n, ]
     
     # Start timing after data preparation
     tictoc::tic("fit_primarycensored")
@@ -485,17 +501,16 @@ tar_target(
   {
     library(dplyr)
     
-    # Get all simulated data and filter to the specific scenario
-    all_sim_data <- dplyr::bind_rows(simulated_data)
-    full_data <- all_sim_data |>
-      filter(scenario_id == fitting_grid$scenario_id)
+    # Use pre-sampled data
+    sample_key <- paste(fitting_grid$scenario_id, fitting_grid$sample_size, sep = "_")
+    sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
+      dplyr::filter(sample_size_scenario == sample_key)
     
-    # Sample the requested number of observations
-    n <- fitting_grid$sample_size
-    if (n > nrow(full_data)) {
+    # Check if we have data
+    if (nrow(sampled_data) == 0 || !"delay_observed" %in% names(sampled_data)) {
       return(data.frame(
         scenario_id = fitting_grid$scenario_id,
-        sample_size = n,
+        sample_size = fitting_grid$sample_size,
         method = "naive",
         param1_est = NA,
         param1_se = NA,
@@ -507,14 +522,12 @@ tar_target(
       ))
     }
     
-    sampled_data <- full_data[1:n, ]
-    
     # Use the new function for cleaner code
-    .estimate_naive_delay_model(
+    estimate_naive_delay_model(
       data = sampled_data,
       distribution = sampled_data$distribution[1],
       scenario_id = fitting_grid$scenario_id,
-      sample_size = n
+      sample_size = fitting_grid$sample_size
     )
   },
   pattern = map(fitting_grid)
@@ -859,9 +872,9 @@ tar_target(
   saved_figures,
   {
     # Main figures
-    .save_plot(figure1_numerical, "figure1_numerical_validation.pdf", width = 12, height = 4)
-    .save_plot(figure2_parameters, "figure2_parameter_recovery.pdf", width = 12, height = 4)
-    .save_plot(figure3_ebola, "figure3_ebola_case_study.pdf", width = 12, height = 4)
+    save_plot(figure1_numerical, "figure1_numerical_validation.pdf", width = 12, height = 4)
+    save_plot(figure2_parameters, "figure2_parameter_recovery.pdf", width = 12, height = 4)
+    save_plot(figure3_ebola, "figure3_ebola_case_study.pdf", width = 12, height = 4)
     
     # Supplementary figures would be added here
     
@@ -904,13 +917,13 @@ tar_target(
   saved_results,
   {
     # Save detailed results for reproducibility
-    .save_data(scenario_grid, "scenario_definitions.csv")
-    .save_data(simulated_model_fits, "simulated_model_fits.csv")
+    save_data(scenario_grid, "scenario_definitions.csv")
+    save_data(simulated_model_fits, "simulated_model_fits.csv")
     # Note: parameter_recovery, pmf_comparison, runtime_comparison don't exist yet
-    # .save_data(parameter_recovery, "parameter_recovery.csv")
-    # .save_data(pmf_comparison, "pmf_comparison.csv")
-    # .save_data(runtime_comparison, "runtime_comparison.csv")
-    .save_data(ebola_model_fits, "ebola_results.csv")
+    # save_data(parameter_recovery, "parameter_recovery.csv")
+    # save_data(pmf_comparison, "pmf_comparison.csv")
+    # save_data(runtime_comparison, "runtime_comparison.csv")
+    save_data(ebola_model_fits, "ebola_results.csv")
     
     TRUE
   }

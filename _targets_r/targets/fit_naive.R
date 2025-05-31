@@ -3,17 +3,16 @@ tar_target(
   {
     library(dplyr)
     
-    # Get all simulated data and filter to the specific scenario
-    all_sim_data <- dplyr::bind_rows(simulated_data)
-    full_data <- all_sim_data |>
-      filter(scenario_id == fitting_grid$scenario_id)
+    # Use pre-sampled data
+    sample_key <- paste(fitting_grid$scenario_id, fitting_grid$sample_size, sep = "_")
+    sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
+      dplyr::filter(sample_size_scenario == sample_key)
     
-    # Sample the requested number of observations
-    n <- fitting_grid$sample_size
-    if (n > nrow(full_data)) {
+    # Check if we have data
+    if (nrow(sampled_data) == 0 || !"delay_observed" %in% names(sampled_data)) {
       return(data.frame(
         scenario_id = fitting_grid$scenario_id,
-        sample_size = n,
+        sample_size = fitting_grid$sample_size,
         method = "naive",
         param1_est = NA,
         param1_se = NA,
@@ -25,14 +24,12 @@ tar_target(
       ))
     }
     
-    sampled_data <- full_data[1:n, ]
-    
     # Use the new function for cleaner code
-    .estimate_naive_delay_model(
+    estimate_naive_delay_model(
       data = sampled_data,
       distribution = sampled_data$distribution[1],
       scenario_id = fitting_grid$scenario_id,
-      sample_size = n
+      sample_size = fitting_grid$sample_size
     )
   },
   pattern = map(fitting_grid)
