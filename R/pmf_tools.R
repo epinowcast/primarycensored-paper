@@ -164,9 +164,9 @@ get_primary_args <- function(growth_rate) {
 #' @export
 get_rprimary <- function(growth_rate) {
   if (growth_rate == 0) {
-    runif
+    stats::runif
   } else {
-    rexpgrowth
+    primarycensored::rexpgrowth
   }
 }
 

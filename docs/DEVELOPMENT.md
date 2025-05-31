@@ -13,8 +13,8 @@ The analysis pipeline is fully parameterized to enable easy customization and te
   - Use smaller values for faster development/testing
   - Use larger values for production analyses
 
-- **`growth_rate`**: Exponential growth rate for primary event distribution
-  - Default: `0.2` (as per manuscript)
+- **`growth_rates`**: Vector of exponential growth rates for primary event distribution
+  - Default: `c(0, 0.2)` (uniform and exponential growth as per manuscript)
   - Range: 0.1-0.5 typical for epidemiological applications
 
 - **`simulation_n`**: Number of observations per simulation scenario
@@ -38,7 +38,7 @@ task run
 **Sensitivity analysis:**
 ```bash
 # Test different growth rates
-task render-custom PARAMS='growth_rate=0.1'
+task render-custom PARAMS='growth_rates=c(0, 0.1)'
 task run
 
 # Different sample sizes for convergence testing

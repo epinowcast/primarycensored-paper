@@ -46,6 +46,9 @@ estimate_naive_delay_model <- function(data, distribution, scenario_id,
                                        sample_size, seed = 123, chains = 2,
                                        iter_warmup = 500,
                                        iter_sampling = 1000) {
+  # Validate distribution parameter
+  distribution <- match.arg(distribution, choices = c("gamma", "lognormal"))
+  
   # For now, return placeholder implementation to avoid Stan compilation issues
   # Real implementation would use Stan model
   
