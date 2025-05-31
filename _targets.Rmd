@@ -3,7 +3,7 @@ title: "Analysis Pipeline: Primary Event Censored Distributions"
 output: github_document
 params:
   sample_sizes: !r c(10, 100, 1000, 10000)
-  growth_rate: 0.2
+  growth_rates: !r c(0, 0.2)
   simulation_n: 10000
   base_seed: 100
 ---
@@ -28,7 +28,7 @@ The pipeline is structured to mirror the manuscript sections:
 This pipeline is parameterized to allow easy customization of key analysis settings:
 
 - **`sample_sizes`**: Vector of sample sizes for Monte Carlo comparisons (default: c(10, 100, 1000, 10000))
-- **`growth_rate`**: Exponential growth rate for primary event distribution (default: 0.2)
+- **`growth_rates`**: Vector of exponential growth rates for primary event distribution (default: c(0, 0.2))
 - **`simulation_n`**: Number of observations per simulation scenario (default: 10000)
 - **`base_seed`**: Base seed for reproducible random number generation (default: 100)
 
@@ -76,7 +76,7 @@ controller <- crew_controller_local(
 
 # Configuration values from parameters (with fallbacks for direct targets execution)
 sample_sizes <- if(exists("params")) params$sample_sizes else c(10, 100, 1000, 10000)
-growth_rate <- if(exists("params")) params$growth_rate else 0.2  # Exponential growth rate as per manuscript
+growth_rates <- if(exists("params")) params$growth_rates else c(0, 0.2)  # Growth rates: 0 for uniform, 0.2 for exponential growth
 simulation_n <- if(exists("params")) params$simulation_n else 10000  # Number of observations per scenario
 base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for reproducibility
 
@@ -146,19 +146,21 @@ data.frame(
 
 ## Create full scenario grid
 
-Combine all scenarios into a full factorial design (9 scenarios total as per manuscript).
+Combine all scenarios into a full factorial design (18 scenarios total: 2 growth rates × 2 distributions × 3 truncations × 3 censorings).
 
 ```{targets scenario_grid, tar_simple = TRUE}
 # Create all combinations
 grid <- expand.grid(
-  distribution = distributions$dist_name,
+  distribution = distributions$dist_name[distributions$dist_name != "burr"],  # Exclude burr distribution
   truncation = truncation_scenarios$trunc_name,
   censoring = censoring_scenarios$cens_name,
+  growth_rate = growth_rates,
   stringsAsFactors = FALSE
 )
 
 # Add scenario metadata
-grid$scenario_id <- paste(grid$distribution, grid$truncation, grid$censoring, sep = "_")
+grid$scenario_id <- paste(grid$distribution, grid$truncation, grid$censoring, 
+                         paste0("r", grid$growth_rate), sep = "_")
 grid$n <- simulation_n
 grid$seed <- seq_len(nrow(grid)) + base_seed
 
@@ -196,16 +198,31 @@ tar_target(
       }
     }
     
-    # Generate delays using rprimarycensored with exponential growth primary distribution
-    delays <- rprimarycensored(
-      n = n_obs,
-      rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
-      rprimary = rexpgrowth,  # Exponential growth distribution for primary events
-      rprimary_args = list(r = growth_rate),  # Pass growth rate to rexpgrowth
-      pwindow = scenarios$primary_width,
-      swindow = scenarios$secondary_width,
-      D = scenarios$relative_obs_time
-    )
+    # Generate delays using rprimarycensored with appropriate primary distribution
+    # Use uniform distribution when growth rate is 0, exponential growth otherwise
+    if (scenarios$growth_rate == 0) {
+      # For uniform primary distribution, use rprimarycensored with runif
+      delays <- rprimarycensored(
+        n = n_obs,
+        rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
+        rprimary = runif,  # Uniform distribution for primary events
+        rprimary_args = list(),  # runif uses pwindow for its bounds
+        pwindow = scenarios$primary_width,
+        swindow = scenarios$secondary_width,
+        D = scenarios$relative_obs_time
+      )
+    } else {
+      # For exponential growth primary distribution
+      delays <- rprimarycensored(
+        n = n_obs,
+        rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
+        rprimary = rexpgrowth,  # Exponential growth distribution for primary events
+        rprimary_args = list(r = scenarios$growth_rate),  # Pass growth rate from scenario
+        pwindow = scenarios$primary_width,
+        swindow = scenarios$secondary_width,
+        D = scenarios$relative_obs_time
+      )
+    }
     
     runtime <- tictoc::toc(quiet = TRUE)
     
@@ -223,6 +240,7 @@ tar_target(
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
+      growth_rate = scenarios$growth_rate,
       true_param1 = scenarios$param1,
       true_param2 = scenarios$param2,
       runtime_seconds = runtime$toc - runtime$tic
@@ -270,11 +288,13 @@ tar_target(
       distribution <- unique(sampled$distribution)[1]
       truncation <- unique(sampled$truncation)[1]
       censoring <- unique(sampled$censoring)[1]
+      growth_rate <- unique(sampled$growth_rate)[1]
     } else {
       empirical_pmf <- NA_real_
       distribution <- NA_character_
       truncation <- NA_character_
       censoring <- NA_character_
+      growth_rate <- NA_real_
     }
     
     # Create result data frame with consistent structure
@@ -283,6 +303,7 @@ tar_target(
       distribution = distribution,
       truncation = truncation,
       censoring = censoring,
+      growth_rate = growth_rate,
       sample_size = n,
       delay = delays,
       probability = empirical_pmf
@@ -307,7 +328,7 @@ tar_target(
   .calculate_pmf(
     scenarios = scenarios,
     distributions = distributions,
-    growth_rate = growth_rate,
+    growth_rate = scenarios$growth_rate,
     method = "analytical"
   ),
   pattern = map(scenarios)
@@ -324,7 +345,7 @@ tar_target(
   .calculate_pmf(
     scenarios = scenarios,
     distributions = distributions,
-    growth_rate = growth_rate,
+    growth_rate = scenarios$growth_rate,
     method = "numerical"
   ),
   pattern = map(scenarios)

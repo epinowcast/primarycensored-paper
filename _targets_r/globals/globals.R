@@ -21,7 +21,7 @@ controller <- crew_controller_local(
 
 # Configuration values from parameters (with fallbacks for direct targets execution)
 sample_sizes <- if(exists("params")) params$sample_sizes else c(10, 100, 1000, 10000)
-growth_rate <- if(exists("params")) params$growth_rate else 0.2  # Exponential growth rate as per manuscript
+growth_rates <- if(exists("params")) params$growth_rates else c(0, 0.2)  # Growth rates: 0 for uniform, 0.2 for exponential growth
 simulation_n <- if(exists("params")) params$simulation_n else 10000  # Number of observations per scenario
 base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for reproducibility
 

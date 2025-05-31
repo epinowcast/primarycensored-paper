@@ -21,11 +21,13 @@ tar_target(
       distribution <- unique(sampled$distribution)[1]
       truncation <- unique(sampled$truncation)[1]
       censoring <- unique(sampled$censoring)[1]
+      growth_rate <- unique(sampled$growth_rate)[1]
     } else {
       empirical_pmf <- NA_real_
       distribution <- NA_character_
       truncation <- NA_character_
       censoring <- NA_character_
+      growth_rate <- NA_real_
     }
     
     # Create result data frame with consistent structure
@@ -34,6 +36,7 @@ tar_target(
       distribution = distribution,
       truncation = truncation,
       censoring = censoring,
+      growth_rate = growth_rate,
       sample_size = n,
       delay = delays,
       probability = empirical_pmf

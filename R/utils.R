@@ -50,13 +50,12 @@
   data.frame(
     scenario_id = scenario_id,
     sample_size = sample_size,
-    method = "naive",
-    param1_est = 5.1,  # Placeholder estimates
-    param1_se = 0.2,
-    param2_est = 1.1,
-    param2_se = 0.1,
-    convergence = TRUE,
-    loglik = -100,
+    model = "naive",
+    distribution = distribution,
+    mean_est = mean(data$delay_observed),
+    sd_est = sd(data$delay_observed),
+    param1_est = NA_real_,
+    param2_est = NA_real_,
     runtime_seconds = 0.5
   )
 }
@@ -103,8 +102,8 @@
     pwindow = scenarios$primary_width,
     swindow = scenarios$secondary_width,
     D = scenarios$relative_obs_time,
-    dprimary = dexpgrowth,
-    dprimary_args = list(r = growth_rate)
+    dprimary = .get_primary_dist(growth_rate),
+    dprimary_args = .get_primary_args(growth_rate)
   )
   
   # Add distribution parameters using named arguments
@@ -134,6 +133,7 @@
     distribution = scenarios$distribution,
     truncation = scenarios$truncation,
     censoring = scenarios$censoring,
+    growth_rate = scenarios$growth_rate,
     method = method,
     delay = delays,
     probability = pmf_values,
@@ -186,4 +186,30 @@
     method = method,
     runtime_seconds = runtime_seconds
   )
+}
+
+#' Get primary distribution function based on growth rate
+#'
+#' @param growth_rate Growth rate parameter
+#' @return Function for primary distribution (uniform if growth_rate is 0, exponential growth otherwise)
+#' @export
+.get_primary_dist <- function(growth_rate) {
+  if (growth_rate == 0) {
+    return(dunif)
+  } else {
+    return(dexpgrowth)
+  }
+}
+
+#' Get primary distribution arguments based on growth rate
+#'
+#' @param growth_rate Growth rate parameter
+#' @return List of arguments for the primary distribution
+#' @export
+.get_primary_args <- function(growth_rate) {
+  if (growth_rate == 0) {
+    return(list())  # dunif uses default args from pwindow
+  } else {
+    return(list(r = growth_rate))
+  }
 }

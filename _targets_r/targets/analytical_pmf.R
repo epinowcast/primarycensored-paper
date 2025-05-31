@@ -3,7 +3,7 @@ tar_target(
   .calculate_pmf(
     scenarios = scenarios,
     distributions = distributions,
-    growth_rate = growth_rate,
+    growth_rate = scenarios$growth_rate,
     method = "analytical"
   ),
   pattern = map(scenarios)
