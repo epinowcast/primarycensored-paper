@@ -2,13 +2,13 @@ tar_target(
   monte_carlo_pmf,
   {
     tictoc::tic("monte_carlo_pmf")
-
+    
     # Use the pre-sampled data
     sampled <- monte_carlo_samples
-
+    
     # Create base data frame structure
     delays <- 0:20
-
+    
     # Calculate empirical PMF if we have data
     if (nrow(sampled) > 0 && "delay_observed" %in% names(sampled)) {
       empirical_pmf <- sapply(delays, function(d) {
@@ -29,7 +29,7 @@ tar_target(
       scenario_id <- unique(sampled$scenario_id)[1]
       sample_size <- unique(sampled$sample_size)[1]
     }
-
+    
     # Create result data frame with consistent structure
     result <- data.frame(
       scenario_id = scenario_id,
@@ -41,10 +41,10 @@ tar_target(
       delay = delays,
       probability = empirical_pmf
     )
-
+    
     runtime <- tictoc::toc(quiet = TRUE)
     result$runtime_seconds <- runtime$toc - runtime$tic
-
+    
     result
   },
   pattern = map(monte_carlo_samples)

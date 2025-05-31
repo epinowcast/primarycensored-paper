@@ -15,25 +15,23 @@ rm("functions")
 # Set up crew controller for parallel processing
 controller <- crew_controller_local(
   name = "primarycensored_crew",
-  workers = parallel::detectCores() - 1, # Leave one core free
+  workers = parallel::detectCores() - 1,  # Leave one core free
   seconds_idle = 30
 )
 
 # Configuration values from parameters (with fallbacks for direct targets execution)
-sample_sizes <- if (exists("params")) params$sample_sizes else c(10, 100, 1000, 10000)
-growth_rates <- if (exists("params")) params$growth_rates else c(0, 0.2) # Growth rates: 0 for uniform, 0.2 for exponential growth
-simulation_n <- if (exists("params")) params$simulation_n else 10000 # Number of observations per scenario
-base_seed <- if (exists("params")) params$base_seed else 100 # Base seed for reproducibility
+sample_sizes <- if(exists("params")) params$sample_sizes else c(10, 100, 1000, 10000)
+growth_rates <- if(exists("params")) params$growth_rates else c(0, 0.2)  # Growth rates: 0 for uniform, 0.2 for exponential growth
+simulation_n <- if(exists("params")) params$simulation_n else 10000  # Number of observations per scenario
+base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for reproducibility
 
 # Set targets options
 tar_option_set(
-  packages = c(
-    "data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr",
-    "tidyr", "qs2", "primarycensored", "cmdstanr", "tictoc"
-  ),
-  format = "qs", # Use qs format (qs2 is used via repository option)
-  memory = "transient", # Free memory after each target completes
-  garbage_collection = TRUE, # Run garbage collection
-  controller = controller, # Use crew for parallel processing
-  repository = "local" # Use qs2 backend for storage
+  packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
+               "tidyr", "qs2", "primarycensored", "cmdstanr", "tictoc"),
+  format = "qs",  # Use qs format (qs2 is used via repository option)
+  memory = "transient",  # Free memory after each target completes
+  garbage_collection = TRUE,  # Run garbage collection
+  controller = controller,  # Use crew for parallel processing
+  repository = "local"  # Use qs2 backend for storage
 )

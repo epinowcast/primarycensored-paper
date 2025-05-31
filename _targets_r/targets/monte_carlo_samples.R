@@ -6,7 +6,7 @@ tar_target(
     scenario_data <- all_sim_data |>
       dplyr::filter(scenario_id == sample_size_grid$scenario_id)
     n <- sample_size_grid$sample_size
-
+    
     # Sample the requested number of observations
     if (nrow(scenario_data) >= n) {
       sampled <- scenario_data[1:n, ]

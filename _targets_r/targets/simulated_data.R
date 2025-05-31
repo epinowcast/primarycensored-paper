@@ -3,7 +3,7 @@ tar_target(
   {
     tictoc::tic("simulated_data")
     set.seed(scenarios$seed)
-
+    
     # Create distribution arguments for the delay distribution
     n_obs <- scenarios$n
     dist_args <- list(n = n_obs)
@@ -14,7 +14,7 @@ tar_target(
         dist_args[[param_names[3]]] <- scenarios$param2
       }
     }
-
+    
     # Generate delays using rprimarycensored with appropriate primary distribution
     # Use helper functions to select distribution based on growth rate
     delays <- rprimarycensored(
@@ -26,9 +26,9 @@ tar_target(
       swindow = scenarios$secondary_width,
       D = scenarios$relative_obs_time
     )
-
+    
     runtime <- tictoc::toc(quiet = TRUE)
-
+    
     # Create censored observations with runtime info and censoring intervals
     result <- data.frame(
       obs_id = seq_len(n_obs),
@@ -48,7 +48,7 @@ tar_target(
       true_param2 = scenarios$param2,
       runtime_seconds = runtime$toc - runtime$tic
     )
-
+    
     result
   },
   pattern = map(scenarios)
