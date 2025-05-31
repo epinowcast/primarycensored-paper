@@ -152,3 +152,24 @@ tasks:
     desc: Check if Quarto is installed
     cmds:
       - Rscript scripts/check_quarto.R
+
+  test:
+    desc: Run all tests using testthat
+    deps: [install]
+    cmds:
+      - echo "🧪 Running tests..."
+      - Rscript tests/testthat.R
+
+  coverage:
+    desc: Generate test coverage report
+    deps: [install]
+    cmds:
+      - echo "📊 Generating coverage report..."
+      - Rscript -e "covr::report(file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/'))"
+
+  coverage-console:
+    desc: Show test coverage in console
+    deps: [install]
+    cmds:
+      - echo "📊 Checking test coverage..."
+      - Rscript -e "covr::file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/')"
