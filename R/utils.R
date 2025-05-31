@@ -32,7 +32,8 @@ save_data <- function(data, filename) {
 #' Estimate delay distribution using naive model
 #'
 #' @param data Data frame with delay observations
-#' @param distribution Character string naming the distribution ("gamma" or "lognormal")
+#' @param distribution Character string naming the distribution ("gamma" or
+#' "lognormal")
 #' @param scenario_id Scenario identifier
 #' @param sample_size Sample size
 #' @param seed Random seed for Stan
@@ -41,8 +42,9 @@ save_data <- function(data, filename) {
 #' @param iter_sampling Number of sampling iterations
 #' @return Data frame with estimates
 #' @export
-estimate_naive_delay_model <- function(data, distribution, scenario_id, sample_size,
-                                       seed = 123, chains = 2, iter_warmup = 500, 
+estimate_naive_delay_model <- function(data, distribution, scenario_id,
+                                       sample_size, seed = 123, chains = 2,
+                                       iter_warmup = 500,
                                        iter_sampling = 1000) {
   # For now, return placeholder implementation to avoid Stan compilation issues
   # Real implementation would use Stan model

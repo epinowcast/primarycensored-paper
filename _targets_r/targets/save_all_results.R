@@ -9,7 +9,7 @@ tar_target(
     # save_data(pmf_comparison, "pmf_comparison.csv")
     # save_data(runtime_comparison, "runtime_comparison.csv")
     save_data(ebola_model_fits, "ebola_results.csv")
-    
+
     TRUE
   }
 )

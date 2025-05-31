@@ -3,17 +3,20 @@
 #' @param scenarios Scenario data frame row
 #' @param distributions Distribution data frame
 #' @param growth_rate Growth rate parameter
-#' @param is_numerical Logical indicating if numerical integration should be used
+#' @param is_numerical Logical indicating if numerical integration should be
+#' used
 #' @return List with calculation inputs
 #' @export
-setup_pmf_inputs <- function(scenarios, distributions, growth_rate, 
+setup_pmf_inputs <- function(scenarios, distributions, growth_rate,
                              is_numerical = FALSE) {
   # Get distribution info with parameter names
-  dist_info <- distributions[distributions$dist_name == scenarios$distribution, ]
-  
+  dist_info <- distributions[
+    distributions$dist_name == scenarios$distribution,
+  ]
+
   # Always evaluate delays 0:20 for consistency
   delays <- 0:20
-  
+
   # Define which delays are valid (ensure x + swindow <= D)
   if (is.finite(scenarios$relative_obs_time)) {
     # For finite truncation, only evaluate delays where delay + swindow <= D
@@ -24,15 +27,15 @@ setup_pmf_inputs <- function(scenarios, distributions, growth_rate,
     # For infinite truncation, all delays are valid
     valid_delays <- delays
   }
-  
+
   # Get the distribution function
   pdist <- get(paste0("p", dist_info$dist_family))
-  
+
   # For numerical integration, add name attribute to trigger it
   if (is_numerical) {
     pdist <- add_name_attribute(pdist, "pdistnumerical")
   }
-  
+
   # Build arguments list
   args <- list(
     x = valid_delays,
@@ -43,11 +46,11 @@ setup_pmf_inputs <- function(scenarios, distributions, growth_rate,
     dprimary = get_primary_dist(growth_rate),
     dprimary_args = get_primary_args(growth_rate)
   )
-  
+
   # Add distribution parameters using named arguments
   args[[dist_info$param1_name]] <- dist_info$param1
   args[[dist_info$param2_name]] <- dist_info$param2
-  
+
   list(
     delays = delays,
     valid_delays = valid_delays,
@@ -64,7 +67,7 @@ setup_pmf_inputs <- function(scenarios, distributions, growth_rate,
 #' @param runtime_seconds Runtime in seconds
 #' @return Data frame with formatted results
 #' @export
-format_pmf_results <- function(scenarios, delays, pmf_values, method, 
+format_pmf_results <- function(scenarios, delays, pmf_values, method,
                                runtime_seconds) {
   data.frame(
     scenario_id = scenarios$scenario_id,
@@ -87,35 +90,35 @@ format_pmf_results <- function(scenarios, delays, pmf_values, method,
 #' @param method Character string for method name ("analytical" or "numerical")
 #' @return Data frame with PMF results
 #' @export
-calculate_pmf <- function(scenarios, distributions, growth_rate, 
+calculate_pmf <- function(scenarios, distributions, growth_rate,
                           method = c("analytical", "numerical")) {
   method <- match.arg(method)
-  
+
   # Start timing
   tictoc::tic(paste0(method, "_pmf"))
-  
+
   # Setup inputs
   inputs <- setup_pmf_inputs(
-    scenarios, 
-    distributions, 
+    scenarios,
+    distributions,
     growth_rate,
     is_numerical = (method == "numerical")
   )
-  
+
   # Initialize probability vector with NAs
   pmf_values <- rep(NA_real_, length(inputs$delays))
-  
+
   # Calculate PMF only for valid delays
   if (length(inputs$valid_delays) > 0) {
     calculated_values <- do.call(dprimarycensored, inputs$args)
     # Fill in the valid delays with calculated values
     pmf_values[inputs$delays %in% inputs$valid_delays] <- calculated_values
   }
-  
+
   # Get runtime
   runtime <- tictoc::toc(quiet = TRUE)
   runtime_seconds <- runtime$toc - runtime$tic
-  
+
   # Format and return results
   format_pmf_results(
     scenarios = scenarios,
@@ -129,13 +132,14 @@ calculate_pmf <- function(scenarios, distributions, growth_rate,
 #' Get primary distribution function based on growth rate
 #'
 #' @param growth_rate Growth rate parameter
-#' @return Function for primary distribution (uniform if growth_rate is 0, exponential growth otherwise)
+#' @return Function for primary distribution (uniform if growth_rate is 0,
+#' exponential growth otherwise)
 #' @export
 get_primary_dist <- function(growth_rate) {
   if (growth_rate == 0) {
-    return(dunif)
+    dunif
   } else {
-    return(dexpgrowth)
+    dexpgrowth
   }
 }
 
@@ -146,22 +150,23 @@ get_primary_dist <- function(growth_rate) {
 #' @export
 get_primary_args <- function(growth_rate) {
   if (growth_rate == 0) {
-    return(list())  # dunif uses default args from pwindow
+    list() # dunif uses default args from pwindow
   } else {
-    return(list(r = growth_rate))
+    list(r = growth_rate)
   }
 }
 
 #' Get primary random generation function based on growth rate
 #'
 #' @param growth_rate Growth rate parameter
-#' @return Function for primary distribution random generation (runif if growth_rate is 0, rexpgrowth otherwise)
+#' @return Function for primary distribution random generation (runif if
+#' growth_rate is 0, rexpgrowth otherwise)
 #' @export
 get_rprimary <- function(growth_rate) {
   if (growth_rate == 0) {
-    return(runif)
+    runif
   } else {
-    return(rexpgrowth)
+    rexpgrowth
   }
 }
 
@@ -172,8 +177,8 @@ get_rprimary <- function(growth_rate) {
 #' @export
 get_rprimary_args <- function(growth_rate) {
   if (growth_rate == 0) {
-    return(list())  # runif uses pwindow for min/max
+    list() # runif uses pwindow for min/max
   } else {
-    return(list(r = growth_rate))
+    list(r = growth_rate)
   }
 }
