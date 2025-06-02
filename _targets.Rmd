@@ -483,7 +483,7 @@ tar_target(
     
     # Configuration based on distribution and growth rate
     config <- list(
-      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,
+      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,  # primarycensored: lnorm=1, gamma=2
       primary_id = if (dist_info$growth_rate == 0) 1L else 2L
     )
     
@@ -581,35 +581,36 @@ tar_target(
     tictoc::tic("fit_primarycensored_mle")
     dist_info <- extract_distribution_info(sampled_data)
     
-    # Prepare data and primary distribution
-    delays_data <- data.frame(
-      delay_lwr = sampled_data$sec_cens_lower,
-      delay_upr = sampled_data$sec_cens_upper,
-      ptime_lwr = sampled_data$prim_cens_lower,
-      ptime_upr = sampled_data$prim_cens_upper
+    # Prepare data in correct format for fitdistdoublecens
+    delay_data <- data.frame(
+      left = sampled_data$delay_observed,
+      right = sampled_data$delay_observed + (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
     )
     
+    pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
     obs_time <- sampled_data$relative_obs_time[1]
-    if (is.finite(obs_time)) delays_data$obs_time <- obs_time
     
-    primary_dist <- if (dist_info$growth_rate == 0) {
-      function(x) dunif(x, min = 0, max = sampled_data$prim_cens_upper[1])
+    # Set up primary distribution
+    dprimary_args <- if (dist_info$growth_rate == 0) {
+      list()  # Default uniform
     } else {
-      primarycensored::dexpgrowth
+      list(min = 0, max = pwindow, r = dist_info$growth_rate)
     }
     
-    # Fit using appropriate distribution
-    fit_args <- list(
-      delays_data, pdist = primary_dist,
+    # Fit using appropriate distribution  
+    fit_result <- primarycensored::fitdistdoublecens(
+      censdata = delay_data,
+      distr = if (dist_info$distribution == "gamma") "gamma" else "lnorm",
+      pwindow = pwindow,
+      D = if (is.finite(obs_time)) obs_time else Inf,
+      dprimary = if (dist_info$growth_rate == 0) stats::dunif else primarycensored::dexpgrowth,
+      dprimary_args = dprimary_args,
       start = if (dist_info$distribution == "gamma") {
         list(shape = 2, scale = 2)
       } else {
         list(meanlog = 1.5, sdlog = 0.5)
-      },
-      distr = if (dist_info$distribution == "gamma") "gamma" else "lnorm"
+      }
     )
-    
-    fit_result <- do.call(primarycensored::fitdistdoublecens, fit_args)
     
     # Extract parameters based on distribution
     param_names <- if (dist_info$distribution == "gamma") {
@@ -802,22 +803,133 @@ Apply all three methods to each observation window and analysis type combination
 tar_target(
   ebola_model_fits,
   {
-    # Fit models for both real-time and retrospective analyses
-    # Assume gamma distribution as per manuscript
+    # Extract the actual data from the list column
+    case_data <- ebola_case_study_data$data[[1]]
     
-    list(
-      window_id = ebola_case_study_data$window_id,
-      analysis_type = ebola_case_study_data$analysis_type,
-      window_label = ebola_case_study_data$window_label,
-      n_cases = ebola_case_study_data$n_cases,
-      primarycensored = list(shape = 2.5, scale = 3.2),
-      naive = list(shape = 2.1, scale = 2.8),
-      ward = list(shape = 2.6, scale = 3.3),
-      runtime_pc = 5,
-      runtime_ward = 150,
-      ess_per_second_pc = 200,
-      ess_per_second_ward = 10
+    # Check if we have enough cases for fitting
+    if (ebola_case_study_data$n_cases < 10) {
+      return(data.frame(
+        window_id = ebola_case_study_data$window_id,
+        analysis_type = ebola_case_study_data$analysis_type,
+        window_label = ebola_case_study_data$window_label,
+        n_cases = ebola_case_study_data$n_cases,
+        method = c("primarycensored", "naive", "ward"),
+        param1_est = NA_real_,
+        param1_se = NA_real_,
+        param2_est = NA_real_,
+        param2_se = NA_real_,
+        runtime_seconds = NA_real_
+      ))
+    }
+    
+    # Calculate delays (sample date - symptom onset date)
+    case_data$delay_observed <- as.numeric(case_data$sample_date - case_data$symptom_onset_date)
+    
+    # Set up censoring windows (assuming 1-day intervals as per case study)
+    case_data$prim_cens_lower <- 0
+    case_data$prim_cens_upper <- 1
+    case_data$sec_cens_lower <- case_data$delay_observed
+    case_data$sec_cens_upper <- case_data$delay_observed + 1
+    
+    # Set truncation based on analysis type
+    if (ebola_case_study_data$analysis_type == "real_time") {
+      obs_time <- ebola_case_study_data$end_day - ebola_case_study_data$start_day
+    } else {
+      obs_time <- Inf  # No truncation for retrospective
+    }
+    case_data$relative_obs_time <- obs_time
+    
+    results <- list()
+    
+    # Fit primarycensored model
+    tictoc::tic("primarycensored")
+    tryCatch({
+      delay_data <- data.frame(
+        delay = case_data$delay_observed,
+        delay_upper = case_data$sec_cens_upper,
+        n = 1,
+        pwindow = 1,
+        relative_obs_time = obs_time
+      )
+      
+      stan_data <- primarycensored::pcd_as_stan_data(
+        delay_data,
+        dist_id = 2L,  # Gamma distribution
+        primary_id = 1L,  # Uniform primary
+        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
+        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
+        priors = list(location = c(2, 2), scale = c(1, 1)),
+        primary_priors = list(location = numeric(0), scale = numeric(0)),
+        compute_log_lik = TRUE
+      )
+      
+      fit <- primarycensored::pcd_cmdstan_model()$sample(
+        data = stan_data,
+        chains = if (test_mode) test_chains else 2,
+        parallel_chains = 1,
+        iter_warmup = if (test_mode) test_iterations else 1000,
+        iter_sampling = if (test_mode) test_iterations else 1000,
+        adapt_delta = 0.95,
+        show_messages = FALSE,
+        refresh = 0
+      )
+      
+      param_summary <- posterior::summarise_draws(fit$draws(c("param1", "param2")))
+      runtime_pc <- tictoc::toc(quiet = TRUE)
+      
+      results$primarycensored <- data.frame(
+        param1_est = param_summary$mean[1],
+        param1_se = param_summary$sd[1],
+        param2_est = param_summary$mean[2],
+        param2_se = param_summary$sd[2],
+        runtime_seconds = runtime_pc$toc - runtime_pc$tic
+      )
+    }, error = function(e) {
+      runtime_pc <- tictoc::toc(quiet = TRUE)
+      results$primarycensored <<- data.frame(
+        param1_est = NA_real_, param1_se = NA_real_,
+        param2_est = NA_real_, param2_se = NA_real_,
+        runtime_seconds = runtime_pc$toc - runtime_pc$tic
+      )
+    })
+    
+    # Fit naive model (simplified - just use MLE)
+    tictoc::tic("naive")
+    tryCatch({
+      fit_gamma <- fitdistrplus::fitdist(case_data$delay_observed, "gamma")
+      runtime_naive <- tictoc::toc(quiet = TRUE)
+      
+      results$naive <- data.frame(
+        param1_est = fit_gamma$estimate["shape"],
+        param1_se = fit_gamma$sd["shape"],
+        param2_est = fit_gamma$estimate["rate"],  # Convert to scale later if needed
+        param2_se = fit_gamma$sd["rate"],
+        runtime_seconds = runtime_naive$toc - runtime_naive$tic
+      )
+    }, error = function(e) {
+      runtime_naive <- tictoc::toc(quiet = TRUE)
+      results$naive <<- data.frame(
+        param1_est = NA_real_, param1_se = NA_real_,
+        param2_est = NA_real_, param2_se = NA_real_,
+        runtime_seconds = runtime_naive$toc - runtime_naive$tic
+      )
+    })
+    
+    # Ward model (simplified - return placeholder for now as it requires complex implementation)
+    results$ward <- data.frame(
+      param1_est = NA_real_, param1_se = NA_real_,
+      param2_est = NA_real_, param2_se = NA_real_,
+      runtime_seconds = NA_real_
     )
+    
+    # Combine all results
+    bind_results <- dplyr::bind_rows(results, .id = "method")
+    bind_results$window_id <- ebola_case_study_data$window_id
+    bind_results$analysis_type <- ebola_case_study_data$analysis_type
+    bind_results$window_label <- ebola_case_study_data$window_label
+    bind_results$n_cases <- ebola_case_study_data$n_cases
+    
+    bind_results
   },
   pattern = map(ebola_case_study_data)
 )
@@ -829,17 +941,17 @@ tar_target(
 
 Assess bias and accuracy of parameter estimates (Methods lines 280-286).
 
-```{targets parameter_recovery, tar_simple = TRUE
+```{targets parameter_recovery, tar_simple = TRUE}
 # Calculate bias, coverage, RMSE for each method and scenario
 # Real implementation would compare estimated vs true parameters
 
 simulated_model_fits |>
   dplyr::group_by(method, scenario_id) |>
   dplyr::summarise(
-    bias_param1 = mean(estimate[parameter == "param1"] - 5),
-    bias_param2 = mean(estimate[parameter == "param2"] - 1),
-    coverage_param1 = 0.95,  # Placeholder
-    coverage_param2 = 0.94,  # Placeholder
+    bias_param1 = mean(param1_est, na.rm = TRUE) - 5,  # True param1 is 5 for both dists
+    bias_param2 = mean(param2_est, na.rm = TRUE) - 1,  # True param2 is 1 (scale) for gamma
+    coverage_param1 = 0.95,  # Placeholder - would need CI calculations
+    coverage_param2 = 0.94,  # Placeholder - would need CI calculations
     .groups = "drop"
   )
 ```
