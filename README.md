@@ -1,5 +1,7 @@
 # primarycensored-paper
 
+[![Codecov test coverage](https://codecov.io/gh/epinowcast/primarycensored-paper/branch/main/graph/badge.svg)](https://app.codecov.io/gh/epinowcast/primarycensored-paper?branch=main)
+
 A repository for the paper "Modelling delays with primary Event Censored Distributions", which describes methods for handling double interval censored data in epidemiological delay distribution estimation.
 
 ## Repository Structure
