@@ -69,16 +69,24 @@ setup_pmf_inputs <- function(scenarios, distributions, growth_rate,
 #' @export
 format_pmf_results <- function(scenarios, delays, pmf_values, method,
                                runtime_seconds) {
+  # Extract scalar values to avoid row name warnings
+  scenario_id <- scenarios$scenario_id[1]
+  distribution <- scenarios$distribution[1]
+  truncation <- scenarios$truncation[1]
+  censoring <- scenarios$censoring[1]
+  growth_rate <- scenarios$growth_rate[1]
+  
   data.frame(
-    scenario_id = scenarios$scenario_id,
-    distribution = scenarios$distribution,
-    truncation = scenarios$truncation,
-    censoring = scenarios$censoring,
-    growth_rate = scenarios$growth_rate,
-    method = method,
+    scenario_id = rep(scenario_id, length(delays)),
+    distribution = rep(distribution, length(delays)),
+    truncation = rep(truncation, length(delays)),
+    censoring = rep(censoring, length(delays)),
+    growth_rate = rep(growth_rate, length(delays)),
+    method = rep(method, length(delays)),
     delay = delays,
     probability = pmf_values,
-    runtime_seconds = runtime_seconds
+    runtime_seconds = rep(runtime_seconds, length(delays)),
+    stringsAsFactors = FALSE
   )
 }
 
