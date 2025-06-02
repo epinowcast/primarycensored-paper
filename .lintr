@@ -1,11 +1,1 @@
-linters: with_defaults(
-  line_length_linter(80),
-  trailing_whitespace_linter(),
-  trailing_blank_lines_linter(),
-  object_name_linter("snake_case"),
-  infix_spaces_linter(),
-  commas_linter(),
-  assignment_linter(),
-  brace_linter(),
-  paren_brace_linter()
-)
+linters: line_length_linter(80), trailing_whitespace_linter(), trailing_blank_lines_linter(), object_name_linter("snake_case"), infix_spaces_linter(), commas_linter(), assignment_linter(), brace_linter(), paren_brace_linter()
