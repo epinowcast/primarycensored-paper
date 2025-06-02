@@ -2,6 +2,57 @@
 
 This document provides comprehensive information for developers working on the primarycensored-paper repository.
 
+## Pipeline Configuration
+
+The analysis pipeline is fully parameterized to enable easy customization and testing. Parameters are defined in the YAML header of `_targets.Rmd` and can be modified for different analysis scenarios.
+
+### Key Parameters
+
+- **`sample_sizes`**: Vector of sample sizes for Monte Carlo comparisons
+  - Default: `c(10, 100, 1000, 10000)`
+  - Use smaller values for faster development/testing
+  - Use larger values for production analyses
+
+- **`growth_rates`**: Vector of exponential growth rates for primary event distribution
+  - Default: `c(0, 0.2)` (uniform and exponential growth as per manuscript)
+  - Range: 0.1-0.5 typical for epidemiological applications
+
+- **`simulation_n`**: Number of observations per simulation scenario
+  - Default: `10000` (production quality)
+  - Reduce to `1000` or less for development/testing
+  - Increase for higher precision analyses
+
+- **`base_seed`**: Base seed for reproducible random number generation
+  - Default: `100`
+  - Change to generate different random sequences while maintaining reproducibility
+
+### Development Workflows
+
+**Quick testing during development:**
+```bash
+# Fast test with small sample sizes
+task render-custom PARAMS='simulation_n=1000, sample_sizes=c(10, 100)'
+task run
+```
+
+**Sensitivity analysis:**
+```bash
+# Test different growth rates
+task render-custom PARAMS='growth_rates=c(0, 0.1)'
+task run
+
+# Different sample sizes for convergence testing
+task render-custom PARAMS='sample_sizes=c(100, 500, 1000, 5000, 10000)'
+task run
+```
+
+**Production runs:**
+```bash
+# Use defaults for final analyses
+task render
+task run
+```
+
 ## Repository Architecture
 
 ### Core Structure

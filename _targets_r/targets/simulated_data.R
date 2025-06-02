@@ -1,39 +1,55 @@
 tar_target(
   simulated_data,
   {
-    library(primarycensored)
-    params <- scenario_list[[1]]
-    set.seed(params$seed)
+    tictoc::tic("simulated_data")
+    set.seed(scenarios$seed)
     
-    # Generate primary event times with exponential growth
-    n_obs <- params$n
-    growth_rate <- 0.2  # As per manuscript
-    prim_times <- cumsum(rexp(n_obs, rate = growth_rate))
+    # Create distribution arguments for the delay distribution
+    n_obs <- scenarios$n
+    dist_args <- list(n = n_obs)
+    if (!is.na(scenarios$param1)) {
+      param_names <- names(formals(get(paste0("r", scenarios$dist_family))))
+      dist_args[[param_names[2]]] <- scenarios$param1
+      if (!is.na(scenarios$param2)) {
+        dist_args[[param_names[3]]] <- scenarios$param2
+      }
+    }
     
-    # Generate delays using rprimarycensored
+    # Generate delays using rprimarycensored with appropriate primary distribution
+    # Use helper functions to select distribution based on growth rate
     delays <- rprimarycensored(
       n = n_obs,
-      rdist = get(paste0("r", params$dist_family)),
-      rprimary = runif,  # Uniform primary distribution
-      pwindow = params$primary_width,
-      swindow = params$secondary_width,
-      D = params$max_delay
+      rdist = function(n) do.call(get(paste0("r", scenarios$dist_family)), dist_args),
+      rprimary = get_rprimary(scenarios$growth_rate),
+      rprimary_args = get_rprimary_args(scenarios$growth_rate),
+      pwindow = scenarios$primary_width,
+      swindow = scenarios$secondary_width,
+      D = scenarios$relative_obs_time
     )
     
-    # Create censored observations
-    data.frame(
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    # Create censored observations with runtime info and censoring intervals
+    result <- data.frame(
       obs_id = seq_len(n_obs),
-      scenario_id = params$scenario_id,
-      prim_cens_lower = floor(prim_times),
-      prim_cens_upper = floor(prim_times) + params$primary_width,
+      scenario_id = scenarios$scenario_id,
       delay_observed = delays,
-      sec_cens_lower = floor(prim_times + delays),
-      sec_cens_upper = floor(prim_times + delays) + params$secondary_width,
-      distribution = params$distribution,
-      truncation = params$truncation,
-      censoring = params$censoring,
-      true_params = list(param1 = params$param1, param2 = params$param2)
+      # Primary event censoring intervals [0, pwindow]
+      prim_cens_lower = 0,
+      prim_cens_upper = scenarios$primary_width,
+      # Secondary event censoring intervals [delay, delay + swindow]
+      sec_cens_lower = delays,
+      sec_cens_upper = delays + scenarios$secondary_width,
+      distribution = scenarios$distribution,
+      truncation = scenarios$truncation,
+      censoring = scenarios$censoring,
+      growth_rate = scenarios$growth_rate,
+      true_param1 = scenarios$param1,
+      true_param2 = scenarios$param2,
+      runtime_seconds = runtime$toc - runtime$tic
     )
+    
+    result
   },
-  pattern = map(scenario_list)
+  pattern = map(scenarios)
 )

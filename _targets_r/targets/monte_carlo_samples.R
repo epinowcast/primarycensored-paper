@@ -1,34 +1,29 @@
 tar_target(
   monte_carlo_samples,
   {
-    library(primarycensored)
-    sample_sizes <- c(10, 100, 1000, 10000)
+    # Get all simulated data and filter to the specific scenario
+    all_sim_data <- dplyr::bind_rows(simulated_data)
+    scenario_data <- all_sim_data |>
+      dplyr::filter(scenario_id == sample_size_grid$scenario_id)
+    n <- sample_size_grid$sample_size
     
-    # Generate Monte Carlo samples for each distribution and sample size
-    purrr::map_dfr(distributions$dist_name, function(dist_name) {
-      dist_info <- distributions[distributions$dist_name == dist_name, ]
-      
-      purrr::map_dfr(sample_sizes, function(n) {
-        # Generate large Monte Carlo sample
-        mc_samples <- rprimarycensored(
-          n = n,
-          rdist = get(paste0("r", dist_info$dist_family)),
-          rprimary = runif,
-          pwindow = 1,
-          swindow = 1,
-          D = Inf
-        )
-        
-        # Calculate empirical PMF
-        pmf <- table(mc_samples) / n
-        
-        data.frame(
-          distribution = dist_name,
-          sample_size = n,
-          delay = as.numeric(names(pmf)),
-          probability = as.numeric(pmf)
-        )
-      })
-    })
-  }
+    # Sample the requested number of observations
+    if (nrow(scenario_data) >= n) {
+      sampled <- scenario_data[1:n, ]
+      data.frame(
+        sample_size_scenario = paste(sample_size_grid$scenario_id, n, sep = "_"),
+        scenario_id = sample_size_grid$scenario_id,
+        sample_size = n,
+        sampled
+      )
+    } else {
+      # Return empty data frame if not enough data
+      data.frame(
+        sample_size_scenario = paste(sample_size_grid$scenario_id, n, sep = "_"),
+        scenario_id = sample_size_grid$scenario_id,
+        sample_size = n
+      )
+    }
+  },
+  pattern = map(sample_size_grid)
 )

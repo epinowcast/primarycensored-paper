@@ -1,5 +1,7 @@
 # primarycensored-paper
 
+[![Codecov test coverage](https://codecov.io/gh/epinowcast/primarycensored-paper/branch/main/graph/badge.svg)](https://app.codecov.io/gh/epinowcast/primarycensored-paper?branch=main)
+
 A repository for the paper "Modelling delays with primary Event Censored Distributions", which describes methods for handling double interval censored data in epidemiological delay distribution estimation.
 
 ## Repository Structure
@@ -33,15 +35,59 @@ task run       # Execute the targets pipeline
 
 The default `task` command automatically handles dependency setup and runs the complete analysis pipeline.
 
+### Configuration Parameters
+
+The analysis pipeline is parameterized for easy customization. Key parameters include:
+
+- **`sample_sizes`**: Vector of sample sizes for Monte Carlo comparisons (default: c(10, 100, 1000, 10000))
+- **`growth_rates`**: Vector of exponential growth rates for primary event distribution (default: c(0, 0.2))
+- **`simulation_n`**: Number of observations per simulation scenario (default: 10000)
+- **`base_seed`**: Base seed for reproducible random number generation (default: 100)
+
+#### Changing Parameters
+
+**Method 1: Edit YAML header** in `_targets.Rmd`:
+```yaml
+params:
+  sample_sizes: !r c(10, 100, 1000, 10000)
+  growth_rates: !r c(0, 0.2)
+  simulation_n: 5000  # Changed from default 10000
+  base_seed: 100
+```
+
+**Method 2: Using R directly**:
+```r
+# Render with custom parameters
+rmarkdown::render("_targets.Rmd", params = list(
+  simulation_n = 5000,
+  growth_rates = c(0, 0.1)
+))
+
+# Then run the pipeline
+targets::tar_make()
+```
+
+**Method 3: Quick test runs**:
+```bash
+# Small test run (faster)
+task render-custom PARAMS='simulation_n=1000'
+task run
+
+# Multiple parameters
+task render-custom PARAMS='simulation_n=1000, sample_sizes=c(10,100)'
+task run
+```
+
 ### Available Commands
 
 ```bash
 # Core workflow
-task           # Complete pipeline (setup + render + run)
-task install   # Setup renv and install dependencies
-task render    # Render _targets.Rmd to create pipeline
-task run       # Execute the targets pipeline
-task clean     # Clean all computed results (with confirmation)
+task                # Complete pipeline (setup + render + run)
+task install        # Setup renv and install dependencies
+task render         # Render _targets.Rmd to create pipeline
+task render-custom  # Render with custom parameters (see examples above)
+task run            # Execute the targets pipeline
+task clean          # Clean all computed results (with confirmation)
 
 # Visualization & monitoring
 task visualize # Create interactive pipeline graph

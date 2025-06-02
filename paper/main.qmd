@@ -269,7 +269,7 @@ We extended the `fitdistrplus` package to handle double-censored data through a 
 
 #### Simulated datasets
 
-We generated 9 synthetic datasets with 10000 individuals each. For primary event censoring, we generated events with censoring windows ranging from 1 day to 4 days in width. Primary events were assumed to follow a uniform distribution within their censoring windows. For the delay distributions, we used three distributions with a common mean of 5 days but varying degrees of variance:  
+We generated 36 synthetic datasets with 10000 individuals each, exploring two primary event distributions within censoring windows: uniform distribution (growth rate $r = 0$) and exponentially tilted distribution with growth rate $r = 0.2$. We tested 18 scenarios (2 delay distributions × 3 truncation levels × 3 censoring patterns) for each primary event distribution. For primary event censoring, we generated events with censoring windows ranging from 1 day to 4 days in width. For the delay distributions, we used three distributions with a common mean of 5 days but varying degrees of variance:  
 
 - **Gamma distribution** (shape $k = 5$, scale $\theta = 1$) representing a moderate variance scenario (5 days), for which we have an analytical solution.
 - **Lognormal distribution** (location $\mu = 1.5$, scale $\sigma = 0.5$) representing higher variance (10 days), for which we also have an analytical solution.

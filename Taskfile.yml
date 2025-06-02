@@ -3,12 +3,13 @@ version: '3'
 tasks:
   default:
     desc: Run the complete analysis pipeline
-    deps: [render]
     cmds:
       - task: run
+      - task: manuscript
 
   render:
-    desc: Render the targets Rmarkdown document
+    desc: "Render the targets Rmarkdown document (optional: PARAMS='simulation_n=1000')"
+    deps: [install]
     sources:
       - _targets.Rmd
       - R/**/*.R
@@ -16,10 +17,21 @@ tasks:
       - _targets.md
     cmds:
       - echo "Rendering _targets.Rmd..."
-      - Rscript -e "rmarkdown::render('_targets.Rmd')"
+      - |
+        if [ -n "{{.PARAMS}}" ]; then
+          echo "Using custom parameters: {{.PARAMS}}"
+          Rscript -e "
+          custom_params <- list({{.PARAMS}})
+          rmarkdown::render('_targets.Rmd', params = custom_params)
+          "
+        else
+          echo "Using default parameters"
+          Rscript -e "rmarkdown::render('_targets.Rmd')"
+        fi
 
   run:
     desc: Run the targets pipeline
+    deps: [render]
     sources:
       - _targets.R
       - R/**/*.R
@@ -30,12 +42,13 @@ tasks:
 
   visualize:
     desc: Create a visualization of the pipeline
-    deps: [render]
+    deps: [install, render]
     cmds:
       - Rscript scripts/visualize_pipeline.R
 
   progress:
     desc: Show pipeline progress
+    deps: [install]
     cmds:
       - echo "Checking pipeline progress..."
       - Rscript -e "targets::tar_progress()"
@@ -83,11 +96,13 @@ tasks:
 
   profile:
     desc: Profile the targets pipeline to identify performance bottlenecks
+    deps: [install]
     cmds:
       - Rscript scripts/profile_pipeline.R
 
   profile-view:
     desc: View previously saved profiling results
+    deps: [install]
     cmds:
       - Rscript scripts/view_profile.R
 
@@ -99,7 +114,17 @@ tasks:
 
   manuscript-pdf:
     desc: Render the manuscript to PDF only
-    deps: [check-quarto]
+    deps: [check-quarto, install]
+    sources:
+      - paper/**/*.qmd
+      - data/**/*.csv
+      - figures/**/*.pdf
+      - figures/**/*.png
+      - figures/**/*.svg
+      - figures/**/*.jpg
+      - figures/**/*.jpeg
+      - figures/**/*.gif
+      - figures/**/*.bmp
     cmds:
       - echo "📄 Rendering manuscript to PDF..."
       - cd paper && quarto render main.qmd --to pdf
@@ -107,7 +132,17 @@ tasks:
 
   manuscript-html:
     desc: Render the manuscript to HTML only
-    deps: [check-quarto]
+    deps: [check-quarto, install]
+    sources:
+      - paper/**/*.qmd
+      - data/**/*.csv
+      - figures/**/*.pdf
+      - figures/**/*.png
+      - figures/**/*.svg
+      - figures/**/*.jpg
+      - figures/**/*.jpeg
+      - figures/**/*.gif
+      - figures/**/*.bmp
     cmds:
       - echo "📄 Rendering manuscript to HTML..."
       - cd paper && quarto render main.qmd --to html
@@ -117,3 +152,24 @@ tasks:
     desc: Check if Quarto is installed
     cmds:
       - Rscript scripts/check_quarto.R
+
+  test:
+    desc: Run all tests using testthat
+    deps: [install]
+    cmds:
+      - echo "🧪 Running tests..."
+      - Rscript tests/testthat.R
+
+  coverage:
+    desc: Generate test coverage report
+    deps: [install]
+    cmds:
+      - echo "📊 Generating coverage report..."
+      - Rscript -e "covr::report(file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/'))"
+
+  coverage-console:
+    desc: Show test coverage in console
+    deps: [install]
+    cmds:
+      - echo "📊 Checking test coverage..."
+      - Rscript -e "covr::file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/')"
