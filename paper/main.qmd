@@ -207,11 +207,19 @@ As shown in @eq-cdfadj, solving for $F_{\text{cens}}$ also solves for the second
 
 ### Analytical solutions
 
+#### Exponentially tilted primary event times
+
+In practice, censoring patterns can be complex, influenced by a variety of factors including circadian rhythms, weekday/weekend reporting differences, and changing epidemic dynamics. We simplify this complexity by modeling the primary event distribution within its censoring window using an exponentially tilted distribution:
+
+$$f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
+
+where $r$ controls the growth rate (positive values) or decay rate (negative values) of events within the window. This captures the key feature that during epidemic growth, events are more likely to occur near the end of their censoring windows, while during decline, they occur closer to the beginning.
+
 #### Uniform primary event time as a special case
 
-When $r = 0$, the exponentially tilted distribution @eq-condP reduces to the uniform distribution:
+When $r = 0$, the exponentially tilted distribution reduces to the uniform distribution:
 
-$$f_P(p) = \frac{1}{w_P} \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
+$$f_P(t) = \frac{1}{w_P} \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
 
 In this case, our adjusted delay time CDF integral simplifies to:
 
@@ -219,28 +227,15 @@ $$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \fr
 
 This integral can be evaluated using integration by parts, transforming it into:
 
-$$F_{\text{cens}}(q) = F_T(q-w_P) + \frac{1}{w_P} \int_0^{w_P} f_T(q-u) u \, dz.$$
-
-This expression can be further simplified by another variable substitution setting $z = q - u$,
-
-$$
-\begin{aligned}
-F_{\text{cens}}(q) &= F_T(q-w_P) + \frac{1}{w_P} \int_{q-w_P}^{q} f_T(z) (q-z) \, dz \\
- &= F_T(q-w_P) + \frac{q}{w_P} \left (F_T(q) - F_T(q-w_P) \right) - \int_{q-w_P}^{q} z f_T(z)  \, dz 
-\end{aligned} 
-$$ {#eq-analytic}
-
-For parametric distributions the CDF of the delay $T$ is analytically accessible, therefore, solving @eq-analytic for any given value of $q$ depends on resolving the final integral term.
+$$F_{\text{cens}}(q) = F_T(q) + \frac{1}{w_P} \left[ \int_q^{q+w_P} f_T(z) (z-q) \, dz \right]$$
 
 #### The role of partial expectation in analytical solutions
 
-Here, we encounter what's known as a partial expectation of the delay distribution:
+Here, we encounter what's known as the partial expectation of the delay distribution:
 
-$$\int_{q-w_P}^{q} z f_T(z) \, dz$$ {#eq-partialint}
+$$\int_q^{q+w_P} z \cdot f_T(z) \, dz$$
 
-The partial expectation @eq-partialint calculates the contribution to the mean of $T$ from values within the interval [q-w_P, q]. Similarly to how many parametric distributions have an associated parametric form for the distribution mean, the partial expectation @eq-partialint also has parametric forms dependent on the distribution parameters and the interval location.
-
-This relationship enables us to develop analytical solutions that avoid numerical integration for distributions with these closed-form partial expectations.
+This partial expectation calculates the mean contribution from values within the interval [q, q+w_P]. This relationship enables us to develop analytical solutions that avoid numerical integration for distributions with closed-form partial expectations.
 
 #### Distributions with analytical solutions
 
