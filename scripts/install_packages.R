@@ -17,13 +17,9 @@ if (file.exists("renv.lock")) {
   # No lockfile, install required packages
   message("No renv.lock found. Installing dependencies from DESCRIPTION...")
   
-  # Install DESCRIPTION dependencies
+  # Install DESCRIPTION dependencies (including remotes)
   message("Installing dependencies from DESCRIPTION...")
   renv::install(".", dependencies = TRUE)
-  
-  # Install cmdstanr from GitHub (pinned to v0.9.0)
-  message("Installing cmdstanr from GitHub (v0.9.0)...")
-  renv::install("stan-dev/cmdstanr@v0.9.0")
   
   # Create initial lockfile
   message("Creating renv.lock...")
