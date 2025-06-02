@@ -29,75 +29,7 @@ save_data <- function(data, filename) {
   )
 }
 
-#' Estimate delay distribution using naive model
-#'
-#' @param data Data frame with delay observations
-#' @param distribution Character string naming the distribution ("gamma" or
-#' "lognormal")
-#' @param scenario_id Scenario identifier
-#' @param sample_size Sample size
-#' @param seed Random seed for Stan
-#' @param chains Number of chains
-#' @param iter_warmup Number of warmup iterations
-#' @param iter_sampling Number of sampling iterations
-#' @return Data frame with estimates
-#' @export
-estimate_naive_delay_model <- function(data, distribution, scenario_id,
-                                       sample_size, seed = 123, chains = 2,
-                                       iter_warmup = 500,
-                                       iter_sampling = 1000) {
-  # Validate distribution parameter
-  distribution <- match.arg(distribution, choices = c("gamma", "lognormal"))
 
-  # Use method of moments for quick parameter estimates
-  if (distribution == "gamma") {
-    # Method of moments for gamma distribution
-    mean_est <- mean(data$delay_observed)
-    var_est <- var(data$delay_observed)
-    scale_est <- var_est / mean_est
-    shape_est <- mean_est / scale_est
-    param1_est <- shape_est
-    param2_est <- scale_est
-  } else {
-    # Method of moments for lognormal distribution
-    log_data <- log(data$delay_observed)
-    param1_est <- mean(log_data)  # meanlog
-    param2_est <- sd(log_data)    # sdlog
-  }
-
-  data.frame(
-    scenario_id = scenario_id,
-    sample_size = sample_size,
-    model = "naive",
-    distribution = distribution,
-    mean_est = mean(data$delay_observed),
-    sd_est = sd(data$delay_observed),
-    param1_est = param1_est,
-    param2_est = param2_est,
-    runtime_seconds = 0.01
-  )
-}
-
-#' Extract sampled data for a given scenario and sample size
-#'
-#' @param monte_carlo_samples List of monte carlo sample data frames
-#' @param fitting_grid Single row from fitting grid with scenario_id and
-#'   sample_size
-#' @return Filtered data frame with sampled data for the scenario
-#' @export
-extract_sampled_data <- function(monte_carlo_samples, fitting_grid) {
-  # Create the correct key that matches the data structure 
-  sample_key <- paste0(fitting_grid$scenario_id, "_", fitting_grid$sample_size)
-  sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
-    dplyr::filter(.data$sample_size_scenario == sample_key)
-
-  # Check if we have valid data
-  if (nrow(sampled_data) == 0 || !"delay_observed" %in% names(sampled_data)) {
-    return(NULL)
-  }
-
-  sampled_data
-}
 
 
 #' Extract posterior estimates and diagnostics from Stan fit
