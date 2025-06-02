@@ -99,6 +99,61 @@ extract_sampled_data <- function(monte_carlo_samples, fitting_grid) {
   sampled_data
 }
 
+#' Extract data for unified fitting grid
+#'
+#' Works with the new tar_group_by fitting_grid structure to extract
+#' data from either monte_carlo_samples or ebola_case_study_data
+#'
+#' @param fitting_grid_group Single group from grouped fitting grid
+#' @param monte_carlo_samples Monte Carlo samples for simulations 
+#' @param ebola_case_study_data Ebola case study data
+#' @return Data frame ready for model fitting
+#' @export
+extract_fitting_data <- function(fitting_grid_group, monte_carlo_samples, 
+                                ebola_case_study_data) {
+  # Get the first row to check data type
+  data_type <- fitting_grid_group$data_type[1]
+  
+  if (data_type == "simulation") {
+    # Extract from monte_carlo_samples
+    extract_sampled_data(monte_carlo_samples, fitting_grid_group)
+  } else if (data_type == "ebola") {
+    # Extract from ebola_case_study_data
+    dataset_id <- fitting_grid_group$dataset_id[1]
+    
+    # Find matching Ebola data
+    ebola_data <- ebola_case_study_data |>
+      dplyr::mutate(
+        full_dataset_id = paste0("ebola_", window_id, "_", analysis_type)
+      ) |>
+      dplyr::filter(full_dataset_id == dataset_id)
+    
+    if (nrow(ebola_data) == 0) {
+      return(NULL)
+    }
+    
+    # Extract the nested data
+    case_data <- ebola_data$data[[1]]
+    
+    # Format to match expected structure
+    case_data |>
+      dplyr::mutate(
+        delay_observed = as.numeric(sample_date - symptom_onset_date),
+        # Add censoring window information
+        prim_cens_lower = 0,
+        prim_cens_upper = 1,  # Daily censoring
+        sec_cens_lower = delay_observed,
+        sec_cens_upper = delay_observed + 1,
+        # Add metadata
+        relative_obs_time = ebola_data$end_day[1] - ebola_data$start_day[1],
+        distribution = fitting_grid_group$distribution[1],
+        growth_rate = fitting_grid_group$growth_rate[1]
+      )
+  } else {
+    stop("Unknown data_type: ", data_type)
+  }
+}
+
 #' Extract posterior estimates and diagnostics from Stan fit
 #'
 #' @param fit Stan fit object from cmdstanr

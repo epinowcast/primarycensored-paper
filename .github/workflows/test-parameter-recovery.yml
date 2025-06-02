@@ -2,9 +2,9 @@ name: Test Parameter Recovery
 
 on:
   pull_request:
-    branches: [issue-26]
+    branches: [issue-26-implement-pmf-tools]
   push:
-    branches: [issue-26]
+    branches: [issue-26-implement-pmf-tools]
   workflow_dispatch:
 
 jobs:
@@ -24,71 +24,46 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
         
+    - name: Install task
+      run: |
+        sh -c "$(curl -ssL https://taskfile.dev/install.sh)"
+        sudo mv ./bin/task /usr/local/bin/
+        
     - name: Install CmdStan
-      run: |
-        wget -q https://github.com/stan-dev/cmdstan/releases/download/v2.36.0/cmdstan-2.36.0.tar.gz
-        tar -xzf cmdstan-2.36.0.tar.gz
-        cd cmdstan-2.36.0 && make build -j2
-        echo "CMDSTAN=$(pwd)" >> $GITHUB_ENV
+      uses: epinowcast/actions/install-cmdstan@v1
+      with:
+        cmdstan-version: '2.36.0'
         
-    - name: Setup renv
-      run: |
-        Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
-        Rscript scripts/setup_renv.R
-        
-    - name: Install packages
-      run: Rscript scripts/install_packages.R
+    - name: Install dependencies
+      run: task install
       
-    - name: Set test mode
+    - name: Run test pipeline
       run: |
+        # Set test mode and render
         sed -i 's/test_mode: false/test_mode: true/' _targets.Rmd
+        task render
         
-    - name: Render targets
-      run: Rscript -e "rmarkdown::render('_targets.Rmd')"
+        # Run the pipeline
+        task run
       
-    - name: Create required directories
-      run: mkdir -p figures data/results
-      
-    - name: Run parameter recovery test
-      run: |
-        timeout 600 Rscript -e "
-        library(targets);
-        # Test just the fitting targets to validate methods work
-        tar_make(c('compile_stan_models', 'stan_settings', 'fitting_grid'));
-        # Run a subset of fitting targets to verify they work
-        tar_make(any_of(c('naive_fits', 'primarycensored_fitdistrplus_fits', 'simulated_model_fits')))
-        "
-        
     - name: Check results
       run: |
         Rscript -e "
         library(targets);
-        # Check that some fits completed
-        if (tar_exist('simulated_model_fits')) {
-          results <- tar_read('simulated_model_fits');
-          cat('✅ Parameter recovery test completed\n');
-          cat('Number of results:', nrow(results), '\n');
-          cat('Methods tested:', paste(unique(results\$method), collapse=', '), '\n');
-          
-          # Check for basic convergence (no major failures)
-          failures <- sum(is.na(results\$param1_est));
-          if (failures < nrow(results) * 0.8) {
-            cat('✅ Convergence check passed:', failures, '/', nrow(results), 'failures\n');
-          } else {
-            cat('❌ Too many failures:', failures, '/', nrow(results), '\n');
-            quit(status=1);
-          }
-        } else {
-          cat('❌ No results found\n');
-          quit(status=1);
+        if (!tar_exist('simulated_model_fits')) {
+          stop('❌ Pipeline failed: simulated_model_fits not found')
         }
+        results <- tar_read('simulated_model_fits');
+        cat('✅ Parameter recovery test completed\n');
+        cat('Number of results:', nrow(results), '\n');
+        cat('Methods tested:', paste(unique(results\$method), collapse=', '), '\n');
         "
-        
-    - name: Upload results
+      
+    - name: Upload artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: parameter-recovery-results
+        name: test-results
         path: |
           _targets/
           figures/

@@ -419,10 +419,24 @@ tar_target(
 
 Pre-compile all Stan models for efficient reuse across parameter recovery targets.
 
+```{targets compile_naive_model, tar_simple = TRUE}
+cmdstanr::cmdstan_model(here::here("stan", "naive_delay_model.stan"))
+```
+
+```{targets compile_ward_model, tar_simple = TRUE}
+cmdstanr::cmdstan_model(here::here("stan", "ward_latent_model.stan"))
+```
+
+```{targets compile_primarycensored_model, tar_simple = TRUE}
+primarycensored::pcd_cmdstan_model()
+```
+
 ```{targets compile_stan_models, tar_simple = TRUE}
+# Combine all compiled models for backward compatibility
 list(
-  naive_model = cmdstanr::cmdstan_model(here::here("stan", "naive_delay_model.stan")),
-  ward_model = cmdstanr::cmdstan_model(here::here("stan", "ward_latent_model.stan"))
+  naive_model = compile_naive_model,
+  ward_model = compile_ward_model,
+  primarycensored_model = compile_primarycensored_model
 )
 ```
 
@@ -443,18 +457,60 @@ list(
 )
 ```
 
-## Create fitting grid
+## Create unified fitting grid
 
-We need to fit models to different sample sizes for each scenario.
+We combine simulated data with Ebola case study data into a single grouped dataframe for unified fitting.
 
-```{targets fitting_grid, tar_simple = TRUE}
-# Determine which sample sizes to use for fitting (same as monte carlo)
-sizes_to_use <- if (test_mode) c(test_samples) else sample_sizes
-
-expand.grid(
-  scenario_id = scenarios$scenario_id,
-  sample_size = sizes_to_use,
-  stringsAsFactors = FALSE
+```{targets fitting_grid}
+tarchetypes::tar_group_by(
+  fitting_grid,
+  {
+    # Extract unique combinations from monte_carlo_samples
+    simulation_grid <- monte_carlo_samples |>
+      dplyr::select(scenario_id, sample_size, distribution, truncation, censoring, growth_rate) |>
+      dplyr::distinct() |>
+      dplyr::mutate(
+        data_type = "simulation",
+        dataset_id = paste0(scenario_id, "_n", sample_size)
+      )
+    
+    # Create Ebola fitting entries
+    ebola_grid <- ebola_case_study_data |>
+      dplyr::mutate(
+        data_type = "ebola",
+        dataset_id = paste0("ebola_", window_id, "_", analysis_type),
+        scenario_id = dataset_id,
+        sample_size = n_cases,
+        distribution = "gamma",  # Ebola analysis uses gamma
+        truncation = "none",     # Will be determined by analysis
+        censoring = "double",    # Double interval censoring
+        growth_rate = 0.2       # Exponential growth assumption
+      ) |>
+      dplyr::select(scenario_id, sample_size, distribution, truncation, 
+                   censoring, growth_rate, data_type, dataset_id)
+    
+    # Combine both grids
+    combined_grid <- dplyr::bind_rows(simulation_grid, ebola_grid)
+    
+    # Apply test mode filtering if enabled
+    if (test_mode) {
+      combined_grid <- combined_grid |>
+        dplyr::filter(
+          # Take first gamma and first lognormal simulation scenarios
+          (data_type == "simulation" & 
+           scenario_id %in% c(
+             scenarios$scenario_id[scenarios$distribution == "gamma"][1],
+             scenarios$scenario_id[scenarios$distribution == "lognormal"][1]
+           ) & 
+           sample_size == test_samples) |
+          # Take one Ebola scenario
+          (data_type == "ebola" & dplyr::row_number() == 1)
+        )
+    }
+    
+    combined_grid
+  },
+  dataset_id  # Group by unique dataset identifier
 )
 ```
 
@@ -466,7 +522,9 @@ Our method that accounts for double interval censoring through analytical margin
 tar_target(
   primarycensored_fits,
   {  
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    # Extract data using new unified function
+    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
+                                        ebola_case_study_data)
     if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored"))
     
     tictoc::tic("fit_primarycensored")
@@ -519,7 +577,7 @@ tar_target(
       config, bounds_priors, primary_bounds_priors
     ))
     
-    fit <- do.call(primarycensored::pcd_cmdstan_model()$sample, c(
+    fit <- do.call(compile_stan_models$primarycensored_model$sample, c(
       list(data = stan_data), stan_settings
     ))
     
@@ -538,8 +596,9 @@ Baseline comparison that ignores primary event censoring.
 tar_target(
   naive_fits,
   {
-    # Extract sampled data using shared function
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    # Extract data using new unified function
+    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
+                                        ebola_case_study_data)
     
     # Return empty results if no data
     if (is.null(sampled_data)) {
@@ -551,7 +610,8 @@ tar_target(
     
     # Extract distribution info and prepare Stan data using shared functions
     dist_info <- extract_distribution_info(sampled_data)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "naive")
+    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, 
+                                  dist_info$growth_rate, "naive")
     
     # Fit the model using shared Stan settings
     fit <- do.call(compile_stan_models$naive_model$sample, c(
@@ -575,7 +635,9 @@ Maximum likelihood estimation using primarycensored with fitdistrplus interface.
 tar_target(
   primarycensored_fitdistrplus_fits,
   {
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    # Extract data using new unified function
+    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
+                                        ebola_case_study_data)
     if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored_mle"))
     
     tictoc::tic("fit_primarycensored_mle")
@@ -654,8 +716,9 @@ Current best practice method for comparison.
 tar_target(
   ward_fits,
   {
-    # Extract sampled data using shared function
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    # Extract data using new unified function
+    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
+                                        ebola_case_study_data)
     
     # Return empty results if no data
     if (is.null(sampled_data)) {
