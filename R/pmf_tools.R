@@ -33,7 +33,7 @@ setup_pmf_inputs <- function(scenarios, distributions, growth_rate,
 
   # For numerical integration, add name attribute to trigger it
   if (is_numerical) {
-    pdist <- add_name_attribute(pdist, "pdistnumerical")
+    pdist <- primarycensored::add_name_attribute(pdist, "pdistnumerical")
   }
 
   # Build arguments list
@@ -110,7 +110,7 @@ calculate_pmf <- function(scenarios, distributions, growth_rate,
 
   # Calculate PMF only for valid delays
   if (length(inputs$valid_delays) > 0) {
-    calculated_values <- do.call(dprimarycensored, inputs$args)
+    calculated_values <- do.call(primarycensored::dprimarycensored, inputs$args)
     # Fill in the valid delays with calculated values
     pmf_values[inputs$delays %in% inputs$valid_delays] <- calculated_values
   }
@@ -139,7 +139,7 @@ get_primary_dist <- function(growth_rate) {
   if (growth_rate == 0) {
     dunif
   } else {
-    dexpgrowth
+    primarycensored::dexpgrowth
   }
 }
 
