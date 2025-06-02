@@ -21,10 +21,12 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::covr
-          needs: coverage
+      - uses: r-lib/actions/setup-renv@v2
+
+      - name: Install covr
+        run: |
+          renv::install("covr")
+        shell: Rscript {0}
 
       - name: Test coverage
         run: |
