@@ -36,23 +36,9 @@ jobs:
 
     - name: Lint package
       run: |
-        # Package linting with custom linters
         Rscript -e "
         library(lintr)
-        # Define our linters based on CLAUDE.md guidelines
-        custom_linters <- linters_with_defaults(
-          line_length_linter(80),
-          trailing_whitespace_linter(),
-          trailing_blank_lines_linter(),
-          object_name_linter('snake_case'),
-          infix_spaces_linter(),
-          commas_linter(),
-          assignment_linter(),
-          brace_linter(),
-          paren_brace_linter()
-        )
-        # Lint the package with custom linters
-        lints <- lint_package(linters = custom_linters)
+        lints <- lint_package()
         if (length(lints) > 0) {
           cat('=== LINTING ISSUES FOUND ===\n')
           print(lints)
