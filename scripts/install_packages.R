@@ -15,23 +15,11 @@ if (file.exists("renv.lock")) {
   renv::restore(prompt = FALSE)
 } else {
   # No lockfile, install required packages
-  message("No renv.lock found. Installing required packages...")
+  message("No renv.lock found. Installing dependencies from DESCRIPTION...")
   
-  # Install DESCRIPTION dependencies if we have a DESCRIPTION file
-  if (file.exists("DESCRIPTION")) {
-    message("Installing dependencies from DESCRIPTION...")
-    renv::install(".")
-  } else {
-    # Fallback to manual package list
-    cran_pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
-                   "purrr", "here", "dplyr", "tidyr", "qs2", "crew", 
-                   "primarycensored", "fitdistrplus", "profvis", 
-                   "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "tictoc",
-                   "shiny")
-    
-    # Install CRAN packages
-    renv::install(cran_pkgs)
-  }
+  # Install DESCRIPTION dependencies
+  message("Installing dependencies from DESCRIPTION...")
+  renv::install(".", dependencies = TRUE)
   
   # Install cmdstanr from GitHub (pinned to v0.9.0)
   message("Installing cmdstanr from GitHub (v0.9.0)...")
@@ -43,10 +31,8 @@ if (file.exists("renv.lock")) {
 }
 
 # Always ensure local package dependencies are installed
-if (file.exists("DESCRIPTION")) {
-  message("Ensuring DESCRIPTION dependencies are up to date...")
-  renv::install(".", dependencies = TRUE)
-}
+message("Ensuring DESCRIPTION dependencies are up to date...")
+renv::install(".", dependencies = TRUE)
 
 # Special handling for cmdstanr - install CmdStan v2.36.0
 if (requireNamespace("cmdstanr", quietly = TRUE)) {
