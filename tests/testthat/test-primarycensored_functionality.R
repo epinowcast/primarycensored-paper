@@ -265,7 +265,7 @@ test_that("local PMF calculations work with realistic data flows", {
     # Verify realistic outputs
     expect_s3_class(result, "data.frame")
     expect_true(all(c("scenario_id", "probability", "delay") %in%
-                    names(result)))
+                      names(result)))
 
     # Check probabilities are valid
     valid_probs <- result$probability[!is.na(result$probability)]
