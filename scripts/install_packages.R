@@ -30,10 +30,6 @@ if (file.exists("renv.lock")) {
   renv::snapshot(prompt = FALSE)
 }
 
-# Always ensure local package dependencies are installed
-message("Ensuring DESCRIPTION dependencies are up to date...")
-renv::install(".", dependencies = TRUE)
-
 # Special handling for cmdstanr - install CmdStan v2.36.0
 if (requireNamespace("cmdstanr", quietly = TRUE)) {
   tryCatch({
