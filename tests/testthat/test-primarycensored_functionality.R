@@ -502,3 +502,434 @@ test_that("workflow error handling for invalid inputs", {
   
   expect_true(is.data.frame(result_unsupported))
 })
+
+# Output Equivalence Tests ----------------------------------------------------
+
+test_that("calculate_pmf matches direct primarycensored::dprimarycensored calls", {
+  skip_if_not_installed("primarycensored")
+  
+  # Test gamma distribution
+  scenarios <- data.frame(
+    scenario_id = "gamma_none_daily_r0.1",
+    distribution = "gamma",
+    truncation = "none",
+    censoring = "daily",
+    growth_rate = 0.1,
+    relative_obs_time = 10,
+    primary_width = 1,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = "gamma",
+    dist_family = "gamma",
+    param1_name = "shape",
+    param2_name = "scale",
+    param1 = 2,
+    param2 = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  # Get result from local function
+  local_result <- calculate_pmf(scenarios, distributions, 0.1, "analytical")
+  
+  # Calculate directly using primarycensored
+  delays <- 0:20
+  valid_delays <- delays[delays + 1 <= 10]  # swindow = 1, D = 10
+  
+  direct_probs <- rep(NA_real_, length(delays))
+  if (length(valid_delays) > 0) {
+    direct_values <- primarycensored::dprimarycensored(
+      valid_delays,
+      pwindow = 1,
+      swindow = 1,
+      D = 10,
+      pdist = pgamma,
+      dprimary = primarycensored::dexpgrowth,
+      dprimary_args = list(r = 0.1),
+      shape = 2,
+      scale = 1
+    )
+    direct_probs[delays %in% valid_delays] <- direct_values
+  }
+  
+  # Compare results
+  expect_equal(local_result$probability, direct_probs, tolerance = 1e-10)
+  expect_equal(local_result$delay, delays)
+})
+
+test_that("calculate_pmf matches direct calls for lognormal distribution", {
+  skip_if_not_installed("primarycensored")
+  
+  scenarios <- data.frame(
+    scenario_id = "lognormal_none_medium_r0.05",
+    distribution = "lognormal",
+    truncation = "none",
+    censoring = "medium",
+    growth_rate = 0.05,
+    relative_obs_time = 15,
+    primary_width = 2,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = "lognormal",
+    dist_family = "lnorm",
+    param1_name = "meanlog",
+    param2_name = "sdlog",
+    param1 = 1.5,
+    param2 = 0.5,
+    stringsAsFactors = FALSE
+  )
+  
+  # Get result from local function
+  local_result <- calculate_pmf(scenarios, distributions, 0.05, "analytical")
+  
+  # Calculate directly using primarycensored
+  delays <- 0:20
+  valid_delays <- delays[delays + 1 <= 15]  # swindow = 1, D = 15
+  
+  direct_probs <- rep(NA_real_, length(delays))
+  if (length(valid_delays) > 0) {
+    direct_values <- primarycensored::dprimarycensored(
+      valid_delays,
+      pwindow = 2,
+      swindow = 1,
+      D = 15,
+      pdist = plnorm,
+      dprimary = primarycensored::dexpgrowth,
+      dprimary_args = list(r = 0.05),
+      meanlog = 1.5,
+      sdlog = 0.5
+    )
+    direct_probs[delays %in% valid_delays] <- direct_values
+  }
+  
+  # Compare results
+  expect_equal(local_result$probability, direct_probs, tolerance = 1e-10)
+  expect_equal(local_result$delay, delays)
+})
+
+test_that("calculate_pmf matches direct calls for zero growth rate", {
+  skip_if_not_installed("primarycensored")
+  
+  scenarios <- data.frame(
+    scenario_id = "gamma_none_daily_r0",
+    distribution = "gamma",
+    truncation = "none",
+    censoring = "daily",
+    growth_rate = 0,
+    relative_obs_time = 10,
+    primary_width = 1,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = "gamma",
+    dist_family = "gamma",
+    param1_name = "shape",
+    param2_name = "scale",
+    param1 = 3,
+    param2 = 2,
+    stringsAsFactors = FALSE
+  )
+  
+  # Get result from local function
+  local_result <- calculate_pmf(scenarios, distributions, 0, "analytical")
+  
+  # Calculate directly using primarycensored with uniform primary
+  delays <- 0:20
+  valid_delays <- delays[delays + 1 <= 10]  # swindow = 1, D = 10
+  
+  direct_probs <- rep(NA_real_, length(delays))
+  if (length(valid_delays) > 0) {
+    direct_values <- primarycensored::dprimarycensored(
+      valid_delays,
+      pwindow = 1,
+      swindow = 1,
+      D = 10,
+      pdist = pgamma,
+      dprimary = dunif,
+      dprimary_args = list(),
+      shape = 3,
+      scale = 2
+    )
+    direct_probs[delays %in% valid_delays] <- direct_values
+  }
+  
+  # Compare results
+  expect_equal(local_result$probability, direct_probs, tolerance = 1e-10)
+  expect_equal(local_result$delay, delays)
+})
+
+test_that("setup_pmf_inputs produces equivalent primarycensored call parameters", {
+  skip_if_not_installed("primarycensored")
+  
+  scenarios <- data.frame(
+    scenario_id = "weibull_none_medium_r0.1",
+    distribution = "weibull",
+    truncation = "none",
+    censoring = "medium",
+    growth_rate = 0.1,
+    relative_obs_time = 12,
+    primary_width = 2,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = "weibull",
+    dist_family = "weibull",
+    param1_name = "shape",
+    param2_name = "scale",
+    param1 = 1.5,
+    param2 = 2,
+    stringsAsFactors = FALSE
+  )
+  
+  # Get inputs from local function
+  inputs <- setup_pmf_inputs(scenarios, distributions, 0.1)
+  
+  # Test that the arguments produce same result as direct call
+  test_delay <- 5
+  local_value <- do.call(primarycensored::dprimarycensored, 
+                        c(list(x = test_delay), inputs$args[-1]))  # Remove x from args
+  
+  direct_value <- primarycensored::dprimarycensored(
+    test_delay,
+    pwindow = 2,
+    swindow = 1,
+    D = 12,
+    pdist = pweibull,
+    dprimary = primarycensored::dexpgrowth,
+    dprimary_args = list(r = 0.1),
+    shape = 1.5,
+    scale = 2
+  )
+  
+  expect_equal(local_value, direct_value, tolerance = 1e-10)
+})
+
+test_that("numerical integration matches primarycensored numerical methods", {
+  skip_if_not_installed("primarycensored")
+  
+  scenarios <- data.frame(
+    scenario_id = "gamma_none_daily_r0.1",
+    distribution = "gamma",
+    truncation = "none",
+    censoring = "daily",
+    growth_rate = 0.1,
+    relative_obs_time = 8,
+    primary_width = 1,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = "gamma",
+    dist_family = "gamma",
+    param1_name = "shape",
+    param2_name = "scale",
+    param1 = 2,
+    param2 = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  # Get numerical result from local function
+  local_numerical <- calculate_pmf(scenarios, distributions, 0.1, "numerical")
+  
+  # Calculate directly using primarycensored with numerical flag
+  delays <- 0:20
+  valid_delays <- delays[delays + 1 <= 8]  # swindow = 1, D = 8
+  
+  direct_probs <- rep(NA_real_, length(delays))
+  if (length(valid_delays) > 0) {
+    pdist_numerical <- primarycensored::add_name_attribute(pgamma, "pdistnumerical")
+    direct_values <- primarycensored::dprimarycensored(
+      valid_delays,
+      pwindow = 1,
+      swindow = 1,
+      D = 8,
+      pdist = pdist_numerical,
+      dprimary = primarycensored::dexpgrowth,
+      dprimary_args = list(r = 0.1),
+      shape = 2,
+      scale = 1
+    )
+    direct_probs[delays %in% valid_delays] <- direct_values
+  }
+  
+  # Compare results - numerical methods may have slightly different precision
+  expect_equal(local_numerical$probability, direct_probs, tolerance = 1e-6)
+})
+
+test_that("edge case parameters produce equivalent outputs", {
+  skip_if_not_installed("primarycensored")
+  
+  # Very small shape parameter
+  scenarios <- data.frame(
+    scenario_id = "gamma_none_daily_r0",
+    distribution = "gamma",
+    truncation = "none",
+    censoring = "daily",
+    growth_rate = 0,
+    relative_obs_time = 5,
+    primary_width = 1,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = "gamma",
+    dist_family = "gamma",
+    param1_name = "shape",
+    param2_name = "scale",
+    param1 = 0.1,  # Very small shape
+    param2 = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  # Get result from local function
+  local_result <- calculate_pmf(scenarios, distributions, 0, "analytical")
+  
+  # Calculate directly using primarycensored
+  delays <- 0:20
+  valid_delays <- delays[delays + 1 <= 5]  # swindow = 1, D = 5
+  
+  direct_probs <- rep(NA_real_, length(delays))
+  if (length(valid_delays) > 0) {
+    direct_values <- primarycensored::dprimarycensored(
+      valid_delays,
+      pwindow = 1,
+      swindow = 1,
+      D = 5,
+      pdist = pgamma,
+      dprimary = dunif,
+      dprimary_args = list(),
+      shape = 0.1,
+      scale = 1
+    )
+    direct_probs[delays %in% valid_delays] <- direct_values
+  }
+  
+  # Compare results
+  expect_equal(local_result$probability, direct_probs, tolerance = 1e-10)
+  
+  # Test negative growth rate
+  scenarios_neg <- data.frame(
+    scenario_id = "weibull_none_medium_r-0.05",
+    distribution = "weibull",
+    truncation = "none",
+    censoring = "medium",
+    growth_rate = -0.05,
+    relative_obs_time = 15,
+    primary_width = 2,
+    secondary_width = 1,
+    stringsAsFactors = FALSE
+  )
+  
+  distributions_weibull <- data.frame(
+    dist_name = "weibull",
+    dist_family = "weibull",
+    param1_name = "shape",
+    param2_name = "scale",
+    param1 = 1.5,
+    param2 = 2,
+    stringsAsFactors = FALSE
+  )
+  
+  local_neg <- calculate_pmf(scenarios_neg, distributions_weibull, -0.05, "analytical")
+  
+  delays <- 0:20
+  valid_delays <- delays[delays + 1 <= 15]  # swindow = 1, D = 15
+  
+  direct_neg_probs <- rep(NA_real_, length(delays))
+  if (length(valid_delays) > 0) {
+    direct_neg_values <- primarycensored::dprimarycensored(
+      valid_delays,
+      pwindow = 2,
+      swindow = 1,
+      D = 15,
+      pdist = pweibull,
+      dprimary = primarycensored::dexpgrowth,
+      dprimary_args = list(r = -0.05),
+      shape = 1.5,
+      scale = 2
+    )
+    direct_neg_probs[delays %in% valid_delays] <- direct_neg_values
+  }
+  
+  expect_equal(local_neg$probability, direct_neg_probs, tolerance = 1e-10)
+})
+
+test_that("multi-scenario workflow maintains equivalence across all scenarios", {
+  skip_if_not_installed("primarycensored")
+  
+  # Test multiple scenarios and distributions
+  scenarios <- data.frame(
+    scenario_id = c("gamma_none_daily_r0.1", "lognormal_none_medium_r0.05", "weibull_none_wide_r0"),
+    distribution = c("gamma", "lognormal", "weibull"),
+    truncation = c("none", "none", "none"),
+    censoring = c("daily", "medium", "wide"),
+    growth_rate = c(0.1, 0.05, 0),
+    relative_obs_time = c(10, 15, 20),
+    primary_width = c(1, 2, 3),
+    secondary_width = c(1, 1, 2),
+    stringsAsFactors = FALSE
+  )
+  
+  distributions <- data.frame(
+    dist_name = c("gamma", "lognormal", "weibull"),
+    dist_family = c("gamma", "lnorm", "weibull"),
+    param1_name = c("shape", "meanlog", "shape"),
+    param2_name = c("scale", "sdlog", "scale"),
+    param1 = c(2, 1.5, 1.8),
+    param2 = c(1, 0.5, 2.5),
+    stringsAsFactors = FALSE
+  )
+  
+  # Test each scenario individually
+  for (i in 1:nrow(scenarios)) {
+    scenario <- scenarios[i, ]
+    dist_info <- distributions[distributions$dist_name == scenario$distribution, ]
+    
+    # Get result from local function
+    local_result <- calculate_pmf(scenario, dist_info, scenario$growth_rate, "analytical")
+    
+    # Calculate directly using primarycensored
+    delays <- 0:20
+    valid_delays <- delays[delays + scenario$secondary_width <= scenario$relative_obs_time]
+    
+    # Get appropriate distribution and primary functions
+    pdist <- get(paste0("p", dist_info$dist_family))
+    dprimary <- get_primary_dist(scenario$growth_rate)
+    dprimary_args <- get_primary_args(scenario$growth_rate)
+    
+    direct_probs <- rep(NA_real_, length(delays))
+    if (length(valid_delays) > 0) {
+      args <- list(
+        valid_delays,
+        pwindow = scenario$primary_width,
+        swindow = scenario$secondary_width,
+        D = scenario$relative_obs_time,
+        pdist = pdist,
+        dprimary = dprimary,
+        dprimary_args = dprimary_args
+      )
+      args[[dist_info$param1_name]] <- dist_info$param1
+      args[[dist_info$param2_name]] <- dist_info$param2
+      
+      direct_values <- do.call(primarycensored::dprimarycensored, args)
+      direct_probs[delays %in% valid_delays] <- direct_values
+    }
+    
+    # Compare results for this scenario
+    expect_equal(local_result$probability, direct_probs, tolerance = 1e-10,
+                 info = paste("Scenario:", scenario$scenario_id))
+    expect_equal(local_result$delay, delays,
+                 info = paste("Scenario:", scenario$scenario_id))
+  }
+})
