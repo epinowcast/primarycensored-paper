@@ -12,7 +12,7 @@ data {
 }
 
 parameters {
-  real param1;                              // shape (gamma, >0) or meanlog (lognormal, any real)
+  real param1_raw;                          // Unconstrained parameter for transformation
   real<lower=0> param2;                     // scale (gamma) or sdlog (lognormal)
   
   vector<lower=0, upper=1>[N] ptime_raw;    // Raw primary event times (0-1)
@@ -20,9 +20,19 @@ parameters {
 }
 
 transformed parameters {
+  real param1;                              // Transformed param1 based on distribution
   vector[N] ptime;                          // Actual primary event times
   vector[N] stime;                          // Actual secondary event times
   vector[N] delay;                          // True delays (stime - ptime)
+  
+  // Transform param1 based on distribution type
+  if (dist_id == 1) {
+    // Gamma: param1 must be positive (shape parameter)
+    param1 = exp(param1_raw);
+  } else {
+    // Lognormal: param1 can be any real (meanlog parameter)  
+    param1 = param1_raw;
+  }
   
   // Transform raw parameters to actual event times within censoring windows
   ptime = to_vector(pwindow_widths) .* ptime_raw;   // Primary times within [0, pwindow]
@@ -33,13 +43,13 @@ transformed parameters {
 model {
   // Priors - match naive model exactly for consistency
   if (dist_id == 1) {
-    // Gamma distribution priors - reject if param1 <= 0
-    if (param1 <= 0) reject("param1 must be positive for gamma distribution");
-    param1 ~ gamma(2, 1);  // shape
+    // Gamma distribution priors
+    // Note: param1_raw gets exp() transform, so prior on log(shape)
+    param1_raw ~ normal(log(2), 1);  // log(shape) - implies exp(param1_raw) ~ lognormal(log(2), 1)
     param2 ~ gamma(2, 1);  // scale
   } else if (dist_id == 2) {
     // Lognormal distribution priors
-    param1 ~ normal(1.5, 1);  // meanlog
+    param1_raw ~ normal(1.5, 1);  // meanlog (no transformation needed)
     param2 ~ gamma(2, 1);     // sdlog
   }
   
@@ -59,7 +69,7 @@ model {
     
     // Truncation constraint if finite observation time
     for (n in 1:N) {
-      if (is_inf(obs_times[n]) == 0) {  // If observation time is finite
+      if (obs_times[n] < 1e5) {  // If observation time is effectively finite
         target += -log_diff_exp(0, gamma_lcdf(obs_times[n] - ptime[n] | param1, param2));
       }
     }

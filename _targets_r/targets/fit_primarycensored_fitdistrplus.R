@@ -1,48 +1,37 @@
 tar_target(
   primarycensored_fitdistrplus_fits,
   {
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
-    if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored_mle"))
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "primarycensored_mle"))
+    }
     
     tictoc::tic("fit_primarycensored_mle")
     dist_info <- extract_distribution_info(sampled_data)
     
-    # Prepare data and primary distribution
-    delays_data <- data.frame(
-      delay_lwr = sampled_data$sec_cens_lower,
-      delay_upr = sampled_data$sec_cens_upper,
-      ptime_lwr = sampled_data$prim_cens_lower,
-      ptime_upr = sampled_data$prim_cens_upper
+    # Prepare data in correct format for fitdistdoublecens
+    delay_data <- data.frame(
+      left = sampled_data$delay_observed,
+      right = sampled_data$delay_observed + (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
     )
     
+    pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
     obs_time <- sampled_data$relative_obs_time[1]
-    if (is.finite(obs_time)) delays_data$obs_time <- obs_time
     
-    primary_dist <- if (dist_info$growth_rate == 0) {
-      function(x) dunif(x, min = 0, max = sampled_data$prim_cens_upper[1])
-    } else {
-      primarycensored::dexpgrowth
-    }
-    
-    # Fit using appropriate distribution
-    fit_args <- list(
-      delays_data, pdist = primary_dist,
-      start = if (dist_info$distribution == "gamma") {
-        list(shape = 2, scale = 2)
-      } else {
-        list(meanlog = 1.5, sdlog = 0.5)
-      },
-      distr = if (dist_info$distribution == "gamma") "gamma" else "lnorm"
+    # Fit using appropriate distribution  
+    fit_result <- primarycensored::fitdistdoublecens(
+      censdata = delay_data,
+      distr = dist_info$distribution,
+      pwindow = pwindow,
+      D = if (is.finite(obs_time)) obs_time else Inf,
+      dprimary = get_dprimary(dist_info$growth_rate),
+      dprimary_args = get_dprimary_args(dist_info$growth_rate),
+      start = get_start_values(dist_info$distribution)
     )
-    
-    fit_result <- do.call(primarycensored::fitdistdoublecens, fit_args)
     
     # Extract parameters based on distribution
-    param_names <- if (dist_info$distribution == "gamma") {
-      c("shape", "scale")
-    } else {
-      c("meanlog", "sdlog")
-    }
+    param_names <- get_param_names(dist_info$distribution)
     
     runtime <- tictoc::toc(quiet = TRUE)
     

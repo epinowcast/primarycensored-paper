@@ -14,20 +14,7 @@ tar_target(scenario_grid, {
   grid$n <- simulation_n
   grid$seed <- seq_len(nrow(grid)) + base_seed
   
-  # Subset for test mode if enabled
-  if (test_mode) {
-    # Take first N scenarios (includes one gamma and one lognormal with different truncations)
-    grid <- grid[1:min(test_scenarios, nrow(grid)), ]
-    # Ensure we have different distributions
-    if (test_scenarios >= 2 && length(unique(grid$distribution)) < 2) {
-      # If first two are same distribution, replace second with different one
-      different_dist <- setdiff(c("gamma", "lognormal"), grid$distribution[1])[1]
-      second_row <- which(grid$distribution == different_dist)[1]
-      if (!is.na(second_row)) {
-        grid[2, ] <- grid[second_row, ]
-      }
-    }
-  }
+  # No changes to grid for test mode - filtering happens in fitting_grid
   
   grid
 })

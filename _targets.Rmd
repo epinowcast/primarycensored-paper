@@ -7,10 +7,6 @@ params:
   simulation_n: 10000
   base_seed: 100
   test_mode: true
-  test_scenarios: 2
-  test_samples: 100
-  test_chains: 2
-  test_iterations: 100
 ---
 
 ```{r setup, include = FALSE}
@@ -99,10 +95,6 @@ base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for rep
 
 # Test mode configuration
 test_mode <- if(exists("params")) params$test_mode else FALSE
-test_scenarios <- if(exists("params")) params$test_scenarios else 2
-test_samples <- if(exists("params")) params$test_samples else 100
-test_chains <- if(exists("params")) params$test_chains else 2
-test_iterations <- if(exists("params")) params$test_iterations else 100
 
 
 # Set targets options
@@ -189,20 +181,7 @@ grid$scenario_id <- paste(grid$distribution, grid$truncation, grid$censoring,
 grid$n <- simulation_n
 grid$seed <- seq_len(nrow(grid)) + base_seed
 
-# Subset for test mode if enabled
-if (test_mode) {
-  # Take first N scenarios (includes one gamma and one lognormal with different truncations)
-  grid <- grid[1:min(test_scenarios, nrow(grid)), ]
-  # Ensure we have different distributions
-  if (test_scenarios >= 2 && length(unique(grid$distribution)) < 2) {
-    # If first two are same distribution, replace second with different one
-    different_dist <- setdiff(c("gamma", "lognormal"), grid$distribution[1])[1]
-    second_row <- which(grid$distribution == different_dist)[1]
-    if (!is.na(second_row)) {
-      grid[2, ] <- grid[second_row, ]
-    }
-  }
-}
+# No changes to grid for test mode - filtering happens in fitting_grid
 
 grid
 ```
@@ -284,7 +263,7 @@ We need Monte Carlo samples at different sizes for numerical validation.
 
 ```{targets sample_size_grid, tar_simple = TRUE}
 # Determine which sample sizes to use
-sizes_to_use <- if (test_mode) c(test_samples) else sample_sizes
+sizes_to_use <- if (test_mode) min(sample_sizes) else sample_sizes  # Use smallest sample size for test mode
 
 expand.grid(
   scenario_id = scenarios$scenario_id,
@@ -413,352 +392,6 @@ tar_target(
 )
 ```
 
-# Parameter Recovery
-
-## Compile Stan models
-
-Pre-compile all Stan models for efficient reuse across parameter recovery targets.
-
-```{targets compile_naive_model, tar_simple = TRUE}
-cmdstanr::cmdstan_model(here::here("stan", "naive_delay_model.stan"))
-```
-
-```{targets compile_ward_model, tar_simple = TRUE}
-cmdstanr::cmdstan_model(here::here("stan", "ward_latent_model.stan"))
-```
-
-```{targets compile_primarycensored_model, tar_simple = TRUE}
-primarycensored::pcd_cmdstan_model()
-```
-
-```{targets compile_stan_models, tar_simple = TRUE}
-# Combine all compiled models for backward compatibility
-list(
-  naive_model = compile_naive_model,
-  ward_model = compile_ward_model,
-  primarycensored_model = compile_primarycensored_model
-)
-```
-
-## Stan settings
-
-Shared Stan settings configuration for all fitting targets.
-
-```{targets stan_settings, tar_simple = TRUE}
-list(
-  chains = if (test_mode) test_chains else 2,
-  parallel_chains = 1,  # Run sequentially to avoid resource contention
-  iter_warmup = if (test_mode) test_iterations else 1000,
-  iter_sampling = if (test_mode) test_iterations else 1000,
-  adapt_delta = 0.95,
-  show_messages = FALSE,
-  show_exceptions = FALSE,
-  refresh = 0
-)
-```
-
-## Create unified fitting grid
-
-We combine simulated data with Ebola case study data into a single grouped dataframe for unified fitting.
-
-```{targets fitting_grid}
-tarchetypes::tar_group_by(
-  fitting_grid,
-  {
-    # Extract unique combinations from monte_carlo_samples
-    simulation_grid <- monte_carlo_samples |>
-      dplyr::select(scenario_id, sample_size, distribution, truncation, censoring, growth_rate) |>
-      dplyr::distinct() |>
-      dplyr::mutate(
-        data_type = "simulation",
-        dataset_id = paste0(scenario_id, "_n", sample_size)
-      )
-    
-    # Create Ebola fitting entries
-    ebola_grid <- ebola_case_study_data |>
-      dplyr::mutate(
-        data_type = "ebola",
-        dataset_id = paste0("ebola_", window_id, "_", analysis_type),
-        scenario_id = dataset_id,
-        sample_size = n_cases,
-        distribution = "gamma",  # Ebola analysis uses gamma
-        truncation = "none",     # Will be determined by analysis
-        censoring = "double",    # Double interval censoring
-        growth_rate = 0.2       # Exponential growth assumption
-      ) |>
-      dplyr::select(scenario_id, sample_size, distribution, truncation, 
-                   censoring, growth_rate, data_type, dataset_id)
-    
-    # Combine both grids
-    combined_grid <- dplyr::bind_rows(simulation_grid, ebola_grid)
-    
-    # Apply test mode filtering if enabled
-    if (test_mode) {
-      combined_grid <- combined_grid |>
-        dplyr::filter(
-          # Take first gamma and first lognormal simulation scenarios
-          (data_type == "simulation" & 
-           scenario_id %in% c(
-             scenarios$scenario_id[scenarios$distribution == "gamma"][1],
-             scenarios$scenario_id[scenarios$distribution == "lognormal"][1]
-           ) & 
-           sample_size == test_samples) |
-          # Take one Ebola scenario
-          (data_type == "ebola" & dplyr::row_number() == 1)
-        )
-    }
-    
-    combined_grid
-  },
-  dataset_id  # Group by unique dataset identifier
-)
-```
-
-## Fit primary censored models
-
-Our method that accounts for double interval censoring through analytical marginalisation.
-
-```{targets fit_primarycensored}
-tar_target(
-  primarycensored_fits,
-  {  
-    # Extract data using new unified function
-    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
-                                        ebola_case_study_data)
-    if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored"))
-    
-    tictoc::tic("fit_primarycensored")
-    dist_info <- extract_distribution_info(sampled_data)
-    
-    # Prepare delay data for primarycensored
-    delay_data <- data.frame(
-      delay = sampled_data$delay_observed,
-      delay_upper = sampled_data$sec_cens_upper, 
-      n = 1,
-      pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-      relative_obs_time = sampled_data$relative_obs_time[1]
-    )
-    
-    # Configuration based on distribution and growth rate
-    config <- list(
-      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,  # primarycensored: lnorm=1, gamma=2
-      primary_id = if (dist_info$growth_rate == 0) 1L else 2L
-    )
-    
-    # Set bounds and priors
-    if (dist_info$distribution == "gamma") {
-      bounds_priors <- list(
-        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
-        priors = list(location = c(2, 2), scale = c(1, 1))
-      )
-    } else {
-      bounds_priors <- list(
-        param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
-        priors = list(location = c(1.5, 2), scale = c(1, 1))
-      )
-    }
-    
-    # Primary distribution parameters
-    if (dist_info$growth_rate == 0) {
-      primary_bounds_priors <- list(
-        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
-        primary_priors = list(location = numeric(0), scale = numeric(0))
-      )
-    } else {
-      primary_bounds_priors <- list(
-        primary_param_bounds = list(lower = c(0.01), upper = c(10)),
-        primary_priors = list(location = c(0.2), scale = c(1))
-      )
-    }
-    
-    # Prepare Stan data and fit
-    stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
-      list(delay_data, compute_log_lik = TRUE),
-      config, bounds_priors, primary_bounds_priors
-    ))
-    
-    fit <- do.call(compile_stan_models$primarycensored_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    extract_posterior_estimates(fit, "primarycensored", fitting_grid, runtime)
-  },
-  pattern = map(fitting_grid)
-)
-```
-
-## Fit naive models
-
-Baseline comparison that ignores primary event censoring.
-
-```{targets fit_naive}
-tar_target(
-  naive_fits,
-  {
-    # Extract data using new unified function
-    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
-                                        ebola_case_study_data)
-    
-    # Return empty results if no data
-    if (is.null(sampled_data)) {
-      return(create_empty_results(fitting_grid, "naive"))
-    }
-    
-    # Start timing after data preparation
-    tictoc::tic("fit_naive")
-    
-    # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(sampled_data)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, 
-                                  dist_info$growth_rate, "naive")
-    
-    # Fit the model using shared Stan settings
-    fit <- do.call(compile_stan_models$naive_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    # Extract posterior estimates using shared function
-    extract_posterior_estimates(fit, "naive", fitting_grid, runtime)
-  },
-  pattern = map(fitting_grid)
-)
-```
-
-## Fit primary censored models (fitdistrplus MLE)
-
-Maximum likelihood estimation using primarycensored with fitdistrplus interface.
-
-```{targets fit_primarycensored_fitdistrplus}
-tar_target(
-  primarycensored_fitdistrplus_fits,
-  {
-    # Extract data using new unified function
-    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
-                                        ebola_case_study_data)
-    if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored_mle"))
-    
-    tictoc::tic("fit_primarycensored_mle")
-    dist_info <- extract_distribution_info(sampled_data)
-    
-    # Prepare data in correct format for fitdistdoublecens
-    delay_data <- data.frame(
-      left = sampled_data$delay_observed,
-      right = sampled_data$delay_observed + (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
-    )
-    
-    pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
-    obs_time <- sampled_data$relative_obs_time[1]
-    
-    # Set up primary distribution
-    dprimary_args <- if (dist_info$growth_rate == 0) {
-      list()  # Default uniform
-    } else {
-      list(min = 0, max = pwindow, r = dist_info$growth_rate)
-    }
-    
-    # Fit using appropriate distribution  
-    fit_result <- primarycensored::fitdistdoublecens(
-      censdata = delay_data,
-      distr = if (dist_info$distribution == "gamma") "gamma" else "lnorm",
-      pwindow = pwindow,
-      D = if (is.finite(obs_time)) obs_time else Inf,
-      dprimary = if (dist_info$growth_rate == 0) stats::dunif else primarycensored::dexpgrowth,
-      dprimary_args = dprimary_args,
-      start = if (dist_info$distribution == "gamma") {
-        list(shape = 2, scale = 2)
-      } else {
-        list(meanlog = 1.5, sdlog = 0.5)
-      }
-    )
-    
-    # Extract parameters based on distribution
-    param_names <- if (dist_info$distribution == "gamma") {
-      c("shape", "scale")
-    } else {
-      c("meanlog", "sdlog")
-    }
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    data.frame(
-      scenario_id = fitting_grid$scenario_id,
-      sample_size = fitting_grid$sample_size,
-      method = "primarycensored_mle",
-      param1_est = fit_result$estimate[param_names[1]],
-      param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
-      param1_q025 = NA_real_,
-      param1_q975 = NA_real_,
-      param2_est = fit_result$estimate[param_names[2]],
-      param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
-      param2_q025 = NA_real_,
-      param2_q975 = NA_real_,
-      convergence = fit_result$convergence %||% 0,
-      ess_bulk_min = NA_real_,
-      ess_tail_min = NA_real_,
-      num_divergent = NA_integer_,
-      max_treedepth = NA_integer_,
-      loglik = fit_result$loglik %||% NA_real_,
-      runtime_seconds = runtime$toc - runtime$tic
-    )
-  },
-  pattern = map(fitting_grid)
-)
-```
-
-## Fit Ward et al. latent variable models
-
-Current best practice method for comparison.
-
-```{targets fit_ward}
-tar_target(
-  ward_fits,
-  {
-    # Extract data using new unified function
-    sampled_data <- extract_fitting_data(fitting_grid, monte_carlo_samples, 
-                                        ebola_case_study_data)
-    
-    # Return empty results if no data
-    if (is.null(sampled_data)) {
-      return(create_empty_results(fitting_grid, "ward"))
-    }
-    
-    # Start timing after data preparation
-    tictoc::tic("fit_ward")
-    
-    # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(sampled_data)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward")
-    
-    # Fit the Ward model using shared Stan settings
-    fit <- do.call(compile_stan_models$ward_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    # Extract posterior estimates using shared function
-    extract_posterior_estimates(fit, "ward", fitting_grid, runtime)
-  },
-  pattern = map(fitting_grid)
-)
-```
-
-## Combine all model fits
-
-Aggregate results from all methods for comparison.
-
-```{targets simulated_model_fits, tar_simple = TRUE}
-dplyr::bind_rows(
-  primarycensored_fits,
-  primarycensored_fitdistrplus_fits,
-  naive_fits,
-  ward_fits
-)
-```
-
 # Case Study: Ebola Epidemic
 
 ## Load Ebola case study data
@@ -858,143 +491,328 @@ tar_target(
 )
 ```
 
-## Fit models to Ebola data
+# Parameter Recovery
 
-Apply all three methods to each observation window and analysis type combination.
+## Compile Stan models
 
-```{targets ebola_model_fits}
-tar_target(
-  ebola_model_fits,
+Pre-compile all Stan models for efficient reuse across parameter recovery targets.
+
+```{targets compile_naive_model, tar_simple = TRUE}
+cmdstanr::cmdstan_model(here::here("stan", "naive_delay_model.stan"))
+```
+
+```{targets compile_ward_model, tar_simple = TRUE}
+cmdstanr::cmdstan_model(here::here("stan", "ward_latent_model.stan"))
+```
+
+```{targets compile_primarycensored_model, tar_simple = TRUE}
+primarycensored::pcd_cmdstan_model()
+```
+
+## Stan settings
+
+Shared Stan settings configuration for all fitting targets.
+
+```{targets stan_settings, tar_simple = TRUE}
+list(
+  chains = if (test_mode) 1 else 2,  # Just 1 chain for test mode
+  parallel_chains = 1,  # Run sequentially to avoid resource contention
+  iter_warmup = if (test_mode) 50 else 1000,  # Much lower iterations for testing
+  iter_sampling = if (test_mode) 50 else 1000,
+  adapt_delta = 0.95,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  refresh = 0
+)
+```
+
+## Create unified fitting grid
+
+We combine simulated data with Ebola case study data into a single grouped dataframe for unified fitting.
+
+```{targets fitting_grid}
+tarchetypes::tar_group_by(
+  fitting_grid,
   {
-    # Extract the actual data from the list column
-    case_data <- ebola_case_study_data$data[[1]]
+    # Create simulation grid with embedded data
+    simulation_grid <- monte_carlo_samples |>
+      dplyr::group_by(scenario_id, sample_size, distribution, truncation, censoring, growth_rate) |>
+      dplyr::summarise(
+        data = list(dplyr::cur_data()),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        data_type = "simulation",
+        dataset_id = paste0(scenario_id, "_n", sample_size)
+      )
     
-    # Check if we have enough cases for fitting
-    if (ebola_case_study_data$n_cases < 10) {
-      return(data.frame(
-        window_id = ebola_case_study_data$window_id,
-        analysis_type = ebola_case_study_data$analysis_type,
-        window_label = ebola_case_study_data$window_label,
-        n_cases = ebola_case_study_data$n_cases,
-        method = c("primarycensored", "naive", "ward"),
-        param1_est = NA_real_,
-        param1_se = NA_real_,
-        param2_est = NA_real_,
-        param2_se = NA_real_,
-        runtime_seconds = NA_real_
-      ))
+    # Create Ebola fitting entries
+    ebola_grid <- ebola_case_study_data |>
+      dplyr::mutate(
+        data_type = "ebola",
+        dataset_id = paste0("ebola_", window_id, "_", analysis_type),
+        scenario_id = dataset_id,
+        sample_size = n_cases,
+        distribution = "gamma",  # Ebola analysis uses gamma
+        truncation = "none",     # Will be determined by analysis
+        censoring = "double",    # Double interval censoring
+        growth_rate = 0.2       # Exponential growth assumption
+      ) |>
+      dplyr::select(scenario_id, sample_size, distribution, truncation, 
+                   censoring, growth_rate, data_type, dataset_id)
+    
+    # Combine both grids
+    combined_grid <- dplyr::bind_rows(simulation_grid, ebola_grid)
+    
+    # Apply test mode filtering if enabled
+    if (test_mode) {
+      combined_grid <- combined_grid |>
+        dplyr::filter(
+          # Take one scenario of each distribution type with smallest sample size
+          (data_type == "simulation" & 
+           scenario_id %in% c(
+             scenarios$scenario_id[scenarios$distribution == "gamma"][1],
+             scenarios$scenario_id[scenarios$distribution == "lognormal"][1]
+           ) & 
+           sample_size == min(sample_sizes)) |
+          # Take one Ebola scenario
+          (data_type == "ebola" & dplyr::row_number() == 1)
+        )
     }
     
-    # Calculate delays (sample date - symptom onset date)
-    case_data$delay_observed <- as.numeric(case_data$sample_date - case_data$symptom_onset_date)
-    
-    # Set up censoring windows (assuming 1-day intervals as per case study)
-    case_data$prim_cens_lower <- 0
-    case_data$prim_cens_upper <- 1
-    case_data$sec_cens_lower <- case_data$delay_observed
-    case_data$sec_cens_upper <- case_data$delay_observed + 1
-    
-    # Set truncation based on analysis type
-    if (ebola_case_study_data$analysis_type == "real_time") {
-      obs_time <- ebola_case_study_data$end_day - ebola_case_study_data$start_day
-    } else {
-      obs_time <- Inf  # No truncation for retrospective
+    combined_grid
+  },
+  dataset_id  # Group by unique dataset identifier
+)
+```
+
+## Fit primary censored models
+
+Our method that accounts for double interval censoring through analytical marginalisation.
+
+```{targets fit_primarycensored}
+tar_target(
+  primarycensored_fits,
+  {  
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "primarycensored"))
     }
-    case_data$relative_obs_time <- obs_time
     
-    results <- list()
+    tictoc::tic("fit_primarycensored")
+    dist_info <- extract_distribution_info(sampled_data)
     
-    # Fit primarycensored model
-    tictoc::tic("primarycensored")
-    tryCatch({
-      delay_data <- data.frame(
-        delay = case_data$delay_observed,
-        delay_upper = case_data$sec_cens_upper,
-        n = 1,
-        pwindow = 1,
-        relative_obs_time = obs_time
-      )
-      
-      stan_data <- primarycensored::pcd_as_stan_data(
-        delay_data,
-        dist_id = 2L,  # Gamma distribution
-        primary_id = 1L,  # Uniform primary
-        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
-        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
-        priors = list(location = c(2, 2), scale = c(1, 1)),
-        primary_priors = list(location = numeric(0), scale = numeric(0)),
-        compute_log_lik = TRUE
-      )
-      
-      fit <- primarycensored::pcd_cmdstan_model()$sample(
-        data = stan_data,
-        chains = if (test_mode) test_chains else 2,
-        parallel_chains = 1,
-        iter_warmup = if (test_mode) test_iterations else 1000,
-        iter_sampling = if (test_mode) test_iterations else 1000,
-        adapt_delta = 0.95,
-        show_messages = FALSE,
-        refresh = 0
-      )
-      
-      param_summary <- posterior::summarise_draws(fit$draws(c("param1", "param2")))
-      runtime_pc <- tictoc::toc(quiet = TRUE)
-      
-      results$primarycensored <- data.frame(
-        param1_est = param_summary$mean[1],
-        param1_se = param_summary$sd[1],
-        param2_est = param_summary$mean[2],
-        param2_se = param_summary$sd[2],
-        runtime_seconds = runtime_pc$toc - runtime_pc$tic
-      )
-    }, error = function(e) {
-      runtime_pc <- tictoc::toc(quiet = TRUE)
-      results$primarycensored <<- data.frame(
-        param1_est = NA_real_, param1_se = NA_real_,
-        param2_est = NA_real_, param2_se = NA_real_,
-        runtime_seconds = runtime_pc$toc - runtime_pc$tic
-      )
-    })
-    
-    # Fit naive model (simplified - just use MLE)
-    tictoc::tic("naive")
-    tryCatch({
-      fit_gamma <- fitdistrplus::fitdist(case_data$delay_observed, "gamma")
-      runtime_naive <- tictoc::toc(quiet = TRUE)
-      
-      results$naive <- data.frame(
-        param1_est = fit_gamma$estimate["shape"],
-        param1_se = fit_gamma$sd["shape"],
-        param2_est = fit_gamma$estimate["rate"],  # Convert to scale later if needed
-        param2_se = fit_gamma$sd["rate"],
-        runtime_seconds = runtime_naive$toc - runtime_naive$tic
-      )
-    }, error = function(e) {
-      runtime_naive <- tictoc::toc(quiet = TRUE)
-      results$naive <<- data.frame(
-        param1_est = NA_real_, param1_se = NA_real_,
-        param2_est = NA_real_, param2_se = NA_real_,
-        runtime_seconds = runtime_naive$toc - runtime_naive$tic
-      )
-    })
-    
-    # Ward model (simplified - return placeholder for now as it requires complex implementation)
-    results$ward <- data.frame(
-      param1_est = NA_real_, param1_se = NA_real_,
-      param2_est = NA_real_, param2_se = NA_real_,
-      runtime_seconds = NA_real_
+    # Prepare delay data for primarycensored
+    delay_data <- data.frame(
+      delay = sampled_data$delay_observed,
+      delay_upper = sampled_data$sec_cens_upper, 
+      n = 1,
+      pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
+      relative_obs_time = sampled_data$relative_obs_time[1]
     )
     
-    # Combine all results
-    bind_results <- dplyr::bind_rows(results, .id = "method")
-    bind_results$window_id <- ebola_case_study_data$window_id
-    bind_results$analysis_type <- ebola_case_study_data$analysis_type
-    bind_results$window_label <- ebola_case_study_data$window_label
-    bind_results$n_cases <- ebola_case_study_data$n_cases
+    # Configuration based on distribution and growth rate
+    config <- list(
+      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,  # primarycensored: lnorm=1, gamma=2
+      primary_id = if (dist_info$growth_rate == 0) 1L else 2L
+    )
     
-    bind_results
+    # Set bounds and priors
+    if (dist_info$distribution == "gamma") {
+      bounds_priors <- list(
+        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
+        priors = list(location = c(2, 2), scale = c(1, 1))
+      )
+    } else {
+      bounds_priors <- list(
+        param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
+        priors = list(location = c(1.5, 2), scale = c(1, 1))
+      )
+    }
+    
+    # Primary distribution parameters
+    if (dist_info$growth_rate == 0) {
+      primary_bounds_priors <- list(
+        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
+        primary_priors = list(location = numeric(0), scale = numeric(0))
+      )
+    } else {
+      primary_bounds_priors <- list(
+        primary_param_bounds = list(lower = c(0.01), upper = c(10)),
+        primary_priors = list(location = c(0.2), scale = c(1))
+      )
+    }
+    
+    # Prepare Stan data and fit
+    stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
+      list(delay_data, compute_log_lik = TRUE),
+      config, bounds_priors, primary_bounds_priors
+    ))
+    
+    fit <- do.call(compile_primarycensored_model$sample, c(
+      list(data = stan_data), stan_settings
+    ))
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    extract_posterior_estimates(fit, "primarycensored", fitting_grid, runtime)
   },
-  pattern = map(ebola_case_study_data)
+  pattern = map(fitting_grid)
+)
+```
+
+## Fit primary censored models (fitdistrplus MLE)
+
+Maximum likelihood estimation using primarycensored with fitdistrplus interface.
+
+```{targets fit_primarycensored_fitdistrplus}
+tar_target(
+  primarycensored_fitdistrplus_fits,
+  {
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "primarycensored_mle"))
+    }
+    
+    tictoc::tic("fit_primarycensored_mle")
+    dist_info <- extract_distribution_info(sampled_data)
+    
+    # Prepare data in correct format for fitdistdoublecens
+    delay_data <- data.frame(
+      left = sampled_data$delay_observed,
+      right = sampled_data$delay_observed + (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
+    )
+    
+    pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
+    obs_time <- sampled_data$relative_obs_time[1]
+    
+    # Fit using appropriate distribution  
+    fit_result <- primarycensored::fitdistdoublecens(
+      censdata = delay_data,
+      distr = dist_info$distribution,
+      pwindow = pwindow,
+      D = if (is.finite(obs_time)) obs_time else Inf,
+      dprimary = get_dprimary(dist_info$growth_rate),
+      dprimary_args = get_dprimary_args(dist_info$growth_rate),
+      start = get_start_values(dist_info$distribution)
+    )
+    
+    # Extract parameters based on distribution
+    param_names <- get_param_names(dist_info$distribution)
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    data.frame(
+      scenario_id = fitting_grid$scenario_id,
+      sample_size = fitting_grid$sample_size,
+      method = "primarycensored_mle",
+      param1_est = fit_result$estimate[param_names[1]],
+      param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
+      param1_q025 = NA_real_,
+      param1_q975 = NA_real_,
+      param2_est = fit_result$estimate[param_names[2]],
+      param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
+      param2_q025 = NA_real_,
+      param2_q975 = NA_real_,
+      convergence = fit_result$convergence %||% 0,
+      ess_bulk_min = NA_real_,
+      ess_tail_min = NA_real_,
+      num_divergent = NA_integer_,
+      max_treedepth = NA_integer_,
+      loglik = fit_result$loglik %||% NA_real_,
+      runtime_seconds = runtime$toc - runtime$tic
+    )
+  },
+  pattern = map(fitting_grid)
+)
+```
+
+## Fit naive models
+
+Baseline comparison that ignores primary event censoring.
+
+```{targets fit_naive}
+tar_target(
+  naive_fits,
+  {
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "naive"))
+    }
+    
+    # Start timing after data preparation
+    tictoc::tic("fit_naive")
+    
+    # Extract distribution info and prepare Stan data using shared functions
+    dist_info <- extract_distribution_info(sampled_data)
+    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, 
+                                  dist_info$growth_rate, "naive")
+    
+    # Fit the model using shared Stan settings
+    fit <- do.call(compile_naive_model$sample, c(
+      list(data = stan_data), stan_settings
+    ))
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    # Extract posterior estimates using shared function
+    extract_posterior_estimates(fit, "naive", fitting_grid, runtime)
+  },
+  pattern = map(fitting_grid)
+)
+```
+
+## Fit Ward et al. latent variable models
+
+Current best practice method for comparison. Note that this method treats primary event times as latent parameters, so it cannot handle large sample sizes (>1000 observations) due to computational constraints.
+
+```{targets fit_ward}
+tar_target(
+  ward_fits,
+  {
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "ward"))
+    }
+    
+    if (nrow(sampled_data) > 1000) {
+      return(create_empty_results(fitting_grid, "ward"))
+    }
+    
+    # Start timing after data preparation
+    tictoc::tic("fit_ward")
+    
+    # Extract distribution info and prepare Stan data using shared functions
+    dist_info <- extract_distribution_info(sampled_data)
+    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward")
+    
+    # Fit the Ward model using shared Stan settings
+    fit <- do.call(compile_ward_model$sample, c(
+      list(data = stan_data), stan_settings
+    ))
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    # Extract posterior estimates using shared function
+    extract_posterior_estimates(fit, "ward", fitting_grid, runtime)
+  },
+  pattern = map(fitting_grid)
+)
+```
+
+## Combine all model fits
+
+Aggregate results from all methods for comparison.
+
+```{targets simulated_model_fits, tar_simple = TRUE}
+dplyr::bind_rows(
+  primarycensored_fits,
+  primarycensored_fitdistrplus_fits,
+  naive_fits,
+  ward_fits
 )
 ```
 

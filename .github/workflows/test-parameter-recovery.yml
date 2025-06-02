@@ -38,13 +38,7 @@ jobs:
       run: task install
       
     - name: Run test pipeline
-      run: |
-        # Set test mode and render
-        sed -i 's/test_mode: false/test_mode: true/' _targets.Rmd
-        task render
-        
-        # Run the pipeline
-        task run
+      run: task test-run
       
     - name: Check results
       run: |

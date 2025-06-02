@@ -1,11 +1,13 @@
 tar_target(
   ward_fits,
   {
-    # Extract sampled data using shared function
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "ward"))
+    }
     
-    # Return empty results if no data
-    if (is.null(sampled_data)) {
+    if (nrow(sampled_data) > 1000) {
       return(create_empty_results(fitting_grid, "ward"))
     }
     
@@ -17,7 +19,7 @@ tar_target(
     stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward")
     
     # Fit the Ward model using shared Stan settings
-    fit <- do.call(compile_stan_models$ward_model$sample, c(
+    fit <- do.call(compile_ward_model$sample, c(
       list(data = stan_data), stan_settings
     ))
     

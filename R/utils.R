@@ -86,8 +86,8 @@ estimate_naive_delay_model <- function(data, distribution, scenario_id,
 #' @return Filtered data frame with sampled data for the scenario
 #' @export
 extract_sampled_data <- function(monte_carlo_samples, fitting_grid) {
-  sample_key <- paste(fitting_grid$scenario_id, 
-                      fitting_grid$sample_size, sep = "_")
+  # Create the correct key that matches the data structure 
+  sample_key <- paste0(fitting_grid$scenario_id, "_", fitting_grid$sample_size)
   sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
     dplyr::filter(.data$sample_size_scenario == sample_key)
 
@@ -99,60 +99,6 @@ extract_sampled_data <- function(monte_carlo_samples, fitting_grid) {
   sampled_data
 }
 
-#' Extract data for unified fitting grid
-#'
-#' Works with the new tar_group_by fitting_grid structure to extract
-#' data from either monte_carlo_samples or ebola_case_study_data
-#'
-#' @param fitting_grid_group Single group from grouped fitting grid
-#' @param monte_carlo_samples Monte Carlo samples for simulations 
-#' @param ebola_case_study_data Ebola case study data
-#' @return Data frame ready for model fitting
-#' @export
-extract_fitting_data <- function(fitting_grid_group, monte_carlo_samples, 
-                                ebola_case_study_data) {
-  # Get the first row to check data type
-  data_type <- fitting_grid_group$data_type[1]
-  
-  if (data_type == "simulation") {
-    # Extract from monte_carlo_samples
-    extract_sampled_data(monte_carlo_samples, fitting_grid_group)
-  } else if (data_type == "ebola") {
-    # Extract from ebola_case_study_data
-    dataset_id <- fitting_grid_group$dataset_id[1]
-    
-    # Find matching Ebola data
-    ebola_data <- ebola_case_study_data |>
-      dplyr::mutate(
-        full_dataset_id = paste0("ebola_", window_id, "_", analysis_type)
-      ) |>
-      dplyr::filter(full_dataset_id == dataset_id)
-    
-    if (nrow(ebola_data) == 0) {
-      return(NULL)
-    }
-    
-    # Extract the nested data
-    case_data <- ebola_data$data[[1]]
-    
-    # Format to match expected structure
-    case_data |>
-      dplyr::mutate(
-        delay_observed = as.numeric(sample_date - symptom_onset_date),
-        # Add censoring window information
-        prim_cens_lower = 0,
-        prim_cens_upper = 1,  # Daily censoring
-        sec_cens_lower = delay_observed,
-        sec_cens_upper = delay_observed + 1,
-        # Add metadata
-        relative_obs_time = ebola_data$end_day[1] - ebola_data$start_day[1],
-        distribution = fitting_grid_group$distribution[1],
-        growth_rate = fitting_grid_group$growth_rate[1]
-      )
-  } else {
-    stop("Unknown data_type: ", data_type)
-  }
-}
 
 #' Extract posterior estimates and diagnostics from Stan fit
 #'
@@ -250,6 +196,36 @@ extract_distribution_info <- function(sampled_data) {
   )
 }
 
+#' Get starting values for distribution fitting
+#'
+#' @param distribution Character string: "gamma" or "lognormal"
+#' @return List of starting parameter values
+#' @export
+get_start_values <- function(distribution) {
+  if (distribution == "gamma") {
+    list(shape = 2, scale = 2)
+  } else if (distribution == "lognormal") {
+    list(meanlog = 1.5, sdlog = 0.5)
+  } else {
+    stop("Unknown distribution: ", distribution)
+  }
+}
+
+#' Get parameter names for distribution
+#'
+#' @param distribution Character string: "gamma" or "lognormal"
+#' @return Character vector of parameter names
+#' @export
+get_param_names <- function(distribution) {
+  if (distribution == "gamma") {
+    c("shape", "scale")
+  } else if (distribution == "lognormal") {
+    c("meanlog", "sdlog")
+  } else {
+    stop("Unknown distribution: ", distribution)
+  }
+}
+
 #' Prepare Stan data list for naive and Ward models
 #'
 #' @param sampled_data Data frame with delay observations
@@ -273,12 +249,15 @@ prepare_stan_data <- function(sampled_data, distribution, growth_rate, model_typ
     swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
     obs_times <- rep(sampled_data$relative_obs_time[1], nrow(sampled_data))
     
+    # Replace infinite values with large finite number for Stan
+    obs_times[is.infinite(obs_times)] <- 1e6
+    
     list(
       N = nrow(sampled_data),
       Y = sampled_data$delay_observed,
-      obs_times = obs_times,           
-      pwindow_widths = pwindow_widths, 
-      swindow_widths = swindow_widths, 
+      obs_times = obs_times,           # Stan arrays are just vectors in R
+      pwindow_widths = pwindow_widths, # Stan arrays are just vectors in R
+      swindow_widths = swindow_widths, # Stan arrays are just vectors in R
       dist_id = dist_id,
       prior_only = 0
     )

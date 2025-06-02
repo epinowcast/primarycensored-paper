@@ -21,7 +21,13 @@ tasks:
         if [ -n "{{.PARAMS}}" ]; then
           echo "Using custom parameters: {{.PARAMS}}"
           Rscript -e "
-          custom_params <- list({{.PARAMS}})
+          params_str <- '{{.PARAMS}}'
+          if (params_str == 'test_mode=true') {
+            custom_params <- list(test_mode = TRUE)
+          } else {
+            # Parse other parameter formats if needed
+            custom_params <- list()
+          }
           rmarkdown::render('_targets.Rmd', params = custom_params)
           "
         else
@@ -173,3 +179,12 @@ tasks:
     cmds:
       - echo "📊 Checking test coverage..."
       - Rscript -e "covr::file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/')"
+
+  test-run:
+    desc: Run the pipeline in test mode (fast, reduced scenarios)
+    deps: [render]
+    cmds:
+      - echo "🚀 Running pipeline in test mode..."
+      - task render PARAMS='test_mode=true'
+      - task run
+      - echo "✅ Test mode pipeline completed"

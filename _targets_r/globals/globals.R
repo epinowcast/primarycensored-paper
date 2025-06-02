@@ -27,10 +27,6 @@ base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for rep
 
 # Test mode configuration
 test_mode <- if(exists("params")) params$test_mode else FALSE
-test_scenarios <- if(exists("params")) params$test_scenarios else 2
-test_samples <- if(exists("params")) params$test_samples else 100
-test_chains <- if(exists("params")) params$test_chains else 2
-test_iterations <- if(exists("params")) params$test_iterations else 100
 
 
 # Set targets options

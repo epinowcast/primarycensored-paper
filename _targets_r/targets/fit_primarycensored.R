@@ -1,8 +1,11 @@
 tar_target(
   primarycensored_fits,
   {  
-    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
-    if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored"))
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "primarycensored"))
+    }
     
     tictoc::tic("fit_primarycensored")
     dist_info <- extract_distribution_info(sampled_data)
@@ -18,7 +21,7 @@ tar_target(
     
     # Configuration based on distribution and growth rate
     config <- list(
-      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,
+      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,  # primarycensored: lnorm=1, gamma=2
       primary_id = if (dist_info$growth_rate == 0) 1L else 2L
     )
     
@@ -54,7 +57,7 @@ tar_target(
       config, bounds_priors, primary_bounds_priors
     ))
     
-    fit <- do.call(primarycensored::pcd_cmdstan_model()$sample, c(
+    fit <- do.call(compile_primarycensored_model$sample, c(
       list(data = stan_data), stan_settings
     ))
     

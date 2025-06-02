@@ -61,16 +61,9 @@ tar_target(
         compute_log_lik = TRUE
       )
       
-      fit <- primarycensored::pcd_cmdstan_model()$sample(
-        data = stan_data,
-        chains = if (test_mode) test_chains else 2,
-        parallel_chains = 1,
-        iter_warmup = if (test_mode) test_iterations else 1000,
-        iter_sampling = if (test_mode) test_iterations else 1000,
-        adapt_delta = 0.95,
-        show_messages = FALSE,
-        refresh = 0
-      )
+      fit <- do.call(compile_primarycensored_model$sample, c(
+        list(data = stan_data), stan_settings
+      ))
       
       param_summary <- posterior::summarise_draws(fit$draws(c("param1", "param2")))
       runtime_pc <- tictoc::toc(quiet = TRUE)
