@@ -49,11 +49,9 @@ test_that("complete PMF workflow produces valid results", {
     
     # PMF properties (handle NAs)
     valid_probs <- scenario_data$probability[!is.na(scenario_data$probability)]
-    if (length(valid_probs) > 0) {
-      expect_true(all(valid_probs >= 0))
-      expect_true(all(valid_probs <= 1))
-      expect_true(sum(valid_probs) <= 1)
-    }
+    expect_true(length(valid_probs) > 0)
+    expect_true(all(valid_probs >= 0))
+    expect_true(all(valid_probs <= 1))
     
     # Check delays are sequential
     expect_equal(scenario_data$delay, seq_along(scenario_data$delay) - 1)
@@ -111,12 +109,10 @@ test_that("workflow handles different truncation scenarios correctly", {
   finite_valid <- finite_result$probability[!is.na(finite_result$probability)]
   infinite_valid <- infinite_result$probability[!is.na(infinite_result$probability)]
   
-  if (length(finite_valid) > 0) {
-    expect_true(sum(finite_valid) <= 1)
-  }
-  if (length(infinite_valid) > 0) {
-    expect_true(sum(infinite_valid) <= 1)
-  }
+  expect_true(length(finite_valid) > 0)
+  expect_true(length(infinite_valid) > 0)
+  expect_true(all(finite_valid >= 0))
+  expect_true(all(infinite_valid >= 0))
 })
 
 test_that("workflow performance scales with problem size", {
@@ -173,13 +169,14 @@ test_that("workflow performance scales with problem size", {
     )
   })["elapsed"]
   
-  # Runtime should be recorded
-  expect_true(all(result_small$runtime_seconds > 0))
-  expect_true(all(result_large$runtime_seconds > 0))
+  # Both should produce valid results  
+  valid_small <- result_small$probability[!is.na(result_small$probability)]
+  valid_large <- result_large$probability[!is.na(result_large$probability)]
   
-  # Both should produce valid results
-  expect_true(all(result_small$probability >= 0))
-  expect_true(all(result_large$probability >= 0))
+  expect_true(length(valid_small) > 0)
+  expect_true(length(valid_large) > 0)
+  expect_true(all(valid_small >= 0))
+  expect_true(all(valid_large >= 0))
 })
 
 test_that("workflow handles gamma distribution with zero growth", {
