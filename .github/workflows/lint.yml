@@ -34,62 +34,20 @@ jobs:
         renv::install("lintr")
       shell: Rscript {0}
 
-    - name: Lint R files
+    - name: Lint package
       run: |
-        # Get changed R files for PRs, all R files for main branch
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          echo "Linting changed R files in PR..."
-          git fetch origin main
-          CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep -E '\.(R|r|Rmd|rmd)$' || true)
-        else
-          echo "Linting all R files..."
-          CHANGED_FILES=$(find . -name "*.R" -o -name "*.r" -o -name "*.Rmd" -o -name "*.rmd" | grep -v "renv/" | grep -v ".git/" || true)
-        fi
-
-        if [ -z "$CHANGED_FILES" ]; then
-          echo "No R files to lint"
-          exit 0
-        fi
-
-        echo "Files to lint:"
-        echo "$CHANGED_FILES"
-
-        # Run lintr on changed files
+        # Simple package linting using .lintr configuration
         Rscript -e "
         library(lintr)
-
-        files <- strsplit('$CHANGED_FILES', '\n')[[1]]
-        files <- files[files != '']
-        files <- files[file.exists(files)]
-
-        if (length(files) == 0) {
-          cat('No R files found to lint\n')
-          quit(status = 0)
-        }
-
-        cat('Linting', length(files), 'file(s):\n')
-        cat(paste(files, collapse = '\n'), '\n\n')
-
-        # Use .lintr configuration file for project-specific linters
-        all_lints <- list()
-        for (file in files) {
-          cat('Linting:', file, '\n')
-          file_lints <- lint(file)
-          if (length(file_lints) > 0) {
-            all_lints[[file]] <- file_lints
-          }
-        }
-
-        if (length(all_lints) > 0) {
-          cat('\n=== LINTING ISSUES FOUND ===\n')
-          for (file in names(all_lints)) {
-            cat('\nFile:', file, '\n')
-            print(all_lints[[file]])
-          }
+        # Lint the package using .lintr configuration
+        lints <- lint_package()
+        if (length(lints) > 0) {
+          cat('=== LINTING ISSUES FOUND ===\n')
+          print(lints)
           cat('\n=== Please fix the above issues ===\n')
           quit(status = 1)
         } else {
-          cat('\n✓ All files passed linting checks\n')
+          cat('✓ Package passed linting checks\n')
           quit(status = 0)
         }
         "

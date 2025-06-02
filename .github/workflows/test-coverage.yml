@@ -35,7 +35,6 @@ jobs:
 
       - name: Test coverage
         run: |
-          # Now that we have a DESCRIPTION file, use standard package coverage
           covr::codecov(
             quiet = FALSE,
             clean = FALSE

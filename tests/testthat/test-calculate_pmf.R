@@ -33,7 +33,6 @@ test_that("calculate_pmf validates method parameter", {
 })
 
 test_that("calculate_pmf produces valid results for gamma distribution", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = "gamma_none_daily_r0.1",
@@ -71,7 +70,6 @@ test_that("calculate_pmf produces valid results for gamma distribution", {
 })
 
 test_that("calculate_pmf produces valid results for lognormal distribution", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = "lognormal_none_medium_r0.05",
@@ -109,7 +107,6 @@ test_that("calculate_pmf produces valid results for lognormal distribution", {
 })
 
 test_that("calculate_pmf handles zero growth rate correctly", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = "gamma_none_daily_r0",
@@ -147,7 +144,6 @@ test_that("calculate_pmf handles zero growth rate correctly", {
 })
 
 test_that("calculate_pmf numerical vs analytical methods", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = "gamma_none_daily_r0.05",
@@ -196,7 +192,6 @@ test_that("calculate_pmf numerical vs analytical methods", {
 })
 
 test_that("calculate_pmf handles edge case parameter values", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = "gamma_none_daily_r0",

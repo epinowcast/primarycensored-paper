@@ -20,11 +20,11 @@ Imports:
     tarchetypes,
     rmarkdown,
     knitr,
+    primarycensored,
+    tictoc
+Suggests:
     testthat,
     covr,
-    lintr
-Suggests:
-    primarycensored,
-    quarto,
-    tictoc
+    lintr,
+    quarto
 Config/testthat/edition: 3

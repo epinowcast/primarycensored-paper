@@ -10,7 +10,6 @@
 # Workflow Integration Tests --------------------------------------------------
 
 test_that("complete PMF workflow produces valid results", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = c("gamma_none_daily_r0.05", "lognormal_none_medium_r0.05"),
@@ -62,7 +61,6 @@ test_that("complete PMF workflow produces valid results", {
 })
 
 test_that("workflow handles different truncation scenarios", {
-  skip_if_not_installed("primarycensored")
 
   scenarios <- data.frame(
     scenario_id = c("gamma_finite_daily_r0.1", "gamma_infinite_daily_r0.1"),
@@ -118,7 +116,6 @@ test_that("workflow handles different truncation scenarios", {
 })
 
 test_that("workflow handles special distribution cases", {
-  skip_if_not_installed("primarycensored")
 
   # Zero growth rate
   scenarios_zero <- data.frame(
@@ -176,7 +173,6 @@ test_that("workflow handles special distribution cases", {
 })
 
 test_that("workflow error handling for invalid inputs", {
-  skip_if_not_installed("primarycensored")
 
   distributions <- data.frame(
     dist_name = "gamma",
@@ -231,7 +227,6 @@ test_that("workflow error handling for invalid inputs", {
 # Integration Tests with primarycensored Package -----------------------------
 
 test_that("local PMF calculations work with realistic data flows", {
-  skip_if_not_installed("primarycensored")
 
   # Test realistic scenario configurations
   scenarios <- data.frame(
@@ -287,7 +282,6 @@ test_that("local PMF calculations work with realistic data flows", {
 })
 
 test_that("helper functions integrate properly with primarycensored API", {
-  skip_if_not_installed("primarycensored")
 
   # Test that our helper functions work with primarycensored functions
   test_cases <- list(
@@ -320,7 +314,6 @@ test_that("helper functions integrate properly with primarycensored API", {
 })
 
 test_that("end-to-end workflow produces consistent results", {
-  skip_if_not_installed("primarycensored")
 
   # Simulate a realistic analysis workflow
   scenarios <- data.frame(
@@ -365,7 +358,6 @@ test_that("end-to-end workflow produces consistent results", {
 })
 
 test_that("package integration handles edge cases gracefully", {
-  skip_if_not_installed("primarycensored")
 
   # Test extreme parameter values
   edge_scenarios <- data.frame(
@@ -413,7 +405,6 @@ test_that("package integration handles edge cases gracefully", {
 })
 
 test_that("numerical and analytical methods integrate consistently", {
-  skip_if_not_installed("primarycensored")
 
   # Test that both methods work with primarycensored
   scenarios <- data.frame(
