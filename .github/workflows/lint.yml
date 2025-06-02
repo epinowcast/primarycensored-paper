@@ -9,15 +9,15 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    
+
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - uses: r-lib/actions/setup-pandoc@v2
-    
+
     - uses: r-lib/actions/setup-r@v2
       with:
         use-public-rspm: true
@@ -33,7 +33,7 @@ jobs:
       run: |
         renv::install("lintr")
       shell: Rscript {0}
-      
+
     - name: Lint R files
       run: |
         # Get changed R files for PRs, all R files for main branch
@@ -45,35 +45,35 @@ jobs:
           echo "Linting all R files..."
           CHANGED_FILES=$(find . -name "*.R" -o -name "*.r" -o -name "*.Rmd" -o -name "*.rmd" | grep -v "renv/" | grep -v ".git/" || true)
         fi
-        
+
         if [ -z "$CHANGED_FILES" ]; then
           echo "No R files to lint"
           exit 0
         fi
-        
+
         echo "Files to lint:"
         echo "$CHANGED_FILES"
-        
+
         # Run lintr on changed files
         Rscript -e "
         library(lintr)
-        
+
         files <- strsplit('$CHANGED_FILES', '\n')[[1]]
         files <- files[files != '']
         files <- files[file.exists(files)]
-        
+
         if (length(files) == 0) {
           cat('No R files found to lint\n')
           quit(status = 0)
         }
-        
+
         cat('Linting', length(files), 'file(s):\n')
         cat(paste(files, collapse = '\n'), '\n\n')
-        
+
         # Use project-specific linters based on CLAUDE.md guidelines
         linters <- list(
           line_length_linter(80),               # Max 80 chars per line
-          trailing_whitespace_linter(),         # No trailing whitespace  
+          trailing_whitespace_linter(),         # No trailing whitespace
           trailing_blank_lines_linter(),        # No spurious blank lines
           object_name_linter('snake_case'),     # Use snake_case
           infix_spaces_linter(),                # Spaces around operators
@@ -82,7 +82,7 @@ jobs:
           brace_linter(),                       # Proper brace placement
           paren_brace_linter()                  # Proper parentheses/braces
         )
-        
+
         all_lints <- list()
         for (file in files) {
           cat('Linting:', file, '\n')
@@ -91,7 +91,7 @@ jobs:
             all_lints[[file]] <- file_lints
           }
         }
-        
+
         if (length(all_lints) > 0) {
           cat('\n=== LINTING ISSUES FOUND ===\n')
           for (file in names(all_lints)) {
@@ -105,8 +105,8 @@ jobs:
           quit(status = 0)
         }
         "
-        
-    - name: Check code style  
+
+    - name: Check code style
       run: |
         # Check for common style issues
         Rscript -e "
@@ -116,40 +116,40 @@ jobs:
         } else {
           changed_files <- system('find . -name \"*.R\" -o -name \"*.r\" -o -name \"*.Rmd\" -o -name \"*.rmd\" | grep -v \"renv/\" | grep -v \".git/\" || true', intern = TRUE)
         }
-        
+
         changed_files <- changed_files[changed_files != '' & file.exists(changed_files)]
-        
+
         if (length(changed_files) == 0) {
           cat('No R files to check for style issues\n')
           quit(status = 0)
         }
-        
+
         style_issues <- FALSE
-        
+
         for (file in changed_files) {
           lines <- readLines(file, warn = FALSE)
-          
+
           # Check for trailing whitespace
           trailing_ws <- grep('[[:space:]]+$', lines)
           if (length(trailing_ws) > 0) {
             cat('ERROR:', file, 'has trailing whitespace on lines:', paste(trailing_ws, collapse = ', '), '\n')
             style_issues <- TRUE
           }
-          
+
           # Check line length (80 char max per CLAUDE.md)
           long_lines <- which(nchar(lines) > 80)
           if (length(long_lines) > 0) {
             cat('ERROR:', file, 'has lines > 80 chars on lines:', paste(long_lines, collapse = ', '), '\n')
             style_issues <- TRUE
           }
-          
+
           # Check for missing final newline
           if (length(lines) > 0 && !grepl('\n$', lines[length(lines)])) {
             cat('ERROR:', file, 'is missing final newline\n')
             style_issues <- TRUE
           }
         }
-        
+
         if (style_issues) {
           cat('\n=== Please fix the above style issues ===\n')
           quit(status = 1)
