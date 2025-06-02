@@ -28,34 +28,16 @@ jobs:
 
       - uses: r-lib/actions/setup-renv@v2
 
-      - name: Install covr and testthat
+      - name: Install covr
         run: |
           renv::install("covr")
-          renv::install("testthat")
-        shell: Rscript {0}
-
-      - name: Run tests
-        run: |
-          # Run tests first
-          testthat::test_dir("tests/testthat")
         shell: Rscript {0}
 
       - name: Test coverage
         run: |
-          # Generate coverage for R files using file_coverage like in Taskfile
-          coverage <- covr::file_coverage(
-            c('R/pmf_tools.R', 'R/utils.R'), 
-            'tests/testthat/'
+          # Now that we have a DESCRIPTION file, use standard package coverage
+          covr::codecov(
+            quiet = FALSE,
+            clean = FALSE
           )
-          print(coverage)
-          
-          # Calculate overall coverage percentage
-          total_lines <- sum(attr(coverage, "tests")$value)
-          covered_lines <- sum(attr(coverage, "tests")$value * attr(coverage, "tests")$coverage > 0)
-          coverage_percent <- if (total_lines > 0) covered_lines / total_lines * 100 else 0
-          
-          cat("Overall test coverage:", round(coverage_percent, 2), "%\n")
-          
-          # Optionally upload to codecov if desired (uncomment next line)
-          # covr::codecov(coverage = coverage)
         shell: Rscript {0}
