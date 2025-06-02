@@ -42,7 +42,7 @@ tasks:
 
   visualize:
     desc: Create a visualization of the pipeline
-    deps: [install, render]
+    deps: [render]
     cmds:
       - Rscript scripts/visualize_pipeline.R
 
