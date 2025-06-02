@@ -85,8 +85,9 @@ test_that("setup_pmf_inputs creates valid inputs for dprimarycensored", {
     pwindow = scenarios$primary_width,
     swindow = scenarios$secondary_width,
     D = scenarios$relative_obs_time,
-    pdist = get(paste0("p", distributions$dist_family)),
-    dprimary = inputs$primary_dist,
+    pdist = pgamma,
+    dprimary = get_primary_dist(growth_rate),
+    dprimary_args = get_primary_args(growth_rate),
     shape = distributions$param1,
     scale = distributions$param2
   )

@@ -31,21 +31,18 @@ test_that("calculate_pmf matches dprimarycensored for gamma distribution", {
   
   # Calculate directly with dprimarycensored for comparison
   delays <- result$delay
-  dist_args <- list(shape = 2, rate = 1)
   
-  direct_pmf <- numeric(length(delays))
-  for (i in seq_along(delays)) {
-    direct_pmf[i] <- primarycensored::dprimarycensored(
-      delays[i],
-      pwindow = scenarios$primary_width,
-      swindow = scenarios$secondary_width,
-      D = scenarios$relative_obs_time,
-      primary_args = list(r = growth_rate),
-      dist = "gamma",
-      dist_args = dist_args,
-      dprimary = primarycensored::dexpgrowth
-    )
-  }
+  direct_pmf <- primarycensored::dprimarycensored(
+    delays,
+    pwindow = scenarios$primary_width,
+    swindow = scenarios$secondary_width,
+    D = scenarios$relative_obs_time,
+    pdist = pgamma,
+    dprimary = primarycensored::dexpgrowth,
+    dprimary_args = list(r = growth_rate),
+    shape = 2,
+    scale = 1
+  )
   
   # Compare results
   expect_equal(result$probability, direct_pmf, tolerance = 1e-10)
@@ -81,24 +78,22 @@ test_that("calculate_pmf matches dprimarycensored for lognormal distribution", {
   # Calculate using our function
   result <- calculate_pmf(scenarios, distributions, growth_rate, "analytical")
   
-  # Calculate directly with dprimarycensored
+  # Calculate directly with dprimarycensored for comparison
   delays <- result$delay
-  dist_args <- list(meanlog = 1.5, sdlog = 0.5)
   
-  direct_pmf <- numeric(length(delays))
-  for (i in seq_along(delays)) {
-    direct_pmf[i] <- primarycensored::dprimarycensored(
-      delays[i],
-      pwindow = scenarios$primary_width,
-      swindow = scenarios$secondary_width,
-      D = scenarios$relative_obs_time,
-      primary_args = list(r = growth_rate),
-      dist = "lognormal",
-      dist_args = dist_args,
-      dprimary = primarycensored::dexpgrowth
-    )
-  }
+  direct_pmf <- primarycensored::dprimarycensored(
+    delays,
+    pwindow = scenarios$primary_width,
+    swindow = scenarios$secondary_width,
+    D = scenarios$relative_obs_time,
+    pdist = plnorm,
+    dprimary = primarycensored::dexpgrowth,
+    dprimary_args = list(r = growth_rate),
+    meanlog = 1.5,
+    sdlog = 0.5
+  )
   
+  # Compare results
   expect_equal(result$probability, direct_pmf, tolerance = 1e-10)
 })
 
@@ -134,22 +129,20 @@ test_that("calculate_pmf handles zero growth rate correctly", {
   
   # Calculate directly with dprimarycensored using uniform primary
   delays <- result$delay
-  dist_args <- list(shape = 3, rate = 2)
   
-  direct_pmf <- numeric(length(delays))
-  for (i in seq_along(delays)) {
-    direct_pmf[i] <- primarycensored::dprimarycensored(
-      delays[i],
-      pwindow = scenarios$primary_width,
-      swindow = scenarios$secondary_width,
-      D = scenarios$relative_obs_time,
-      primary_args = list(),
-      dist = "gamma",
-      dist_args = dist_args,
-      dprimary = dunif
-    )
-  }
+  direct_pmf <- primarycensored::dprimarycensored(
+    delays,
+    pwindow = scenarios$primary_width,
+    swindow = scenarios$secondary_width,
+    D = scenarios$relative_obs_time,
+    pdist = pgamma,
+    dprimary = dunif,
+    dprimary_args = list(min = 0, max = scenarios$primary_width),
+    shape = 3,
+    scale = 2
+  )
   
+  # Compare results
   expect_equal(result$probability, direct_pmf, tolerance = 1e-10)
 })
 
