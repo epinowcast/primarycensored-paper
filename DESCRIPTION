@@ -14,17 +14,30 @@ RoxygenNote: 7.2.3
 Depends: 
     R (>= 4.1.0)
 Imports:
+    crew,
+    data.table,
     dplyr,
     ggplot2,
-    targets,
-    tarchetypes,
-    rmarkdown,
+    here,
     knitr,
+    patchwork,
     primarycensored,
+    purrr,
+    rmarkdown,
+    tarchetypes,
+    targets,
     tictoc
 Suggests:
-    testthat,
+    cmdstanr,
     covr,
+    fitdistrplus,
+    htmlwidgets,
     lintr,
-    quarto
+    profvis,
+    qs2,
+    quarto,
+    shiny,
+    testthat,
+    tidyr,
+    visNetwork
 Config/testthat/edition: 3
