@@ -7,7 +7,7 @@
 #' @param dpi Resolution in dots per inch
 #' @export
 save_plot <- function(plot, filename, width = 8, height = 6, dpi = 300) {
-  ggsave(
+  ggplot2::ggsave(
     filename = here::here("figures", filename),
     plot = plot,
     width = width,
@@ -48,10 +48,10 @@ estimate_naive_delay_model <- function(data, distribution, scenario_id,
                                        iter_sampling = 1000) {
   # Validate distribution parameter
   distribution <- match.arg(distribution, choices = c("gamma", "lognormal"))
-  
+
   # For now, return placeholder implementation to avoid Stan compilation issues
   # Real implementation would use Stan model
-  
+
   data.frame(
     scenario_id = scenario_id,
     sample_size = sample_size,

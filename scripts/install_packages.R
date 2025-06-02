@@ -15,21 +15,11 @@ if (file.exists("renv.lock")) {
   renv::restore(prompt = FALSE)
 } else {
   # No lockfile, install required packages
-  message("No renv.lock found. Installing required packages...")
+  message("No renv.lock found. Installing dependencies from DESCRIPTION...")
   
-  # Regular CRAN packages
-  cran_pkgs <- c("targets", "tarchetypes", "data.table", "ggplot2", "patchwork", 
-                 "purrr", "here", "dplyr", "tidyr", "qs2", "crew", 
-                 "primarycensored", "fitdistrplus", "profvis", 
-                 "rmarkdown", "knitr", "visNetwork", "htmlwidgets", "tictoc",
-                 "shiny")
-  
-  # Install CRAN packages
-  renv::install(cran_pkgs)
-  
-  # Install cmdstanr from GitHub (pinned to v0.9.0)
-  message("Installing cmdstanr from GitHub (v0.9.0)...")
-  renv::install("stan-dev/cmdstanr@v0.9.0")
+  # Install DESCRIPTION dependencies (including remotes)
+  message("Installing dependencies from DESCRIPTION...")
+  renv::install(".", dependencies = TRUE)
   
   # Create initial lockfile
   message("Creating renv.lock...")

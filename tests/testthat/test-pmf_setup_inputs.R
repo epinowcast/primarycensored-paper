@@ -50,7 +50,7 @@ test_that("setup_pmf_inputs handles finite truncation correctly", {
   expect_identical(result$args$D, 10)
   expect_identical(result$args$shape, 2)
   expect_identical(result$args$rate, 1)
-  expect_identical(result$args$dprimary, dexpgrowth)
+  expect_identical(result$args$dprimary, primarycensored::dexpgrowth)
   expect_identical(result$args$dprimary_args, list(r = 0.1))
 })
 

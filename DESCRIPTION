@@ -1,0 +1,45 @@
+Package: primarycensoredpaper
+Title: Modelling delays with primary Event Censored Distributions
+Version: 0.1.0
+Authors@R: 
+    person("Sam", "Abbott", , "sam.abbott@lshtm.ac.uk", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-8057-8037"))
+Description: Academic paper and analysis code for "Modelling delays with primary 
+    Event Censored Distributions" which describes a method for handling double 
+    interval censored data in epidemiological delay distribution estimation.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Depends: 
+    R (>= 4.1.0)
+Imports:
+    crew,
+    data.table,
+    dplyr,
+    ggplot2,
+    here,
+    knitr,
+    patchwork,
+    primarycensored,
+    purrr,
+    rmarkdown,
+    tarchetypes,
+    targets,
+    tictoc
+Suggests:
+    cmdstanr,
+    covr,
+    fitdistrplus,
+    htmlwidgets,
+    lintr,
+    profvis,
+    qs2,
+    quarto,
+    shiny,
+    testthat,
+    tidyr,
+    visNetwork
+Remotes:
+    stan-dev/cmdstanr@v0.9.0
+Config/testthat/edition: 3
