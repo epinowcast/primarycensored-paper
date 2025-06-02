@@ -1,0 +1,96 @@
+name: Test Parameter Recovery
+
+on:
+  pull_request:
+    branches: [issue-26]
+  push:
+    branches: [issue-26]
+  workflow_dispatch:
+
+jobs:
+  test-parameter-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: '4.5.0'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+        
+    - name: Install CmdStan
+      run: |
+        wget -q https://github.com/stan-dev/cmdstan/releases/download/v2.36.0/cmdstan-2.36.0.tar.gz
+        tar -xzf cmdstan-2.36.0.tar.gz
+        cd cmdstan-2.36.0 && make build -j2
+        echo "CMDSTAN=$(pwd)" >> $GITHUB_ENV
+        
+    - name: Setup renv
+      run: |
+        Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
+        Rscript scripts/setup_renv.R
+        
+    - name: Install packages
+      run: Rscript scripts/install_packages.R
+      
+    - name: Set test mode
+      run: |
+        sed -i 's/test_mode: false/test_mode: true/' _targets.Rmd
+        
+    - name: Render targets
+      run: Rscript -e "rmarkdown::render('_targets.Rmd')"
+      
+    - name: Create required directories
+      run: mkdir -p figures data/results
+      
+    - name: Run parameter recovery test
+      run: |
+        timeout 600 Rscript -e "
+        library(targets);
+        # Test just the fitting targets to validate methods work
+        tar_make(c('compile_stan_models', 'stan_settings', 'fitting_grid'));
+        # Run a subset of fitting targets to verify they work
+        tar_make(any_of(c('naive_fits', 'primarycensored_fitdistrplus_fits', 'simulated_model_fits')))
+        "
+        
+    - name: Check results
+      run: |
+        Rscript -e "
+        library(targets);
+        # Check that some fits completed
+        if (tar_exist('simulated_model_fits')) {
+          results <- tar_read('simulated_model_fits');
+          cat('✅ Parameter recovery test completed\n');
+          cat('Number of results:', nrow(results), '\n');
+          cat('Methods tested:', paste(unique(results\$method), collapse=', '), '\n');
+          
+          # Check for basic convergence (no major failures)
+          failures <- sum(is.na(results\$param1_est));
+          if (failures < nrow(results) * 0.8) {
+            cat('✅ Convergence check passed:', failures, '/', nrow(results), 'failures\n');
+          } else {
+            cat('❌ Too many failures:', failures, '/', nrow(results), '\n');
+            quit(status=1);
+          }
+        } else {
+          cat('❌ No results found\n');
+          quit(status=1);
+        }
+        "
+        
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: parameter-recovery-results
+        path: |
+          _targets/
+          figures/
+          data/results/
+        retention-days: 7

@@ -37,6 +37,7 @@ Suggests:
     qs2,
     quarto,
     shiny,
+    styler,
     testthat,
     tidyr,
     visNetwork

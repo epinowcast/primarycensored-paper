@@ -1,45 +1,47 @@
 tar_target(
   primarycensored_fitdistrplus_fits,
   {
-    # Use pre-sampled data
-    sample_key <- paste(fitting_grid$scenario_id, fitting_grid$sample_size, sep = "_")
-    sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
-      dplyr::filter(sample_size_scenario == sample_key)
+    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored_mle"))
     
-    # Check if we have data
-    if (nrow(sampled_data) == 0 || !"delay_observed" %in% names(sampled_data)) {
-      return(data.frame(
-        scenario_id = fitting_grid$scenario_id,
-        sample_size = fitting_grid$sample_size,
-        method = "primarycensored_mle",
-        param1_est = NA,
-        param1_se = NA,
-        param2_est = NA,
-        param2_se = NA,
-        convergence = NA,
-        loglik = NA,
-        runtime_seconds = NA
-      ))
+    tictoc::tic("fit_primarycensored_mle")
+    dist_info <- extract_distribution_info(sampled_data)
+    
+    # Prepare data and primary distribution
+    delays_data <- data.frame(
+      delay_lwr = sampled_data$sec_cens_lower,
+      delay_upr = sampled_data$sec_cens_upper,
+      ptime_lwr = sampled_data$prim_cens_lower,
+      ptime_upr = sampled_data$prim_cens_upper
+    )
+    
+    obs_time <- sampled_data$relative_obs_time[1]
+    if (is.finite(obs_time)) delays_data$obs_time <- obs_time
+    
+    primary_dist <- if (dist_info$growth_rate == 0) {
+      function(x) dunif(x, min = 0, max = sampled_data$prim_cens_upper[1])
+    } else {
+      primarycensored::dexpgrowth
     }
     
-    # Start timing after data preparation
-    tictoc::tic("fit_primarycensored_mle")
+    # Fit using appropriate distribution
+    fit_args <- list(
+      delays_data, pdist = primary_dist,
+      start = if (dist_info$distribution == "gamma") {
+        list(shape = 2, scale = 2)
+      } else {
+        list(meanlog = 1.5, sdlog = 0.5)
+      },
+      distr = if (dist_info$distribution == "gamma") "gamma" else "lnorm"
+    )
     
-    # This would use fitdistdoublecens when available
-    # For now, placeholder implementation using simple MLE
-    distribution <- sampled_data$distribution[1]
+    fit_result <- do.call(primarycensored::fitdistdoublecens, fit_args)
     
-    if (distribution == "gamma") {
-      # Use method of moments as MLE estimate
-      sample_mean <- mean(sampled_data$delay_observed)
-      sample_var <- var(sampled_data$delay_observed)
-      param1_est <- sample_mean^2 / sample_var  # shape
-      param2_est <- sample_var / sample_mean     # scale
+    # Extract parameters based on distribution
+    param_names <- if (dist_info$distribution == "gamma") {
+      c("shape", "scale")
     } else {
-      # Lognormal MLE
-      log_delays <- log(sampled_data$delay_observed)
-      param1_est <- mean(log_delays)  # meanlog
-      param2_est <- sd(log_delays)    # sdlog
+      c("meanlog", "sdlog")
     }
     
     runtime <- tictoc::toc(quiet = TRUE)
@@ -48,12 +50,20 @@ tar_target(
       scenario_id = fitting_grid$scenario_id,
       sample_size = fitting_grid$sample_size,
       method = "primarycensored_mle",
-      param1_est = param1_est,
-      param1_se = 0.05,  # Placeholder SE (MLE typically lower)
-      param2_est = param2_est,
-      param2_se = 0.05,  # Placeholder SE
-      convergence = 0,   # MLE convergence indicator
-      loglik = -90,      # Placeholder log-likelihood
+      param1_est = fit_result$estimate[param_names[1]],
+      param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
+      param1_q025 = NA_real_,
+      param1_q975 = NA_real_,
+      param2_est = fit_result$estimate[param_names[2]],
+      param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
+      param2_q025 = NA_real_,
+      param2_q975 = NA_real_,
+      convergence = fit_result$convergence %||% 0,
+      ess_bulk_min = NA_real_,
+      ess_tail_min = NA_real_,
+      num_divergent = NA_integer_,
+      max_treedepth = NA_integer_,
+      loglik = fit_result$loglik %||% NA_real_,
       runtime_seconds = runtime$toc - runtime$tic
     )
   },

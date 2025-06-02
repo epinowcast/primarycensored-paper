@@ -1,97 +1,65 @@
 tar_target(
   primarycensored_fits,
   {  
-    # Use pre-sampled data
-    sample_key <- paste(fitting_grid$scenario_id, fitting_grid$sample_size, sep = "_")
-    sampled_data <- dplyr::bind_rows(monte_carlo_samples) |>
-      dplyr::filter(sample_size_scenario == sample_key)
+    sampled_data <- extract_sampled_data(monte_carlo_samples, fitting_grid)
+    if (is.null(sampled_data)) return(create_empty_results(fitting_grid, "primarycensored"))
     
-    # Check if we have data
-    if (nrow(sampled_data) == 0 || !"delay_observed" %in% names(sampled_data)) {
-      return(data.frame(
-        scenario_id = fitting_grid$scenario_id,
-        sample_size = fitting_grid$sample_size,
-        method = "primarycensored",
-        param1_est = NA,
-        param1_se = NA,
-        param2_est = NA,
-        param2_se = NA,
-        convergence = NA,
-        loglik = NA,
-        runtime_seconds = NA
-      ))
-    }
-    
-    # Start timing after data preparation
     tictoc::tic("fit_primarycensored")
+    dist_info <- extract_distribution_info(sampled_data)
     
-    # Prepare data for primarycensored fitting
-    distribution <- sampled_data$distribution[1]
-    growth_rate <- sampled_data$growth_rate[1]
-    
-    # Get primary distribution for this scenario
-    primary_dist <- if (growth_rate == 0) {
-      \(x) dunif(x, min = 0, max = sampled_data$prim_cens_upper[1])
-    } else {
-      primarycensored::dexpgrowth
-    }
-    
-    # Prepare fitting data
-    observations <- data.frame(
-      delay_daily = sampled_data$delay_observed,
-      delay_lwr = sampled_data$sec_cens_lower,
-      delay_upr = sampled_data$sec_cens_upper,
-      ptime_lwr = sampled_data$prim_cens_lower,
-      ptime_upr = sampled_data$prim_cens_upper
+    # Prepare delay data for primarycensored
+    delay_data <- data.frame(
+      delay = sampled_data$delay_observed,
+      delay_upper = sampled_data$sec_cens_upper, 
+      n = 1,
+      pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
+      relative_obs_time = sampled_data$relative_obs_time[1]
     )
     
-    # Handle infinite observation times for truncation
-    obs_time <- sampled_data$relative_obs_time[1]
-    if (is.finite(obs_time)) {
-      observations$obs_time <- obs_time
-    }
+    # Configuration based on distribution and growth rate
+    config <- list(
+      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,
+      primary_id = if (dist_info$growth_rate == 0) 1L else 2L
+    )
     
-    # Configure Stan settings based on test mode
-    chains <- if (test_mode) test_chains else 2
-    iter_warmup <- if (test_mode) test_iterations else 1000
-    iter_sampling <- if (test_mode) test_iterations else 1000
-    
-    # For now, implement a simplified version using analytical PMF approach
-    # This is a placeholder - real implementation would use primarycensored's Stan interface
-    # when it becomes available
-    
-    # Use maximum likelihood estimation via optimization for now
-    if (distribution == "gamma") {
-      # Use method of moments as starting point
-      sample_mean <- mean(sampled_data$delay_observed)
-      sample_var <- var(sampled_data$delay_observed)
-      init_shape <- sample_mean^2 / sample_var
-      init_scale <- sample_var / sample_mean
-      
-      param1_est <- init_shape + rnorm(1, 0, 0.1)
-      param2_est <- init_scale + rnorm(1, 0, 0.1)
+    # Set bounds and priors
+    if (dist_info$distribution == "gamma") {
+      bounds_priors <- list(
+        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
+        priors = list(location = c(2, 2), scale = c(1, 1))
+      )
     } else {
-      # Lognormal
-      log_delays <- log(sampled_data$delay_observed)
-      param1_est <- mean(log_delays) + rnorm(1, 0, 0.1)
-      param2_est <- sd(log_delays) + rnorm(1, 0, 0.1)
+      bounds_priors <- list(
+        param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
+        priors = list(location = c(1.5, 2), scale = c(1, 1))
+      )
     }
+    
+    # Primary distribution parameters
+    if (dist_info$growth_rate == 0) {
+      primary_bounds_priors <- list(
+        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
+        primary_priors = list(location = numeric(0), scale = numeric(0))
+      )
+    } else {
+      primary_bounds_priors <- list(
+        primary_param_bounds = list(lower = c(0.01), upper = c(10)),
+        primary_priors = list(location = c(0.2), scale = c(1))
+      )
+    }
+    
+    # Prepare Stan data and fit
+    stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
+      list(delay_data, compute_log_lik = TRUE),
+      config, bounds_priors, primary_bounds_priors
+    ))
+    
+    fit <- do.call(primarycensored::pcd_cmdstan_model()$sample, c(
+      list(data = stan_data), stan_settings
+    ))
     
     runtime <- tictoc::toc(quiet = TRUE)
-    
-    # Return results in standard format
-    data.frame(
-      scenario_id = fitting_grid$scenario_id,
-      sample_size = fitting_grid$sample_size,
-      method = "primarycensored",
-      param1_est = param1_est,
-      param1_se = 0.1,  # Placeholder SE
-      param2_est = param2_est,
-      param2_se = 0.1,  # Placeholder SE
-      convergence = 1.001,  # Placeholder R-hat
-      loglik = -100,  # Placeholder log-likelihood
-      runtime_seconds = runtime$toc - runtime$tic
-    )
+    extract_posterior_estimates(fit, "primarycensored", fitting_grid, runtime)
   },
   pattern = map(fitting_grid)
 )

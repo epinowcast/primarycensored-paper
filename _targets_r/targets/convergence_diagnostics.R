@@ -1,13 +1,27 @@
 tar_target(convergence_diagnostics, {
-  # Placeholder for convergence diagnostics
-  # Real implementation would extract R-hat, divergences, ESS from Bayesian fits
+  # Extract convergence diagnostics from Bayesian model fits
+  bayesian_fits <- simulated_model_fits |>
+    dplyr::filter(method %in% c("primarycensored", "ward"))
   
-  # Create placeholder data
-  data.frame(
-    method = c("primarycensored", "ward"),
-    mean_rhat = c(1.001, 1.005),
-    total_divergences = c(0, 54),
-    mean_ess = c(2000, 800),
-    mean_runtime = c(5, 150)
-  )
+  if (nrow(bayesian_fits) == 0) {
+    # Return empty structure if no Bayesian fits available
+    data.frame(
+      method = character(0),
+      mean_rhat = numeric(0),
+      total_divergences = numeric(0),
+      mean_ess = numeric(0),
+      mean_runtime = numeric(0)
+    )
+  } else {
+    # Calculate convergence statistics by method
+    bayesian_fits |>
+      dplyr::group_by(method) |>
+      dplyr::summarise(
+        mean_rhat = mean(convergence, na.rm = TRUE),
+        total_divergences = sum(num_divergent, na.rm = TRUE),
+        mean_ess = mean(pmin(ess_bulk_min, ess_tail_min), na.rm = TRUE),
+        mean_runtime = mean(runtime_seconds, na.rm = TRUE),
+        .groups = "drop"
+      )
+  }
 })
