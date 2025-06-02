@@ -108,7 +108,8 @@ tar_option_set(
   memory = "transient",  # Free memory after each target completes
   garbage_collection = TRUE,  # Run garbage collection
   controller = controller,  # Use crew for parallel processing
-  repository = "local"  # Use qs2 backend for storage
+  repository = "local",  # Use qs2 backend for storage
+  error = "continue"  # Continue pipeline when targets fail
 )
 #> Establish _targets.R and _targets_r/globals/globals.R.
 ```
@@ -436,6 +437,126 @@ tar_target(
 #> Establish _targets.R and _targets_r/targets/numerical_pmf.R.
 ```
 
+# Case Study: Ebola Epidemic
+
+## Load Ebola case study data
+
+Load Fang et al. 2016 Sierra Leone Ebola data (2014-2016) for the case
+study analysis.
+
+``` r
+tar_file(ebola_data_file, "data/raw/ebola_sierra_leone_2014_2016.csv")
+#> Establish _targets.R and _targets_r/targets/ebola_data_file.R.
+```
+
+``` r
+tar_target(ebola_data_raw, {
+  read.csv(ebola_data_file, stringsAsFactors = FALSE)
+})
+#> Define target ebola_data_raw from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_data_raw.R.
+```
+
+Clean and format the Ebola data for analysis.
+
+``` r
+tar_target(ebola_data, {
+  ebola_data_raw |>
+    dplyr::rename(
+      symptom_onset_date = Date.of.symptom.onset,
+      sample_date = Date.of.sample.tested
+    ) |>
+    dplyr::mutate(
+      case_id = ID,
+      symptom_onset_date = as.Date(symptom_onset_date, format = "%d-%b-%y"),
+      sample_date = as.Date(sample_date, format = "%d-%b-%y")
+    ) |>
+    dplyr::select(case_id, symptom_onset_date, sample_date) |>
+    dplyr::filter(
+      !is.na(symptom_onset_date),
+      !is.na(sample_date),
+      sample_date >= symptom_onset_date
+    )
+})
+#> Define target ebola_data from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_data.R.
+```
+
+## Define observation windows for case study
+
+Four 60-day windows as specified in the manuscript.
+
+``` r
+tar_target(observation_windows, {
+  data.frame(
+    window_id = 1:4,
+    start_day = c(0, 60, 120, 180),
+    end_day = c(60, 120, 180, 240),
+    window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
+  )
+})
+#> Define target observation_windows from chunk code.
+#> Establish _targets.R and _targets_r/targets/observation_windows.R.
+```
+
+## Define analysis types for case study
+
+Real-time vs retrospective analysis types with different filtering
+logic.
+
+``` r
+tar_target(ebola_case_study_scenarios, {
+  data.frame(
+    analysis_type = c("real_time", "retrospective"),
+    description = c("Filter LHS on onset date, RHS on sample date", "Filter both LHS and RHS on onset date")
+  )
+})
+#> Define target ebola_case_study_scenarios from chunk code.
+#> Establish _targets.R and _targets_r/targets/ebola_case_study_scenarios.R.
+```
+
+## Prepare Ebola data for analysis
+
+Split data by observation windows and analysis types for real-time and
+retrospective analyses.
+
+``` r
+tar_target(
+  ebola_case_study_data,
+  {
+    # Get the base date (earliest symptom onset)
+    base_date <- min(ebola_data$symptom_onset_date)
+    
+    # Create window start and end dates
+    window_start <- base_date + observation_windows$start_day
+    window_end <- base_date + observation_windows$end_day
+    
+    # Filter data based on analysis type
+    filtered_data <- ebola_data |>
+      dplyr::filter(
+        symptom_onset_date >= window_start,  # LHS: based on onset date
+        if (ebola_case_study_scenarios$analysis_type == "real_time") {
+          sample_date < window_end  # RHS: based on sample date
+        } else {
+          symptom_onset_date < window_end  # RHS: based on onset date
+        }
+      )
+    # Return combined metadata and data
+    data.frame(
+      window_id = observation_windows$window_id,
+      analysis_type = ebola_case_study_scenarios$analysis_type,
+      window_label = observation_windows$window_label,
+      start_day = observation_windows$start_day,
+      end_day = observation_windows$end_day,
+      n_cases = nrow(filtered_data),
+      data = I(list(filtered_data))  # Use I() to store data frame in list column
+    )
+  },
+  pattern = cross(observation_windows, ebola_case_study_scenarios)
+)
+#> Establish _targets.R and _targets_r/targets/ebola_case_study_data.R.
+```
+
 # Parameter Recovery
 
 ## Compile Stan models
@@ -566,7 +687,7 @@ tar_target(
     }
     
     tictoc::tic("fit_primarycensored")
-    dist_info <- extract_distribution_info(sampled_data)
+    dist_info <- extract_distribution_info(fitting_grid)
     
     # Prepare delay data for primarycensored
     delay_data <- data.frame(
@@ -574,7 +695,7 @@ tar_target(
       delay_upper = sampled_data$sec_cens_upper, 
       n = 1,
       pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-      relative_obs_time = sampled_data$relative_obs_time[1]
+      relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
     )
     
     # Configuration based on distribution and growth rate
@@ -627,43 +748,6 @@ tar_target(
 #> Establish _targets.R and _targets_r/targets/fit_primarycensored.R.
 ```
 
-## Fit naive models
-
-Baseline comparison that ignores primary event censoring.
-
-``` r
-tar_target(
-  naive_fits,
-  {
-    # Extract data directly from fitting_grid
-    sampled_data <- fitting_grid$data[[1]]
-    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
-      return(create_empty_results(fitting_grid, "naive"))
-    }
-    
-    # Start timing after data preparation
-    tictoc::tic("fit_naive")
-    
-    # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(sampled_data)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, 
-                                  dist_info$growth_rate, "naive")
-    
-    # Fit the model using shared Stan settings
-    fit <- do.call(compile_naive_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    # Extract posterior estimates using shared function
-    extract_posterior_estimates(fit, "naive", fitting_grid, runtime)
-  },
-  pattern = map(fitting_grid)
-)
-#> Establish _targets.R and _targets_r/targets/fit_naive.R.
-```
-
 ## Fit primary censored models (fitdistrplus MLE)
 
 Maximum likelihood estimation using primarycensored with fitdistrplus
@@ -680,7 +764,7 @@ tar_target(
     }
     
     tictoc::tic("fit_primarycensored_mle")
-    dist_info <- extract_distribution_info(sampled_data)
+    dist_info <- extract_distribution_info(fitting_grid)
     
     # Prepare data in correct format for fitdistdoublecens
     delay_data <- data.frame(
@@ -689,7 +773,7 @@ tar_target(
     )
     
     pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
-    obs_time <- sampled_data$relative_obs_time[1]
+    obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
     
     # Fit using appropriate distribution  
     fit_result <- primarycensored::fitdistdoublecens(
@@ -733,6 +817,43 @@ tar_target(
 #> Establish _targets.R and _targets_r/targets/fit_primarycensored_fitdistrplus.R.
 ```
 
+## Fit naive models
+
+Baseline comparison that ignores primary event censoring.
+
+``` r
+tar_target(
+  naive_fits,
+  {
+    # Extract data directly from fitting_grid
+    sampled_data <- fitting_grid$data[[1]]
+    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
+      return(create_empty_results(fitting_grid, "naive"))
+    }
+    
+    # Start timing after data preparation
+    tictoc::tic("fit_naive")
+    
+    # Extract distribution info and prepare Stan data using shared functions
+    dist_info <- extract_distribution_info(fitting_grid)
+    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, 
+                                  dist_info$growth_rate, "naive")
+    
+    # Fit the model using shared Stan settings
+    fit <- do.call(compile_naive_model$sample, c(
+      list(data = stan_data), stan_settings
+    ))
+    
+    runtime <- tictoc::toc(quiet = TRUE)
+    
+    # Extract posterior estimates using shared function
+    extract_posterior_estimates(fit, "naive", fitting_grid, runtime)
+  },
+  pattern = map(fitting_grid)
+)
+#> Establish _targets.R and _targets_r/targets/fit_naive.R.
+```
+
 ## Fit Ward et al. latent variable models
 
 Current best practice method for comparison. Note that this method
@@ -758,8 +879,8 @@ tar_target(
     tictoc::tic("fit_ward")
     
     # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(sampled_data)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward")
+    dist_info <- extract_distribution_info(fitting_grid)
+    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward", fitting_grid$truncation[1])
     
     # Fit the Ward model using shared Stan settings
     fit <- do.call(compile_ward_model$sample, c(
@@ -791,261 +912,6 @@ tar_target(simulated_model_fits, {
 })
 #> Define target simulated_model_fits from chunk code.
 #> Establish _targets.R and _targets_r/targets/simulated_model_fits.R.
-```
-
-# Case Study: Ebola Epidemic
-
-## Load Ebola case study data
-
-Load Fang et al. 2016 Sierra Leone Ebola data (2014-2016) for the case
-study analysis.
-
-``` r
-tar_file(ebola_data_file, "data/raw/ebola_sierra_leone_2014_2016.csv")
-#> Establish _targets.R and _targets_r/targets/ebola_data_file.R.
-```
-
-``` r
-tar_target(ebola_data_raw, {
-  read.csv(ebola_data_file, stringsAsFactors = FALSE)
-})
-#> Define target ebola_data_raw from chunk code.
-#> Establish _targets.R and _targets_r/targets/ebola_data_raw.R.
-```
-
-Clean and format the Ebola data for analysis.
-
-``` r
-tar_target(ebola_data, {
-  ebola_data_raw |>
-    dplyr::rename(
-      symptom_onset_date = Date.of.symptom.onset,
-      sample_date = Date.of.sample.tested
-    ) |>
-    dplyr::mutate(
-      case_id = ID,
-      symptom_onset_date = as.Date(symptom_onset_date, format = "%d-%b-%y"),
-      sample_date = as.Date(sample_date, format = "%d-%b-%y")
-    ) |>
-    dplyr::select(case_id, symptom_onset_date, sample_date) |>
-    dplyr::filter(
-      !is.na(symptom_onset_date),
-      !is.na(sample_date),
-      sample_date >= symptom_onset_date
-    )
-})
-#> Define target ebola_data from chunk code.
-#> Establish _targets.R and _targets_r/targets/ebola_data.R.
-```
-
-## Define observation windows for case study
-
-Four 60-day windows as specified in the manuscript.
-
-``` r
-tar_target(observation_windows, {
-  data.frame(
-    window_id = 1:4,
-    start_day = c(0, 60, 120, 180),
-    end_day = c(60, 120, 180, 240),
-    window_label = c("0-60 days", "60-120 days", "120-180 days", "180-240 days")
-  )
-})
-#> Define target observation_windows from chunk code.
-#> Establish _targets.R and _targets_r/targets/observation_windows.R.
-```
-
-## Define analysis types for case study
-
-Real-time vs retrospective analysis types with different filtering
-logic.
-
-``` r
-tar_target(ebola_case_study_scenarios, {
-  data.frame(
-    analysis_type = c("real_time", "retrospective"),
-    description = c("Filter LHS on onset date, RHS on sample date", "Filter both LHS and RHS on onset date")
-  )
-})
-#> Define target ebola_case_study_scenarios from chunk code.
-#> Establish _targets.R and _targets_r/targets/ebola_case_study_scenarios.R.
-```
-
-## Prepare Ebola data for analysis
-
-Split data by observation windows and analysis types for real-time and
-retrospective analyses.
-
-``` r
-tar_target(
-  ebola_case_study_data,
-  {
-    # Get the base date (earliest symptom onset)
-    base_date <- min(ebola_data$symptom_onset_date)
-    
-    # Create window start and end dates
-    window_start <- base_date + observation_windows$start_day
-    window_end <- base_date + observation_windows$end_day
-    
-    # Filter data based on analysis type
-    filtered_data <- ebola_data |>
-      dplyr::filter(
-        symptom_onset_date >= window_start,  # LHS: based on onset date
-        if (ebola_case_study_scenarios$analysis_type == "real_time") {
-          sample_date < window_end  # RHS: based on sample date
-        } else {
-          symptom_onset_date < window_end  # RHS: based on onset date
-        }
-      )
-    # Return combined metadata and data
-    data.frame(
-      window_id = observation_windows$window_id,
-      analysis_type = ebola_case_study_scenarios$analysis_type,
-      window_label = observation_windows$window_label,
-      start_day = observation_windows$start_day,
-      end_day = observation_windows$end_day,
-      n_cases = nrow(filtered_data),
-      data = I(list(filtered_data))  # Use I() to store data frame in list column
-    )
-  },
-  pattern = cross(observation_windows, ebola_case_study_scenarios)
-)
-#> Establish _targets.R and _targets_r/targets/ebola_case_study_data.R.
-```
-
-## Fit models to Ebola data
-
-Apply all three methods to each observation window and analysis type
-combination.
-
-``` r
-tar_target(
-  ebola_model_fits,
-  {
-    # Extract the actual data from the list column
-    case_data <- ebola_case_study_data$data[[1]]
-    
-    # Check if we have enough cases for fitting
-    if (ebola_case_study_data$n_cases < 10) {
-      return(data.frame(
-        window_id = ebola_case_study_data$window_id,
-        analysis_type = ebola_case_study_data$analysis_type,
-        window_label = ebola_case_study_data$window_label,
-        n_cases = ebola_case_study_data$n_cases,
-        method = c("primarycensored", "naive", "ward"),
-        param1_est = NA_real_,
-        param1_se = NA_real_,
-        param2_est = NA_real_,
-        param2_se = NA_real_,
-        runtime_seconds = NA_real_
-      ))
-    }
-    
-    # Calculate delays (sample date - symptom onset date)
-    case_data$delay_observed <- as.numeric(case_data$sample_date - case_data$symptom_onset_date)
-    
-    # Set up censoring windows (assuming 1-day intervals as per case study)
-    case_data$prim_cens_lower <- 0
-    case_data$prim_cens_upper <- 1
-    case_data$sec_cens_lower <- case_data$delay_observed
-    case_data$sec_cens_upper <- case_data$delay_observed + 1
-    
-    # Set truncation based on analysis type
-    if (ebola_case_study_data$analysis_type == "real_time") {
-      obs_time <- ebola_case_study_data$end_day - ebola_case_study_data$start_day
-    } else {
-      obs_time <- Inf  # No truncation for retrospective
-    }
-    case_data$relative_obs_time <- obs_time
-    
-    results <- list()
-    
-    # Fit primarycensored model
-    tictoc::tic("primarycensored")
-    tryCatch({
-      delay_data <- data.frame(
-        delay = case_data$delay_observed,
-        delay_upper = case_data$sec_cens_upper,
-        n = 1,
-        pwindow = 1,
-        relative_obs_time = obs_time
-      )
-      
-      stan_data <- primarycensored::pcd_as_stan_data(
-        delay_data,
-        dist_id = 2L,  # Gamma distribution
-        primary_id = 1L,  # Uniform primary
-        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
-        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
-        priors = list(location = c(2, 2), scale = c(1, 1)),
-        primary_priors = list(location = numeric(0), scale = numeric(0)),
-        compute_log_lik = TRUE
-      )
-      
-      fit <- do.call(compile_primarycensored_model$sample, c(
-        list(data = stan_data), stan_settings
-      ))
-      
-      param_summary <- posterior::summarise_draws(fit$draws(c("param1", "param2")))
-      runtime_pc <- tictoc::toc(quiet = TRUE)
-      
-      results$primarycensored <- data.frame(
-        param1_est = param_summary$mean[1],
-        param1_se = param_summary$sd[1],
-        param2_est = param_summary$mean[2],
-        param2_se = param_summary$sd[2],
-        runtime_seconds = runtime_pc$toc - runtime_pc$tic
-      )
-    }, error = function(e) {
-      runtime_pc <- tictoc::toc(quiet = TRUE)
-      results$primarycensored <<- data.frame(
-        param1_est = NA_real_, param1_se = NA_real_,
-        param2_est = NA_real_, param2_se = NA_real_,
-        runtime_seconds = runtime_pc$toc - runtime_pc$tic
-      )
-    })
-    
-    # Fit naive model (simplified - just use MLE)
-    tictoc::tic("naive")
-    tryCatch({
-      fit_gamma <- fitdistrplus::fitdist(case_data$delay_observed, "gamma")
-      runtime_naive <- tictoc::toc(quiet = TRUE)
-      
-      results$naive <- data.frame(
-        param1_est = fit_gamma$estimate["shape"],
-        param1_se = fit_gamma$sd["shape"],
-        param2_est = fit_gamma$estimate["rate"],  # Convert to scale later if needed
-        param2_se = fit_gamma$sd["rate"],
-        runtime_seconds = runtime_naive$toc - runtime_naive$tic
-      )
-    }, error = function(e) {
-      runtime_naive <- tictoc::toc(quiet = TRUE)
-      results$naive <<- data.frame(
-        param1_est = NA_real_, param1_se = NA_real_,
-        param2_est = NA_real_, param2_se = NA_real_,
-        runtime_seconds = runtime_naive$toc - runtime_naive$tic
-      )
-    })
-    
-    # Ward model (simplified - return placeholder for now as it requires complex implementation)
-    results$ward <- data.frame(
-      param1_est = NA_real_, param1_se = NA_real_,
-      param2_est = NA_real_, param2_se = NA_real_,
-      runtime_seconds = NA_real_
-    )
-    
-    # Combine all results
-    bind_results <- dplyr::bind_rows(results, .id = "method")
-    bind_results$window_id <- ebola_case_study_data$window_id
-    bind_results$analysis_type <- ebola_case_study_data$analysis_type
-    bind_results$window_label <- ebola_case_study_data$window_label
-    bind_results$n_cases <- ebola_case_study_data$n_cases
-    
-    bind_results
-  },
-  pattern = map(ebola_case_study_data)
-)
-#> Establish _targets.R and _targets_r/targets/ebola_model_fits.R.
 ```
 
 # Model Evaluation

@@ -82,9 +82,10 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
 #'
 #' @param fitting_grid Single row from fitting grid
 #' @param method Character string identifying the method
+#' @param error_msg Optional error message
 #' @return Data frame with NA values in standard format
 #' @export  
-create_empty_results <- function(fitting_grid, method) {
+create_empty_results <- function(fitting_grid, method, error_msg = NA_character_) {
   data.frame(
     scenario_id = fitting_grid$scenario_id,
     sample_size = fitting_grid$sample_size,
@@ -103,7 +104,8 @@ create_empty_results <- function(fitting_grid, method) {
     num_divergent = NA_integer_,
     max_treedepth = NA_integer_,
     loglik = NA_real_,
-    runtime_seconds = NA_real_
+    runtime_seconds = NA_real_,
+    error_msg = error_msg
   )
 }
 
@@ -116,16 +118,30 @@ get_distribution_id <- function(distribution) {
   if (distribution == "gamma") 1L else 2L
 }
 
-#' Extract distribution and growth rate from sampled data
+#' Extract distribution and growth rate from fitting grid
 #'
-#' @param sampled_data Data frame with distribution and growth_rate columns
+#' @param fitting_grid Single row from fitting grid with distribution and growth_rate columns
 #' @return List with distribution and growth_rate
 #' @export  
-extract_distribution_info <- function(sampled_data) {
+extract_distribution_info <- function(fitting_grid) {
   list(
-    distribution = sampled_data$distribution[1],
-    growth_rate = sampled_data$growth_rate[1]
+    distribution = fitting_grid$distribution[1],
+    growth_rate = fitting_grid$growth_rate[1]
   )
+}
+
+#' Get relative observation time from truncation scenario
+#'
+#' @param truncation Character string: truncation scenario name
+#' @return Numeric value for relative observation time
+#' @export
+get_relative_obs_time <- function(truncation) {
+  truncation_map <- c(
+    "none" = Inf,
+    "moderate" = 10,
+    "severe" = 5
+  )
+  truncation_map[truncation]
 }
 
 #' Get starting values for distribution fitting
@@ -164,9 +180,10 @@ get_param_names <- function(distribution) {
 #' @param distribution Character string: "gamma" or "lognormal"
 #' @param growth_rate Numeric growth rate value
 #' @param model_type Character: "naive" or "ward"
+#' @param truncation Character: truncation scenario for Ward model
 #' @return List of Stan data
 #' @export
-prepare_stan_data <- function(sampled_data, distribution, growth_rate, model_type = "naive") {
+prepare_stan_data <- function(sampled_data, distribution, growth_rate, model_type = "naive", truncation = NULL) {
   dist_id <- get_distribution_id(distribution)
   
   if (model_type == "naive") {
@@ -179,7 +196,7 @@ prepare_stan_data <- function(sampled_data, distribution, growth_rate, model_typ
     # Get censoring windows and observation times
     pwindow_widths <- sampled_data$prim_cens_upper - sampled_data$prim_cens_lower
     swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
-    obs_times <- rep(sampled_data$relative_obs_time[1], nrow(sampled_data))
+    obs_times <- rep(get_relative_obs_time(truncation), nrow(sampled_data))
     
     # Replace infinite values with large finite number for Stan
     obs_times[is.infinite(obs_times)] <- 1e6

@@ -8,7 +8,7 @@ tar_target(
     }
     
     tictoc::tic("fit_primarycensored")
-    dist_info <- extract_distribution_info(sampled_data)
+    dist_info <- extract_distribution_info(fitting_grid)
     
     # Prepare delay data for primarycensored
     delay_data <- data.frame(
@@ -16,7 +16,7 @@ tar_target(
       delay_upper = sampled_data$sec_cens_upper, 
       n = 1,
       pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-      relative_obs_time = sampled_data$relative_obs_time[1]
+      relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
     )
     
     # Configuration based on distribution and growth rate

@@ -37,5 +37,6 @@ tar_option_set(
   memory = "transient",  # Free memory after each target completes
   garbage_collection = TRUE,  # Run garbage collection
   controller = controller,  # Use crew for parallel processing
-  repository = "local"  # Use qs2 backend for storage
+  repository = "local",  # Use qs2 backend for storage
+  error = "continue"  # Continue pipeline when targets fail
 )

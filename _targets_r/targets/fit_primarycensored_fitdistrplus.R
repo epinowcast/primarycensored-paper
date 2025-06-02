@@ -8,7 +8,7 @@ tar_target(
     }
     
     tictoc::tic("fit_primarycensored_mle")
-    dist_info <- extract_distribution_info(sampled_data)
+    dist_info <- extract_distribution_info(fitting_grid)
     
     # Prepare data in correct format for fitdistdoublecens
     delay_data <- data.frame(
@@ -17,7 +17,7 @@ tar_target(
     )
     
     pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
-    obs_time <- sampled_data$relative_obs_time[1]
+    obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
     
     # Fit using appropriate distribution  
     fit_result <- primarycensored::fitdistdoublecens(

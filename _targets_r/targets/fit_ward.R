@@ -15,8 +15,8 @@ tar_target(
     tictoc::tic("fit_ward")
     
     # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(sampled_data)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward")
+    dist_info <- extract_distribution_info(fitting_grid)
+    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward", fitting_grid$truncation[1])
     
     # Fit the Ward model using shared Stan settings
     fit <- do.call(compile_ward_model$sample, c(
