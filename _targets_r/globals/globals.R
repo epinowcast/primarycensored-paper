@@ -25,10 +25,17 @@ growth_rates <- if(exists("params")) params$growth_rates else c(0, 0.2)  # Growt
 simulation_n <- if(exists("params")) params$simulation_n else 10000  # Number of observations per scenario
 base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for reproducibility
 
+# Test mode configuration
+test_mode <- if(exists("params")) params$test_mode else FALSE
+test_scenarios <- if(exists("params")) params$test_scenarios else 2
+test_samples <- if(exists("params")) params$test_samples else 100
+test_chains <- if(exists("params")) params$test_chains else 2
+test_iterations <- if(exists("params")) params$test_iterations else 100
+
 # Set targets options
 tar_option_set(
   packages = c("data.table", "ggplot2", "patchwork", "purrr", "here", "dplyr", 
-               "tidyr", "qs2", "primarycensored", "cmdstanr", "tictoc"),
+               "tidyr", "qs2", "primarycensored", "cmdstanr", "tictoc", "posterior"),
   format = "qs",  # Use qs format (qs2 is used via repository option)
   memory = "transient",  # Free memory after each target completes
   garbage_collection = TRUE,  # Run garbage collection
