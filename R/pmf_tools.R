@@ -75,7 +75,7 @@ format_pmf_results <- function(scenarios, delays, pmf_values, method,
   truncation <- scenarios$truncation[1]
   censoring <- scenarios$censoring[1]
   growth_rate <- scenarios$growth_rate[1]
-  
+
   data.frame(
     scenario_id = rep(scenario_id, length(delays)),
     distribution = rep(distribution, length(delays)),

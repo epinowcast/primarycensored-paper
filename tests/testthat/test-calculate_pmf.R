@@ -222,4 +222,3 @@ test_that("calculate_pmf handles edge case parameter values", {
   expect_true(all(valid_probs <= 1))
   expect_true(sum(valid_probs) <= 1)
 })
-

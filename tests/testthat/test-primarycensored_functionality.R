@@ -34,7 +34,7 @@ test_that("complete PMF workflow produces valid results", {
   )
 
   result_list <- list()
-  for (i in 1:nrow(scenarios)) {
+  for (i in seq_len(nrow(scenarios))) {
     result_list[[i]] <- calculate_pmf(
       scenarios[i, ],
       distributions[distributions$dist_name == scenarios$distribution[i], ],
@@ -85,7 +85,7 @@ test_that("workflow handles different truncation scenarios", {
   )
 
   result_list <- list()
-  for (i in 1:nrow(scenarios)) {
+  for (i in seq_len(nrow(scenarios))) {
     result_list[[i]] <- calculate_pmf(
       scenarios[i, ],
       distributions,
@@ -252,7 +252,7 @@ test_that("local PMF calculations work with realistic data flows", {
   )
 
   # Test each scenario can be processed
-  for (i in 1:nrow(scenarios)) {
+  for (i in seq_len(nrow(scenarios))) {
     scenario <- scenarios[i, ]
     dist_info <- distributions[
       distributions$dist_name == scenario$distribution,
@@ -265,7 +265,7 @@ test_that("local PMF calculations work with realistic data flows", {
     # Verify realistic outputs
     expect_s3_class(result, "data.frame")
     expect_true(all(c("scenario_id", "probability", "delay") %in%
-      names(result)))
+                    names(result)))
 
     # Check probabilities are valid
     valid_probs <- result$probability[!is.na(result$probability)]
@@ -383,7 +383,7 @@ test_that("package integration handles edge cases gracefully", {
   )
 
   # Test each edge case
-  for (i in 1:nrow(edge_scenarios)) {
+  for (i in seq_len(nrow(edge_scenarios))) {
     scenario <- edge_scenarios[i, ]
     dist_info <- edge_distributions[
       edge_distributions$dist_name == scenario$distribution,
@@ -459,4 +459,3 @@ test_that("numerical and analytical methods integrate consistently", {
   expect_equal(length(analytical_probs), length(numerical_probs))
   expect_equal(analytical_probs, numerical_probs, tolerance = 1e-3)
 })
-
