@@ -1,11 +1,11 @@
 linters: with_defaults(
-  line_length_linter(80),               # Max 80 chars per line
-  trailing_whitespace_linter(),         # No trailing whitespace
-  trailing_blank_lines_linter(),        # No spurious blank lines
-  object_name_linter("snake_case"),     # Use snake_case
-  infix_spaces_linter(),                # Spaces around operators
-  commas_linter(),                      # Proper comma spacing
-  assignment_linter(),                  # Use <- not =
-  brace_linter(),                       # Proper brace placement
-  paren_brace_linter()                  # Proper parentheses/braces
+  line_length_linter(80),
+  trailing_whitespace_linter(),
+  trailing_blank_lines_linter(),
+  object_name_linter("snake_case"),
+  infix_spaces_linter(),
+  commas_linter(),
+  assignment_linter(),
+  brace_linter(),
+  paren_brace_linter()
 )
