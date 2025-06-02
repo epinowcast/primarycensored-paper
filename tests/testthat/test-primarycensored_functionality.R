@@ -195,23 +195,7 @@ test_that("calculate_pmf handles edge case parameter values", {
   expect_true(sum(valid_probs) <= 1)
 })
 
-# Distribution Helper Tests ---------------------------------------------------
-
-test_that("distribution helper functions work correctly", {
-  skip_if_not_installed("primarycensored")
-  
-  # Test exponential growth case
-  expect_identical(get_primary_dist(0.1), primarycensored::dexpgrowth)
-  expect_identical(get_primary_args(0.1), list(r = 0.1))
-  expect_identical(get_rprimary(0.1), primarycensored::rexpgrowth)
-  expect_identical(get_rprimary_args(0.1), list(r = 0.1))
-  
-  # Test uniform case
-  expect_identical(get_primary_dist(0), dunif)
-  expect_identical(get_primary_args(0), list())
-  expect_identical(get_rprimary(0), stats::runif)
-  expect_identical(get_rprimary_args(0), list())
-})
+# Integration with primarycensored package -------------------------------------
 
 test_that("distribution helpers integrate with primarycensored", {
   skip_if_not_installed("primarycensored")
@@ -250,30 +234,6 @@ test_that("random generation functions work correctly", {
   expect_length(samples_zero, n_samples)
   expect_true(all(samples_zero >= 0))
   expect_true(all(samples_zero <= 10))
-})
-
-test_that("distribution helpers handle negative growth rates", {
-  skip_if_not_installed("primarycensored")
-  
-  growth_rate <- -0.05
-  
-  primary_dist <- get_primary_dist(growth_rate)
-  primary_args <- get_primary_args(growth_rate)
-  rprimary <- get_rprimary(growth_rate)
-  rprimary_args <- get_rprimary_args(growth_rate)
-  
-  expect_identical(primary_dist, primarycensored::dexpgrowth)
-  expect_identical(primary_args, list(r = -0.05))
-  expect_identical(rprimary, primarycensored::rexpgrowth)
-  expect_identical(rprimary_args, list(r = -0.05))
-  
-  test_density <- do.call(primary_dist, c(list(5), primary_args))
-  expect_true(is.numeric(test_density))
-  expect_true(test_density >= 0)
-  
-  samples <- do.call(rprimary, c(list(n = 100), rprimary_args))
-  expect_true(all(is.finite(samples)))
-  expect_true(all(samples >= 0))
 })
 
 # Setup and Formatting Tests -------------------------------------------------
@@ -324,39 +284,7 @@ test_that("setup_pmf_inputs creates valid inputs", {
   expect_true(test_pmf <= 1)
 })
 
-test_that("format_pmf_results preserves scenario information", {
-  scenarios <- data.frame(
-    scenario_id = 1,
-    distribution = "weibull",
-    truncation = "finite",
-    censoring = "primary",
-    growth_rate = 0.02,
-    relative_obs_time = 20,
-    primary_width = 2,
-    secondary_width = 1,
-    custom_field = "test_value",
-    stringsAsFactors = FALSE
-  )
-  
-  delays <- 0:10
-  pmf_values <- dnorm(delays, mean = 5, sd = 2)
-  pmf_values <- pmf_values / sum(pmf_values)
-  method <- "numerical"
-  runtime <- 2.5
-  
-  result <- format_pmf_results(scenarios, delays, pmf_values, method, runtime)
-  
-  scenario_cols <- setdiff(names(scenarios), "scenario_id")
-  for (col in scenario_cols) {
-    if (col %in% names(result)) {
-      expect_true(all(result[[col]] == scenarios[[col]]))
-    }
-  }
-  
-  expect_equal(result$delay, delays)
-  expect_equal(result$probability, pmf_values)
-  expect_equal(sum(result$probability), 1, tolerance = 1e-10)
-})
+# Note: format_pmf_results tests are in test-pmf_tools.R
 
 # Workflow Integration Tests --------------------------------------------------
 

@@ -3,8 +3,8 @@ test_that("get_primary_dist returns correct distribution functions", {
   expect_identical(get_primary_dist(0), dunif)
 
   # Test exponential growth for non-zero growth_rate
-  expect_identical(get_primary_dist(0.1), dexpgrowth)
-  expect_identical(get_primary_dist(-0.05), dexpgrowth)
+  expect_identical(get_primary_dist(0.1), primarycensored::dexpgrowth)
+  expect_identical(get_primary_dist(-0.05), primarycensored::dexpgrowth)
 })
 
 test_that("get_primary_args returns correct arguments", {
