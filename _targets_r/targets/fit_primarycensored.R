@@ -37,7 +37,7 @@ tar_target(
     # Extract estimates
     data.frame(
       scenario_id = fitting_grid$scenario_id,
-      sample_size = fitting_grid$sample_size,
+      sample_size = n,
       method = "primarycensored",
       param1_est = param1_est,
       param1_se = 0.1,
