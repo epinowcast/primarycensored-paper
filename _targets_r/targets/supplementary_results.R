@@ -7,7 +7,7 @@ tar_target(
     
     list(
       convergence = convergence_diagnostics,
-      full_estimates = simulated_model_fits,
+      full_estimates = model_fits,
       message = "Additional supplementary analyses would go here"
     )
   }
