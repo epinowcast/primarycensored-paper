@@ -37,15 +37,22 @@ The default `task` command automatically handles dependency setup and runs the c
 
 ### Configuration
 
-The analysis pipeline is parameterised and can be customised by editing the YAML header in `_targets.Rmd`:
+The analysis pipeline is parameterised and can be customised using command-line parameters:
 
-```yaml
-params:
-  sample_sizes: !r c(10, 100, 1000, 10000)
-  growth_rates: !r c(0, 0.2)
-  simulation_n: 10000
-  base_seed: 100
+```bash
+# Run with custom parameters
+task run -- sample_sizes="c(10, 100)" growth_rates="c(0.1, 0.2)" simulation_n=5000
+
+# Or set parameters in a file and pass it
+echo 'sample_sizes: c(10, 100, 1000)' > custom_params.yml
+task run -- config_file=custom_params.yml
 ```
+
+Available parameters:
+- `sample_sizes`: Vector of sample sizes to test (default: `c(10, 100, 1000, 10000)`)
+- `growth_rates`: Vector of growth rates (default: `c(0, 0.2)`)
+- `simulation_n`: Number of simulations (default: `10000`)
+- `base_seed`: Random seed (default: `100`)
 
 For advanced configuration options and development workflows, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
