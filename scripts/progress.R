@@ -13,4 +13,4 @@ print(progress_data)
 cat("\nPipeline summary:\n")
 tar_progress_summary()
 
-cat("✅ Progress check completed\n") 
+cat("✅ Progress check completed\n")

@@ -9,4 +9,4 @@ cat("🧪 Running tests...\n")
 # Run tests
 test_results <- test()
 
-cat("✅ Tests completed\n") 
+cat("✅ Tests completed\n")

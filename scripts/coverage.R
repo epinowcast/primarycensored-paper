@@ -11,4 +11,4 @@ coverage_result <- package_coverage()
 # Generate HTML report
 report(coverage_result)
 
-cat("✅ Coverage report generated\n") 
+cat("✅ Coverage report generated\n")

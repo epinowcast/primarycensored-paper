@@ -9,4 +9,4 @@ cat("📸 Updating renv lockfile...\n")
 cat("Snapshotting current package state...\n")
 snapshot(prompt = FALSE)
 
-cat("✅ renv.lock updated\n") 
+cat("✅ renv.lock updated\n")

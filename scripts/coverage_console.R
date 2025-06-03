@@ -17,4 +17,4 @@ if (percent_coverage < 80) {
   cat("⚠️ Coverage below 80%\n")
 } else {
   cat("✅ Good coverage level\n")
-} 
+}

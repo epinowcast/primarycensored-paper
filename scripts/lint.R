@@ -26,12 +26,12 @@ lint_results_targets <- lint("_targets.Rmd")
 print(lint_results_targets)
 
 # Count total issues
-total_issues <- length(lint_results_r) + length(lint_results_scripts) + 
-                length(lint_results_tests) + length(lint_results_targets)
+total_issues <- length(lint_results_r) + length(lint_results_scripts) +
+  length(lint_results_tests) + length(lint_results_targets)
 
 if (total_issues == 0) {
   cat("✅ No linting issues found\n")
 } else {
   cat("⚠️ Found", total_issues, "linting issues\n")
   quit(status = 1)
-} 
+}

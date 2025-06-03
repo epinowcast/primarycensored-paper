@@ -8,4 +8,4 @@ cat("Running targets pipeline...\n")
 # Run the pipeline
 tar_make()
 
-cat("✅ Targets pipeline completed\n") 
+cat("✅ Targets pipeline completed\n")
