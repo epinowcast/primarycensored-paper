@@ -171,14 +171,14 @@ tasks:
     deps: [install]
     cmds:
       - echo "📊 Generating coverage report..."
-      - Rscript -e "covr::report(file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/'))"
+      - Rscript -e "covr::report()"
 
   coverage-console:
     desc: Show test coverage in console
     deps: [install]
     cmds:
       - echo "📊 Checking test coverage..."
-      - Rscript -e "covr::file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/')"
+      - Rscript -e "covr::package_coverage()"
 
   test-run:
     desc: Run the pipeline in test mode (fast, reduced scenarios)
