@@ -21,6 +21,11 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Install CmdStan
+        uses: epinowcast/actions/install-cmdstan@v1
+        with:
+          cmdstan-version: '2.36.0'
+
       - uses: r-lib/actions/setup-renv@v2
 
       - name: Test coverage
