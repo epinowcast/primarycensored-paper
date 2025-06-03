@@ -27,5 +27,7 @@ jobs:
         sh -c "$(curl -ssL https://taskfile.dev/install.sh)"
         sudo mv ./bin/task /usr/local/bin/
 
+    - uses: r-lib/actions/setup-renv@v2
+
     - name: Lint package
       run: task lint

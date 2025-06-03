@@ -30,9 +30,8 @@ jobs:
         run: |
           sh -c "$(curl -ssL https://taskfile.dev/install.sh)"
           sudo mv ./bin/task /usr/local/bin/
-          
-      - name: Install dependencies
-        run: task install
+
+      - uses: r-lib/actions/setup-renv@v2
 
       - name: Test coverage
         run: |
