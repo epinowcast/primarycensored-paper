@@ -32,8 +32,13 @@ if (file.exists("renv.lock")) {
   renv::snapshot(prompt = FALSE)
 }
 
+# Ensure all packages are properly loaded before proceeding
+message("Ensuring all dependencies are available...")
+
 # Special handling for cmdstanr - install CmdStan v2.36.0
+# Check again after dependencies are installed to ensure cmdstanr is available
 if (requireNamespace("cmdstanr", quietly = TRUE)) {
+  message("Checking CmdStan installation...")
   tryCatch({
     version <- cmdstanr::cmdstan_version()
     message("CmdStan version: ", version)
@@ -45,6 +50,8 @@ if (requireNamespace("cmdstanr", quietly = TRUE)) {
     )
     message("CmdStan v2.36.0 installed successfully")
   })
+} else {
+  message("cmdstanr not available - skipping CmdStan installation")
 }
 
 message("✅ Package management complete")
