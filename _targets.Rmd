@@ -270,12 +270,9 @@ tar_target(
 We need Monte Carlo samples at different sizes for numerical validation.
 
 ```{targets sample_size_grid, tar_simple = TRUE}
-# Determine which sample sizes to use
-sizes_to_use <- if (test_mode) min(sample_sizes) else sample_sizes  # Use smallest sample size for test mode
-
 expand.grid(
   scenario_id = scenarios$scenario_id,
-  sample_size = sizes_to_use,
+  sample_size = sample_sizes,
   stringsAsFactors = FALSE
 )
 ```
