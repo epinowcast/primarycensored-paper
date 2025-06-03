@@ -27,9 +27,8 @@ jobs:
       uses: epinowcast/actions/install-cmdstan@v1
       with:
         cmdstan-version: '2.36.0'
-        
-    - name: Install dependencies
-      run: task install
+  
+    - uses: r-lib/actions/setup-renv@v2
       
     - name: Run test pipeline
       run: task test-run

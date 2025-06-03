@@ -1,79 +1,25 @@
 #!/usr/bin/env Rscript
 
-# Install/restore R packages using renv
-# This script handles all package installation and cmdstan setup
+# Install new R packages and add them to the project
+# This script is for adding new dependencies, not restoring existing ones
 
-message("📦 Managing R packages with renv...")
+library(renv)
 
-# Install pak first for faster package operations
-if (!requireNamespace("pak", quietly = TRUE)) {
-  message("Installing pak for faster package operations...")
-  install.packages("pak", repos = "https://cloud.r-project.org")
+cat("📦 Installing new packages...\n")
+
+# Get command line arguments for packages to install
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) == 0) {
+  cat("Usage: Rscript scripts/install_packages.R <package1> [package2] ...\n")
+  cat("Example: Rscript scripts/install_packages.R dplyr ggplot2\n")
+  quit(status = 1)
 }
 
-if (!requireNamespace("renv", quietly = TRUE)) {
-  install.packages("renv", repos = "https://cloud.r-project.org")
+# Install the specified packages
+for (pkg in args) {
+  cat("Installing package:", pkg, "\n")
+  renv::install(pkg)
 }
 
-if (file.exists("renv.lock")) {
-  # Restore from lockfile
-  message("Restoring packages from renv.lock...")
-  renv::restore(prompt = FALSE)
-} else {
-  # No lockfile, install required packages
-  message("No renv.lock found. Installing dependencies from DESCRIPTION...")
-
-  # Install DESCRIPTION dependencies (including remotes)
-  message("Installing dependencies from DESCRIPTION...")
-  renv::install(".", dependencies = TRUE)
-
-  # Install development dependencies before creating lockfile
-  dev_deps <- c("lintr", "covr", "rmarkdown")
-  message("Installing development dependencies...")
-  renv::install(dev_deps)
-  # Create initial lockfile
-  message("Creating renv.lock...")
-  renv::snapshot(prompt = FALSE)
-}
-
-# Ensure all packages are properly loaded before proceeding
-message("Ensuring all dependencies are available...")
-
-# Ensure development dependencies are installed
-# These are needed for CI but might not be captured by implicit snapshots
-dev_deps <- c("lintr", "covr", "rmarkdown")
-for (pkg in dev_deps) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    message("Installing development dependency: ", pkg)
-    renv::install(pkg)
-  }
-}
-
-# Special handling for cmdstanr - install CmdStan v2.36.0
-# Check again after dependencies are installed to ensure cmdstanr is available
-if (requireNamespace("cmdstanr", quietly = TRUE)) {
-  message("Checking CmdStan installation...")
-  tryCatch({
-    version <- cmdstanr::cmdstan_version()
-    message("CmdStan version: ", version)
-  }, error = function(e) {
-    message("Installing CmdStan v2.36.0...")
-    cmdstanr::install_cmdstan(
-      version = "2.36.0"
-    )
-    message("CmdStan v2.36.0 installed successfully")
-  })
-} else {
-  message("cmdstanr not available - skipping CmdStan installation")
-}
-
-# Final step: explicitly ensure development dependencies are in lockfile
-# renv's implicit mode won't capture packages not used in code
-dev_deps_check <- c("lintr", "covr", "rmarkdown")
-if (all(sapply(dev_deps_check, requireNamespace, quietly = TRUE))) {
-  message("Ensuring development dependencies are in lockfile...")
-  # This will update the lockfile to include these specific packages
-  renv::snapshot(packages = dev_deps_check, prompt = FALSE)
-}
-
-message("✅ Package management complete")
+cat("✅ New packages installed\n")

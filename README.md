@@ -12,6 +12,7 @@ A repository for the paper "Modelling delays with primary Event Censored Distrib
   - `reference.bib`: Bibliography
 - `_targets.Rmd`: Reproducible analysis pipeline (see below)
 - `R/`: Analysis functions used in the targets workflow
+- `scripts/`: R scripts for task automation and development
 - `data/`: Data directory for raw, processed, and results
 - `figures/`: Generated figures from the analysis
 
@@ -24,69 +25,18 @@ The analysis uses the `targets` R package for reproducibility. The pipeline is d
 Install Task from https://taskfile.dev/installation/, then run:
 
 ```bash
-# Complete workflow (sets up renv + installs deps + runs analysis)
+# Complete workflow (sets up dependencies + runs analysis + renders manuscript)
 task
 
 # Or step by step:
-task install   # Initialize renv and install all dependencies
-task render    # Render _targets.Rmd to create pipeline
-task run       # Execute the targets pipeline
+task restore    # Restore R packages from lockfile
+task render     # Render _targets.Rmd to create pipeline
+task run        # Execute the targets pipeline
+task manuscript # Render manuscript to PDF and HTML
 ```
 
-The default `task` command automatically handles dependency setup and runs the complete analysis pipeline.
-
-### Configuration
-
-The analysis pipeline is parameterised and can be customised using command-line parameters:
-
-```bash
-# Run with custom parameters
-task run -- sample_sizes="c(10, 100)" growth_rates="c(0.1, 0.2)" simulation_n=5000
-
-# Or set parameters in a file and pass it
-echo 'sample_sizes: c(10, 100, 1000)' > custom_params.yml
-task run -- config_file=custom_params.yml
-```
-
-Available parameters:
-- `sample_sizes`: Vector of sample sizes to test (default: `c(10, 100, 1000, 10000)`)
-- `growth_rates`: Vector of growth rates (default: `c(0, 0.2)`)
-- `simulation_n`: Number of simulations (default: `10000`)
-- `base_seed`: Random seed (default: `100`)
-
-For advanced configuration options and development workflows, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
-
-### Available Commands
-
-```bash
-# Core workflow
-task                # Complete pipeline (setup + render + run)
-task install        # Setup renv and install dependencies
-task render         # Render _targets.Rmd to create pipeline
-task run            # Execute the targets pipeline
-task clean          # Clean all computed results (with confirmation)
-
-# Monitoring
-task progress       # Check pipeline progress
-task visualize      # Create interactive pipeline graph
-
-# Testing
-task test           # Run all tests
-task coverage       # Generate test coverage report
-
-# Manuscript
-task manuscript     # Render manuscript to both PDF and HTML
-task manuscript-pdf # Render manuscript to PDF only
-task manuscript-html # Render manuscript to HTML only
-```
-
+The default `task` command automatically handles the complete analysis pipeline.
 Run `task help` to see all available commands.
 
-## Development
+For configuration options and development workflows, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-For developers working on this repository, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for:
-- Advanced configuration and development workflows
-- Repository architecture and structure
-- Performance optimisation and profiling
-- Adding new analysis components
-- Troubleshooting common issues

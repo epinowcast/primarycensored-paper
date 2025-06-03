@@ -151,24 +151,37 @@ Key features:
 - Cross-platform compatibility
 - Integration with R/renv ecosystem
 
-**Essential Tasks:**
+**Main Workflow Tasks:**
 - `task` or `task default`: Complete workflow (run + manuscript)
-- `task install`: Setup environment and dependencies
 - `task render`: Generate pipeline from `_targets.Rmd`
 - `task run`: Execute the targets pipeline
-- `task manuscript`: Render manuscript to PDF/HTML
-- `task test`: Run all tests using testthat
-- `task coverage`: Generate test coverage report
-- `task test-run`: Run pipeline in test mode (fast, reduced scenarios)
-
-**Development and Maintenance Tasks:**
-- `task clean`: Clean all computed results (with confirmation)
-- `task progress`: Check pipeline progress
 - `task visualize`: Create interactive pipeline graph
-- `task profile`: Profile pipeline performance
-- `task profile-view`: View previously saved profiling results
+- `task progress`: Check pipeline progress
+
+**Package Management Tasks:**
+- `task restore`: Restore R packages from renv lockfile
+- `task install -- pkg1 pkg2`: Install new R packages
 - `task renv-update`: Update renv lockfile with current package versions
-- `task help`: Show all available commands
+- `task renv-init`: Initialize renv for dependency management (rarely needed)
+
+**Development and Testing Tasks:**
+- `task lint`: Run R code linting
+- `task test`: Run all tests using testthat
+- `task test-run`: Run pipeline in test mode (fast, reduced scenarios)
+- `task coverage`: Generate test coverage report
+- `task coverage-console`: Show test coverage in console
+- `task profile`: Profile the targets pipeline to identify performance bottlenecks
+- `task profile-view`: View previously saved profiling results
+
+**Manuscript Tasks:**
+- `task manuscript`: Render manuscript to PDF and HTML
+- `task manuscript-pdf`: Render manuscript to PDF only
+- `task manuscript-html`: Render manuscript to HTML only
+- `task check-quarto`: Check if Quarto is installed
+
+**Utility Tasks:**
+- `task clean`: Clean targets cache (with confirmation)
+- `task help`: Show available commands
 
 ### 2. Targets Pipeline (_targets.R + _targets.Rmd)
 
@@ -206,13 +219,31 @@ Dependencies are managed using [`renv`](https://rstudio.github.io/renv/) for:
    ```bash
    git clone <repository-url>
    cd primarycensored-paper
-   task install  # Initialises renv and installs dependencies
+   task restore  # Restore packages from renv lockfile
    ```
 
 2. **Verify setup**:
    ```bash
    task progress  # Check pipeline status
    task visualize # Generate dependency graph
+   ```
+
+### Package Management Workflow
+
+1. **Fresh setup** (new checkout):
+   ```bash
+   task restore  # Restore packages from renv.lock
+   ```
+
+2. **Adding new packages**:
+   ```bash
+   task install -- dplyr ggplot2  # Install new packages
+   task renv-update               # Update lockfile
+   ```
+
+3. **After pulling changes**:
+   ```bash
+   task restore  # Restore any new dependencies
    ```
 
 ### Making Changes
@@ -276,33 +307,39 @@ Dependencies are managed using [`renv`](https://rstudio.github.io/renv/) for:
 
 ## Current Taskfile Setup
 
-The project has been updated with a comprehensive Taskfile that includes:
+The project has been updated with a comprehensive Taskfile organized into logical groups:
 
-### Core Workflow Tasks
+### Main Workflow Tasks
 - `default`: Runs the complete pipeline and renders manuscript
-- `install`: Sets up renv and installs all dependencies  
-- `render`: Renders `_targets.Rmd` with optional test mode parameter
+- `render`: Renders `_targets.Rmd` with optional parameter support
 - `run`: Executes the targets pipeline
-- `clean`: Interactive cleanup of targets cache
-
-### Testing and Quality Assurance
-- `test`: Runs all tests using devtools::test()
-- `coverage`: Generates test coverage report via covr::report()
-- `coverage-console`: Shows test coverage in console
-- `test-run`: Runs pipeline in test mode for fast iteration
-
-### Documentation and Manuscript
-- `manuscript`: Renders to both PDF and HTML
-- `manuscript-pdf`: PDF output only
-- `manuscript-html`: HTML output only
-- `check-quarto`: Verifies Quarto installation
-
-### Development Tools
 - `visualize`: Creates interactive pipeline dependency graph
 - `progress`: Shows pipeline execution progress
-- `profile`: Profiles pipeline performance
-- `profile-view`: Views saved profiling results
-- `renv-update`: Updates lockfile (limited to dev dependencies)
+
+### Package Management Tasks
+- `renv-init`: Initialize renv for dependency management (rarely needed)
+- `restore`: Restore R packages from renv lockfile
+- `install`: Install new R packages (usage: `task install -- package1 package2`)
+- `renv-update`: Update renv lockfile with current package versions
+
+### Development and Testing Tasks
+- `lint`: Run R code linting
+- `test`: Run all tests using testthat
+- `test-run`: Run pipeline in test mode (fast, reduced scenarios)
+- `coverage`: Generate test coverage report
+- `coverage-console`: Show test coverage in console
+- `profile`: Profile the targets pipeline to identify performance bottlenecks
+- `profile-view`: View previously saved profiling results
+
+### Manuscript Tasks
+- `manuscript`: Render manuscript to PDF and HTML
+- `manuscript-pdf`: Render manuscript to PDF only
+- `manuscript-html`: Render manuscript to HTML only
+- `check-quarto`: Check if Quarto is installed
+
+### Utility Tasks
+- `clean`: Interactive cleanup of targets cache
+- `help`: Show all available commands
 
 ## Common Development Tasks
 
