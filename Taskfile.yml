@@ -21,7 +21,13 @@ tasks:
         if [ -n "{{.PARAMS}}" ]; then
           echo "Using custom parameters: {{.PARAMS}}"
           Rscript -e "
-          custom_params <- list({{.PARAMS}})
+          params_str <- '{{.PARAMS}}'
+          if (params_str == 'test_mode=true') {
+            custom_params <- list(test_mode = TRUE)
+          } else {
+            # Parse other parameter formats if needed
+            custom_params <- list()
+          }
           rmarkdown::render('_targets.Rmd', params = custom_params)
           "
         else
@@ -89,10 +95,20 @@ tasks:
 
   renv-update:
     desc: Update renv lockfile with current package versions
+    deps: [install]
     cmds:
       - echo "📸 Updating renv lockfile..."
-      - Rscript -e "renv::snapshot(prompt = FALSE)"
+      - Rscript -e "renv::snapshot(packages = c('lintr', 'covr'), prompt = FALSE)"
       - echo "✅ renv.lock updated"
+
+  lint:
+    desc: Run R code linting
+    deps: [install]
+    cmds:
+      - Rscript -e "lintr::lint_dir('R')"
+      - Rscript -e "lintr::lint_dir('scripts')"
+      - Rscript -e "lintr::lint_dir('tests')"
+      - Rscript -e "lintr::lint('_targets.Rmd')"
 
   profile:
     desc: Profile the targets pipeline to identify performance bottlenecks
@@ -158,18 +174,27 @@ tasks:
     deps: [install]
     cmds:
       - echo "🧪 Running tests..."
-      - Rscript tests/testthat.R
+      - Rscript -e "devtools::test()"
 
   coverage:
     desc: Generate test coverage report
     deps: [install]
     cmds:
       - echo "📊 Generating coverage report..."
-      - Rscript -e "covr::report(file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/'))"
+      - Rscript -e "covr::report()"
 
   coverage-console:
     desc: Show test coverage in console
     deps: [install]
     cmds:
       - echo "📊 Checking test coverage..."
-      - Rscript -e "covr::file_coverage(c('R/pmf_tools.R', 'R/utils.R'), 'tests/testthat/')"
+      - Rscript -e "covr::package_coverage()"
+
+  test-run:
+    desc: Run the pipeline in test mode (fast, reduced scenarios)
+    deps: [render]
+    cmds:
+      - echo "🚀 Running pipeline in test mode..."
+      - task render PARAMS='test_mode=true'
+      - task run
+      - echo "✅ Test mode pipeline completed"

@@ -26,24 +26,51 @@ The analysis pipeline is fully parameterized to enable easy customization and te
   - Default: `100`
   - Change to generate different random sequences while maintaining reproducibility
 
+### Advanced Parameter Configuration
+
+**Method 1: Edit YAML header** in `_targets.Rmd`:
+```yaml
+params:
+  sample_sizes: !r c(10, 100, 1000, 10000)
+  growth_rates: !r c(0, 0.2)
+  simulation_n: 5000  # Changed from default 10000
+  base_seed: 100
+```
+
+**Method 2: Using R directly**:
+```r
+# Render with custom parameters
+rmarkdown::render("_targets.Rmd", params = list(
+  simulation_n = 5000,
+  growth_rates = c(0, 0.1)
+))
+
+# Then run the pipeline
+targets::tar_make()
+```
+
+**Method 3: Quick test runs**:
+```bash
+# Small test run (faster)
+task test-run
+
+# Custom parameters (development only)
+# Note: render-custom task removed in current Taskfile
+# Use Method 1 or 2 for custom parameters
+```
+
 ### Development Workflows
 
 **Quick testing during development:**
 ```bash
-# Fast test with small sample sizes
-task render-custom PARAMS='simulation_n=1000, sample_sizes=c(10, 100)'
-task run
+# Fast test mode
+task test-run  # Runs pipeline in test mode with reduced scenarios
 ```
 
 **Sensitivity analysis:**
 ```bash
-# Test different growth rates
-task render-custom PARAMS='growth_rates=c(0, 0.1)'
-task run
-
-# Different sample sizes for convergence testing
-task render-custom PARAMS='sample_sizes=c(100, 500, 1000, 5000, 10000)'
-task run
+# Edit _targets.Rmd parameters, then:
+task render && task run
 ```
 
 **Production runs:**
@@ -125,11 +152,23 @@ Key features:
 - Integration with R/renv ecosystem
 
 **Essential Tasks:**
-- `task` or `task default`: Complete workflow
+- `task` or `task default`: Complete workflow (run + manuscript)
 - `task install`: Setup environment and dependencies
 - `task render`: Generate pipeline from `_targets.Rmd`
 - `task run`: Execute the targets pipeline
 - `task manuscript`: Render manuscript to PDF/HTML
+- `task test`: Run all tests using testthat
+- `task coverage`: Generate test coverage report
+- `task test-run`: Run pipeline in test mode (fast, reduced scenarios)
+
+**Development and Maintenance Tasks:**
+- `task clean`: Clean all computed results (with confirmation)
+- `task progress`: Check pipeline progress
+- `task visualize`: Create interactive pipeline graph
+- `task profile`: Profile pipeline performance
+- `task profile-view`: View previously saved profiling results
+- `task renv-update`: Update renv lockfile with current package versions
+- `task help`: Show all available commands
 
 ### 2. Targets Pipeline (_targets.R + _targets.Rmd)
 
@@ -152,6 +191,12 @@ Dependencies are managed using [`renv`](https://rstudio.github.io/renv/) for:
 - Reproducible package environments
 - Version locking across collaborators
 - Isolated project dependencies
+
+**Important Notes:**
+- The `renv-update` task only snapshots development dependencies (`lintr`, `covr`)
+- This prevents the lockfile from being stripped of runtime dependencies
+- For full dependency updates, use `renv::snapshot()` directly in R
+- Current lockfile contains 27 packages (basic set) vs 100+ needed for full pipeline
 
 ## Development Workflows
 
@@ -229,25 +274,59 @@ Dependencies are managed using [`renv`](https://rstudio.github.io/renv/) for:
 - **Quarto**: Document rendering
 - **Stan/cmdstan**: Bayesian computation
 
+## Current Taskfile Setup
+
+The project has been updated with a comprehensive Taskfile that includes:
+
+### Core Workflow Tasks
+- `default`: Runs the complete pipeline and renders manuscript
+- `install`: Sets up renv and installs all dependencies  
+- `render`: Renders `_targets.Rmd` with optional test mode parameter
+- `run`: Executes the targets pipeline
+- `clean`: Interactive cleanup of targets cache
+
+### Testing and Quality Assurance
+- `test`: Runs all tests using devtools::test()
+- `coverage`: Generates test coverage report via covr::report()
+- `coverage-console`: Shows test coverage in console
+- `test-run`: Runs pipeline in test mode for fast iteration
+
+### Documentation and Manuscript
+- `manuscript`: Renders to both PDF and HTML
+- `manuscript-pdf`: PDF output only
+- `manuscript-html`: HTML output only
+- `check-quarto`: Verifies Quarto installation
+
+### Development Tools
+- `visualize`: Creates interactive pipeline dependency graph
+- `progress`: Shows pipeline execution progress
+- `profile`: Profiles pipeline performance
+- `profile-view`: Views saved profiling results
+- `renv-update`: Updates lockfile (limited to dev dependencies)
+
 ## Common Development Tasks
 
 ### Adding a New Figure
-1. Create plotting function in `/R/plotting.R`
+1. Create plotting function in appropriate `/R/` file
 2. Add target in `/_targets_r/targets/figure_new.R`
 3. Update save targets to include new figure
 4. Document in `_targets.Rmd`
+5. Test with `task test-run`
 
 ### Implementing New Statistical Method
-1. Add method function to `/R/models.R`
+1. Add method function to relevant `/R/` file
 2. Create simulation targets in `/_targets_r/targets/`
 3. Add validation comparisons
 4. Include in parameter recovery analysis
+5. Update documentation
 
-### Debugging Pipeline Issues
-1. Check target status: `task progress`
-2. Examine specific target: `tar_read(target_name)`
-3. Debug interactively: `tar_load(target_name)`
-4. Clean problematic targets: `tar_invalidate(c("target1", "target2"))`
+### Testing and Debugging
+1. **Quick testing**: Use `task test-run` for fast iteration
+2. **Check pipeline status**: `task progress`
+3. **Examine targets**: Use R console with `tar_read(target_name)`
+4. **Debug interactively**: `tar_load(target_name)`
+5. **Clean problematic targets**: `tar_invalidate(c("target1", "target2"))`
+6. **Full cleanup**: `task clean` (interactive confirmation)
 
 ## Integration Points
 
@@ -278,31 +357,57 @@ Dependencies are managed using [`renv`](https://rstudio.github.io/renv/) for:
 - Garbage collection enabled between targets
 - Parallel workers respect system resources
 
+### Performance Profiling
+
+The project includes comprehensive performance analysis tools:
+
+**Basic profiling:**
+```bash
+task profile      # Generate performance report
+task profile-view # View results in browser
+```
+
+**Understanding results:**
+- Flame graphs show time spent in each function
+- Bottlenecks appear as wide segments
+- Focus optimisation on heaviest functions
+- See [docs/PROFILING.md](PROFILING.md) for detailed guidance
+
 ## Troubleshooting
 
 ### Common Issues
 1. **Missing dependencies**: Run `task install`
 2. **Stale pipeline**: Run `task render` then `task run`
-3. **Memory issues**: Reduce parallel workers in globals
+3. **Memory issues**: Reduce parallel workers in `_targets_r/globals/globals.R`
 4. **Stan compilation**: Check cmdstan installation
+5. **renv lockfile issues**: Current lockfile may have limited dependencies (27 vs 100+)
+
+### Testing Issues
+1. **Test failures**: Check `task test` output for specific errors
+2. **Coverage problems**: Use `task coverage-console` for quick check
+3. **Linting errors**: Functions from `utils.R` may need explicit assignment
 
 ### Performance Issues
 1. Use `task profile` to identify bottlenecks
 2. Check target granularity (too fine/coarse)
 3. Review memory usage patterns
 4. Consider computational vs I/O bound operations
+5. Use `task test-run` for faster iteration during development
 
 ### Reproducibility Issues
-1. Verify renv lockfile is current
-2. Check for system-specific dependencies
-3. Ensure deterministic random seeds
-4. Validate cross-platform compatibility
+1. **renv lockfile**: May need manual `renv::snapshot()` for full dependencies
+2. **System dependencies**: Check cmdstan, Quarto installations
+3. **Random seeds**: Ensure deterministic seeds in pipeline
+4. **Cross-platform**: Test on different operating systems
 
 ## Contributing Guidelines
 
 1. **Fork and branch** for feature development
 2. **Follow existing patterns** in code organisation
 3. **Update documentation** for user-facing changes
-4. **Test thoroughly** before submitting PR
-5. **Use UK English** in all documentation
-6. **Follow line length limits** (80 characters)
+4. **Test thoroughly**: Use `task test` and `task test-run`
+5. **Check coverage**: Run `task coverage` before submitting
+6. **Use UK English** in all documentation
+7. **Follow line length limits** (80 characters)
+8. **Update renv**: Consider dependency impacts before updating lockfile
+9. **Profile performance**: Use `task profile` for performance-sensitive changes

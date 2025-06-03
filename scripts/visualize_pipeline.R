@@ -14,8 +14,8 @@ vis <- targets::tar_visnetwork()
 
 # Save as HTML
 htmlwidgets::saveWidget(
-  vis, 
-  "pipeline_visualization.html", 
+  vis,
+  "pipeline_visualization.html",
   selfcontained = TRUE
 )
 

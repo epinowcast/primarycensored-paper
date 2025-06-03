@@ -190,3 +190,30 @@ get_rprimary_args <- function(growth_rate) {
     list(r = growth_rate)
   }
 }
+
+#' Get primary density function based on growth rate
+#'
+#' @param growth_rate Growth rate parameter
+#' @return Function for primary distribution density (dunif if
+#' growth_rate is 0, dexpgrowth otherwise)
+#' @export
+get_dprimary <- function(growth_rate) {
+  if (growth_rate == 0) {
+    stats::dunif
+  } else {
+    primarycensored::dexpgrowth
+  }
+}
+
+#' Get primary density arguments based on growth rate
+#'
+#' @param growth_rate Growth rate parameter
+#' @return List of arguments for the primary distribution density
+#' @export
+get_dprimary_args <- function(growth_rate) {
+  if (growth_rate == 0) {
+    list() # dunif uses min/max from pwindow
+  } else {
+    list(r = growth_rate)
+  }
+}

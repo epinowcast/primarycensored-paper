@@ -14,7 +14,11 @@ primarycensored-paper.code-workspace
 claude.md
 epidist-paper
 _targets/
+_targets_r/
+_targets.R
 _targets.html
+_targets.md
+_targets_packages.R
 figures/*.pdf
 data/results/*.csv
 profile_results.rds

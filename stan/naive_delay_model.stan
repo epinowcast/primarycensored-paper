@@ -8,14 +8,22 @@ data {
 }
 
 parameters {
-  real<lower=0> param1;  // shape (gamma) or meanlog (lognormal)
-  real<lower=0> param2;  // rate (gamma) or sdlog (lognormal)
+  real param1;              // shape (gamma, >0) or meanlog (lognormal, any real)
+  real<lower=0> param2;     // scale (gamma, >0) or sdlog (lognormal, >0)
 }
 
 model {
   // Weakly informative priors
-  param1 ~ gamma(2, 1);
-  param2 ~ gamma(2, 1);
+  if (dist_id == 1) {
+    // Gamma distribution priors - reject if param1 <= 0
+    if (param1 <= 0) reject("param1 must be positive for gamma distribution");
+    param1 ~ gamma(2, 1);  // shape
+    param2 ~ gamma(2, 1);  // scale
+  } else if (dist_id == 2) {
+    // Lognormal distribution priors
+    param1 ~ normal(1.5, 1);  // meanlog
+    param2 ~ gamma(2, 1);     // sdlog
+  }
   
   // Likelihood - treating censored delays as true delays
   if (dist_id == 1) {

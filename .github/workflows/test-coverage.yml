@@ -21,17 +21,17 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install system dependencies
+      - name: Install CmdStan
+        uses: epinowcast/actions/install-cmdstan@v1
+        with:
+          cmdstan-version: '2.36.0'
+
+      - name: Install task
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake libglpk-dev
+          sh -c "$(curl -ssL https://taskfile.dev/install.sh)"
+          sudo mv ./bin/task /usr/local/bin/
 
       - uses: r-lib/actions/setup-renv@v2
-
-      - name: Install covr
-        run: |
-          renv::install("covr")
-        shell: Rscript {0}
 
       - name: Test coverage
         run: |
