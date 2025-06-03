@@ -21,17 +21,7 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake libglpk-dev
-
       - uses: r-lib/actions/setup-renv@v2
-
-      - name: Install covr
-        run: |
-          renv::install("covr")
-        shell: Rscript {0}
 
       - name: Test coverage
         run: |
