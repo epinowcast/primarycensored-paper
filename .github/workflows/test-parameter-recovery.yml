@@ -44,10 +44,10 @@ jobs:
       run: |
         Rscript -e "
         library(targets);
-        if (!tar_exist('simulated_model_fits')) {
-          stop('❌ Pipeline failed: simulated_model_fits not found')
+        if (!tar_exist('model_fits')) {
+          stop('❌ Pipeline failed: model_fits not found')
         }
-        results <- tar_read('simulated_model_fits');
+        results <- tar_read('model_fits');
         cat('✅ Parameter recovery test completed\n');
         cat('Number of results:', nrow(results), '\n');
         cat('Methods tested:', paste(unique(results\$method), collapse=', '), '\n');
