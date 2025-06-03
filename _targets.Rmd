@@ -121,6 +121,9 @@ tar_option_set(
   repository = "local",  # Use qs2 backend for storage
   error = "continue"  # Continue pipeline when targets fail
 )
+
+# Generate _targets_packages.R for renv integration
+tar_renv()
 ```
 
 # Data Preparation
