@@ -95,9 +95,10 @@ tasks:
 
   renv-update:
     desc: Update renv lockfile with current package versions
+    deps: [install]
     cmds:
       - echo "📸 Updating renv lockfile..."
-      - Rscript -e "renv::snapshot(prompt = FALSE)"
+      - Rscript -e "renv::snapshot(packages = c('lintr', 'covr'), prompt = FALSE)"
       - echo "✅ renv.lock updated"
 
   profile:
