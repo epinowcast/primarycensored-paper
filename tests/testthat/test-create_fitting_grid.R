@@ -105,16 +105,16 @@ test_that("create_fitting_grid handles test mode filtering", {
   expect_s3_class(result_test, "data.frame")
   expect_lt(nrow(result_test), nrow(mock_monte_carlo) + nrow(mock_ebola))
 
-  # Should have at most one gamma and one lognormal simulation scenario
-  sim_data <- result_test[result_test$data_type == "simulation", ]
-  if (nrow(sim_data) > 0) {
-    expect_lte(sum(sim_data$distribution == "gamma"), 1)
-    expect_lte(sum(sim_data$distribution == "lognormal"), 1)
-  }
+  # Should have exactly one scenario per distribution with smallest sample size
+  expect_equal(nrow(result_test), 2)  # One for gamma, one for lognormal
+  expect_true(all(result_test$data_type == "simulation"))
+  expect_equal(sum(result_test$distribution == "gamma"), 1)
+  expect_equal(sum(result_test$distribution == "lognormal"), 1)
+  expect_true(all(result_test$sample_size == 100))  # Smallest sample size
 
-  # Should have at most one Ebola scenario
+  # Should have NO Ebola data in test mode
   ebola_data <- result_test[result_test$data_type == "ebola", ]
-  expect_lte(nrow(ebola_data), 1)
+  expect_equal(nrow(ebola_data), 0)
 })
 
 test_that("create_fitting_grid handles empty input gracefully", {

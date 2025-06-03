@@ -32,6 +32,7 @@ Imports:
 Suggests:
     cmdstanr,
     covr,
+    devtools,
     htmlwidgets,
     lintr,
     profvis,

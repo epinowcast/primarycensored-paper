@@ -49,18 +49,16 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
 
   # Apply test mode filtering if enabled
   if (test_mode) {
-    combined_grid <- combined_grid |>
-      dplyr::filter(
-        # Take one scenario of each distribution type with smallest sample size
-        (data_type == "simulation" &
-          scenario_id %in% c(
-            scenarios$scenario_id[scenarios$distribution == "gamma"][1],
-            scenarios$scenario_id[scenarios$distribution == "lognormal"][1]
-          ) &
-          sample_size == min(sample_sizes)) |
-          # Take one Ebola scenario
-          (data_type == "ebola" & dplyr::row_number() == 1)
-      )
+    # Get simulation data only (exclude Ebola)
+    sim_only <- combined_grid |>
+      dplyr::filter(data_type == "simulation")
+    
+    # For each distribution, select one scenario with smallest sample size
+    combined_grid <- sim_only |>
+      dplyr::group_by(distribution) |>
+      dplyr::filter(sample_size == min(sample_size)) |>
+      dplyr::slice(1) |>  # Take first scenario for each distribution
+      dplyr::ungroup()
   }
 
   combined_grid

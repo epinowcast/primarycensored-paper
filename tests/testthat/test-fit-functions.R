@@ -13,7 +13,7 @@ test_that("fit_primarycensored recovers gamma parameters correctly", {
     n = n,
     rdist = function(n) rgamma(n, shape = true_shape, scale = true_scale),
     rprimary = stats::runif,
-    rprimary_args = list(min = 0, max = 1),
+    rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
     D = Inf
@@ -84,7 +84,7 @@ test_that("fit_primarycensored recovers lognormal parameters correctly", {
     n = n,
     rdist = function(n) rlnorm(n, meanlog = true_meanlog, sdlog = true_sdlog),
     rprimary = stats::runif,
-    rprimary_args = list(min = 0, max = 1),
+    rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
     D = Inf
@@ -254,7 +254,7 @@ test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
     n = n,
     rdist = function(n) rgamma(n, shape = true_shape, scale = true_scale),
     rprimary = stats::runif,
-    rprimary_args = list(min = 0, max = 1),
+    rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
     D = Inf
@@ -299,7 +299,7 @@ test_that("fit_primarycensored_mle handles lognormal distribution", {
     n = n,
     rdist = function(n) rlnorm(n, meanlog = 0.5, sdlog = 0.7),
     rprimary = stats::runif,
-    rprimary_args = list(min = 0, max = 1),
+    rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
     D = Inf
@@ -380,7 +380,7 @@ test_that("fitting functions handle truncation scenarios correctly", {
     n = n,
     rdist = function(n) rgamma(n, shape = 2, scale = 2),
     rprimary = stats::runif,
-    rprimary_args = list(min = 0, max = 1),
+    rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
     D = 10 # 10-day truncation
