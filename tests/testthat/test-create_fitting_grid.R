@@ -3,7 +3,10 @@ test_that("create_fitting_grid combines simulation and ebola data correctly", {
 
   # Create mock Monte Carlo samples
   mock_monte_carlo <- data.frame(
-    scenario_id = c("gamma_none_daily_r0", "gamma_none_daily_r0", "lognormal_moderate_weekly_r0.2"),
+    scenario_id = c(
+      "gamma_none_daily_r0", "gamma_none_daily_r0",
+      "lognormal_moderate_weekly_r0.2"
+    ),
     sample_size = c(100, 100, 200),
     distribution = c("gamma", "gamma", "lognormal"),
     truncation = c("none", "none", "moderate"),
@@ -18,8 +21,14 @@ test_that("create_fitting_grid combines simulation and ebola data correctly", {
     analysis_type = c("real_time", "retrospective"),
     n_cases = c(50, 75),
     data = I(list(
-      data.frame(delay_observed = c(1.2, 2.3), prim_cens_lower = c(0, 0), prim_cens_upper = c(1, 1)),
-      data.frame(delay_observed = c(3.4, 4.5), prim_cens_lower = c(0, 0), prim_cens_upper = c(1, 1))
+      data.frame(
+        delay_observed = c(1.2, 2.3), prim_cens_lower = c(0, 0),
+        prim_cens_upper = c(1, 1)
+      ),
+      data.frame(
+        delay_observed = c(3.4, 4.5), prim_cens_lower = c(0, 0),
+        prim_cens_upper = c(1, 1)
+      )
     ))
   )
 
@@ -67,7 +76,10 @@ test_that("create_fitting_grid handles test mode filtering", {
 
   # Create mock data with multiple scenarios
   mock_monte_carlo <- data.frame(
-    scenario_id = c("gamma_none_daily_r0", "gamma_none_daily_r0", "lognormal_moderate_weekly_r0.2", "lognormal_moderate_weekly_r0.2"),
+    scenario_id = c(
+      "gamma_none_daily_r0", "gamma_none_daily_r0",
+      "lognormal_moderate_weekly_r0.2", "lognormal_moderate_weekly_r0.2"
+    ),
     sample_size = c(100, 200, 100, 200),
     distribution = c("gamma", "gamma", "lognormal", "lognormal"),
     truncation = c("none", "none", "moderate", "moderate"),

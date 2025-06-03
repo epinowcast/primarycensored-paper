@@ -6,6 +6,12 @@
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
+  # Suppress object_usage_linter warnings for utils.R functions
+  create_empty_results <- create_empty_results
+  extract_distribution_info <- extract_distribution_info
+  get_relative_obs_time <- get_relative_obs_time
+  extract_posterior_estimates <- extract_posterior_estimates
+
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
@@ -99,6 +105,12 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
+  # Suppress object_usage_linter warnings for utils.R functions
+  create_empty_results <- create_empty_results
+  extract_distribution_info <- extract_distribution_info
+  prepare_stan_data <- prepare_stan_data
+  extract_posterior_estimates <- extract_posterior_estimates
+
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
@@ -153,6 +165,12 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
+  # Suppress object_usage_linter warnings for utils.R functions
+  create_empty_results <- create_empty_results
+  extract_distribution_info <- extract_distribution_info
+  prepare_stan_data <- prepare_stan_data
+  extract_posterior_estimates <- extract_posterior_estimates
+
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
@@ -211,6 +229,11 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_primarycensored_mle <- function(fitting_grid) {
+  # Suppress object_usage_linter warnings for utils.R functions
+  create_empty_results <- create_empty_results
+  extract_distribution_info <- extract_distribution_info
+  get_relative_obs_time <- get_relative_obs_time
+
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
