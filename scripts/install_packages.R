@@ -16,11 +16,11 @@ if (file.exists("renv.lock")) {
 } else {
   # No lockfile, install required packages
   message("No renv.lock found. Installing dependencies from DESCRIPTION...")
-  
+
   # Install DESCRIPTION dependencies (including remotes)
   message("Installing dependencies from DESCRIPTION...")
   renv::install(".", dependencies = TRUE)
-  
+
   # Create initial lockfile
   message("Creating renv.lock...")
   renv::snapshot(prompt = FALSE)

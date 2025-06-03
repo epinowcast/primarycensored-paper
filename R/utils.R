@@ -87,7 +87,7 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
 #' @param error_msg Optional error message
 #' @return Data frame with NA values in standard format
 #' @export
-create_empty_results <- function(fitting_grid, method, 
+create_empty_results <- function(fitting_grid, method,
                                  error_msg = NA_character_) {
   data.frame(
     scenario_id = fitting_grid$scenario_id,
@@ -123,7 +123,7 @@ get_distribution_id <- function(distribution) {
 
 #' Extract distribution and growth rate from fitting grid
 #'
-#' @param fitting_grid Single row from fitting grid with distribution and 
+#' @param fitting_grid Single row from fitting grid with distribution and
 #'   growth_rate columns
 #' @return List with distribution and growth_rate
 #' @export
@@ -187,7 +187,7 @@ get_param_names <- function(distribution) {
 #' @param truncation Character: truncation scenario for Ward model
 #' @return List of Stan data
 #' @export
-prepare_stan_data <- function(sampled_data, distribution, growth_rate, 
+prepare_stan_data <- function(sampled_data, distribution, growth_rate,
                               model_type = "naive", truncation = NULL) {
   dist_id <- get_distribution_id(distribution)
 
@@ -199,7 +199,7 @@ prepare_stan_data <- function(sampled_data, distribution, growth_rate,
     )
   } else if (model_type == "ward") {
     # Get censoring windows and observation times
-    pwindow_widths <- sampled_data$prim_cens_upper - 
+    pwindow_widths <- sampled_data$prim_cens_upper -
       sampled_data$prim_cens_lower
     swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
     obs_times <- rep(get_relative_obs_time(truncation), nrow(sampled_data))

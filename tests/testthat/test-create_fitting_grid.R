@@ -155,4 +155,3 @@ test_that("create_fitting_grid handles empty input gracefully", {
   expect_s3_class(result, "data.frame")
   expect_identical(nrow(result), 0L)
 })
-

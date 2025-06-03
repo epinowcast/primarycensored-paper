@@ -81,7 +81,11 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
       runtime <- tictoc::toc(quiet = TRUE)
       result <- create_empty_results(fitting_grid, "primarycensored")
       result$error_msg <- as.character(e)
-      result$runtime_seconds <- runtime$toc - runtime$tic
+      result$runtime_seconds <- if (!is.null(runtime)) {
+        runtime$toc - runtime$tic
+      } else {
+        NA_real_
+      }
       result
     }
   )
@@ -131,7 +135,11 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
       runtime <- tictoc::toc(quiet = TRUE)
       result <- create_empty_results(fitting_grid, "naive")
       result$error_msg <- as.character(e)
-      result$runtime_seconds <- runtime$toc - runtime$tic
+      result$runtime_seconds <- if (!is.null(runtime)) {
+        runtime$toc - runtime$tic
+      } else {
+        NA_real_
+      }
       result
     }
   )
@@ -187,7 +195,11 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
       runtime <- tictoc::toc(quiet = TRUE)
       result <- create_empty_results(fitting_grid, "ward")
       result$error_msg <- as.character(e)
-      result$runtime_seconds <- runtime$toc - runtime$tic
+      result$runtime_seconds <- if (!is.null(runtime)) {
+        runtime$toc - runtime$tic
+      } else {
+        NA_real_
+      }
       result
     }
   )
@@ -213,11 +225,12 @@ fit_primarycensored_mle <- function(fitting_grid) {
       # Prepare data in correct format for fitdistdoublecens
       delay_data <- data.frame(
         left = sampled_data$delay_observed,
-        right = sampled_data$delay_observed + 
+        right = sampled_data$delay_observed +
           (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
       )
 
-      pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
+      pwindow <- sampled_data$prim_cens_upper[1] -
+        sampled_data$prim_cens_lower[1]
       obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
 
       # Simple primary distribution functions for MLE fitting
@@ -286,9 +299,12 @@ fit_primarycensored_mle <- function(fitting_grid) {
       runtime <- tictoc::toc(quiet = TRUE)
       result <- create_empty_results(fitting_grid, "primarycensored_mle")
       result$error_msg <- as.character(e)
-      result$runtime_seconds <- runtime$toc - runtime$tic
+      result$runtime_seconds <- if (!is.null(runtime)) {
+        runtime$toc - runtime$tic
+      } else {
+        NA_real_
+      }
       result
     }
   )
 }
-

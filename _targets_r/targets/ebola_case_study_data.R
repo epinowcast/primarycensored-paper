@@ -3,11 +3,11 @@ tar_target(
   {
     # Get the base date (earliest symptom onset)
     base_date <- min(ebola_data$symptom_onset_date)
-    
+
     # Create window start and end dates
     window_start <- base_date + observation_windows$start_day
     window_end <- base_date + observation_windows$end_day
-    
+
     # Filter data based on analysis type
     filtered_data <- ebola_data |>
       dplyr::filter(

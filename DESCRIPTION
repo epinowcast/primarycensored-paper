@@ -20,6 +20,7 @@ Imports:
     fitdistrplus,
     ggplot2,
     here,
+    jsonlite,
     knitr,
     patchwork,
     posterior,

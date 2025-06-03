@@ -36,13 +36,9 @@ analysis settings:
 
 For rapid development and CI/CD validation:
 
-- **`test_mode`**: Enable/disable test mode (default: false)
-- **`test_scenarios`**: Number of scenarios to test in test mode
-  (default: 2)
-- **`test_samples`**: Reduced sample size for testing (default: 100)
-- **`test_chains`**: Minimal chains for Stan (default: 2)
-- **`test_iterations`**: Reduced iterations for quick runs (default:
-  100)
+- **`test_mode`**: Enable/disable test mode (default: false). Test mode
+  is used to reduce the number of scenarios and sample sizes to speed up
+  the pipeline.
 
 When `test_mode` is enabled, the pipeline uses reduced computational
 settings for faster iteration during development.
@@ -90,14 +86,13 @@ controller <- crew_controller_local(
   seconds_idle = 30
 )
 
-# Configuration values from parameters (with fallbacks for direct targets execution)
-sample_sizes <- if(exists("params")) params$sample_sizes else c(10, 100, 1000, 10000)
-growth_rates <- if(exists("params")) params$growth_rates else c(0, 0.2)  # Growth rates: 0 for uniform, 0.2 for exponential growth
-simulation_n <- if(exists("params")) params$simulation_n else 10000  # Number of observations per scenario
-base_seed <- if(exists("params")) params$base_seed else 100  # Base seed for reproducibility
-
-# Test mode configuration
-test_mode <- if(exists("params")) params$test_mode else FALSE
+# Load configuration from JSON (saved by save-config chunk)
+config <- jsonlite::read_json("_targets_r/globals/config.json")
+sample_sizes <- unlist(config$sample_sizes)
+growth_rates <- unlist(config$growth_rates)
+simulation_n <- unlist(config$simulation_n)
+base_seed <- unlist(config$base_seed)
+test_mode <- unlist(config$test_mode)
 
 
 # Set targets options
@@ -191,7 +186,7 @@ Combine all scenarios into a full factorial design (18 scenarios total:
 2 growth rates × 2 distributions × 3 truncations × 3 censorings).
 
 ``` r
-tar_target(scenario_grid, {
+tar_target(scenarios, {
   # Create all combinations
   grid <- expand.grid(
     distribution = distributions$dist_name[distributions$dist_name != "burr"],  # Exclude burr distribution
@@ -207,12 +202,13 @@ tar_target(scenario_grid, {
   grid$n <- simulation_n
   grid$seed <- seq_len(nrow(grid)) + base_seed
   
-  # No changes to grid for test mode - filtering happens in fitting_grid
-  
-  grid
+  grid |>
+    dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>
+    dplyr::left_join(truncation_scenarios, by = c("truncation" = "trunc_name")) |>
+    dplyr::left_join(censoring_scenarios, by = c("censoring" = "cens_name"))
 })
-#> Define target scenario_grid from chunk code.
-#> Establish _targets.R and _targets_r/targets/scenario_grid.R.
+#> Define target scenarios from chunk code.
+#> Establish _targets.R and _targets_r/targets/scenarios.R.
 ```
 
 # Numerical Validation
@@ -221,17 +217,6 @@ tar_target(scenario_grid, {
 
 We simulate data for each scenario combination using the primarycensored
 package.
-
-``` r
-tar_target(scenarios, {
-  scenario_grid |>
-    dplyr::left_join(distributions, by = c("distribution" = "dist_name")) |>
-    dplyr::left_join(truncation_scenarios, by = c("truncation" = "trunc_name")) |>
-    dplyr::left_join(censoring_scenarios, by = c("censoring" = "cens_name"))
-})
-#> Define target scenarios from chunk code.
-#> Establish _targets.R and _targets_r/targets/scenarios.R.
-```
 
 ``` r
 tar_target(
@@ -595,10 +580,10 @@ Shared Stan settings configuration for all fitting targets.
 ``` r
 tar_target(stan_settings, {
   list(
-    chains = if (test_mode) 1 else 2,  # Just 1 chain for test mode
-    parallel_chains = 1,  # Run sequentially to avoid resource contention
-    iter_warmup = if (test_mode) 50 else 1000,  # Much lower iterations for testing
-    iter_sampling = if (test_mode) 50 else 1000,
+    chains = 2,
+    parallel_chains = 1,
+    iter_warmup = 1000,
+    iter_sampling = 1000,
     adapt_delta = 0.95,
     show_messages = FALSE,
     show_exceptions = FALSE,
@@ -617,55 +602,13 @@ grouped dataframe for unified fitting.
 ``` r
 tarchetypes::tar_group_by(
   fitting_grid,
-  {
-    # Create simulation grid with embedded data
-    simulation_grid <- monte_carlo_samples |>
-      dplyr::group_by(scenario_id, sample_size, distribution, truncation, censoring, growth_rate) |>
-      dplyr::summarise(
-        data = list(dplyr::cur_data()),
-        .groups = "drop"
-      ) |>
-      dplyr::mutate(
-        data_type = "simulation",
-        dataset_id = paste0(scenario_id, "_n", sample_size)
-      )
-    
-    # Create Ebola fitting entries
-    ebola_grid <- ebola_case_study_data |>
-      dplyr::mutate(
-        data_type = "ebola",
-        dataset_id = paste0("ebola_", window_id, "_", analysis_type),
-        scenario_id = dataset_id,
-        sample_size = n_cases,
-        distribution = "gamma",  # Ebola analysis uses gamma
-        truncation = "none",     # Will be determined by analysis
-        censoring = "double",    # Double interval censoring
-        growth_rate = 0.2       # Exponential growth assumption
-      ) |>
-      dplyr::select(scenario_id, sample_size, distribution, truncation, 
-                   censoring, growth_rate, data_type, dataset_id)
-    
-    # Combine both grids
-    combined_grid <- dplyr::bind_rows(simulation_grid, ebola_grid)
-    
-    # Apply test mode filtering if enabled
-    if (test_mode) {
-      combined_grid <- combined_grid |>
-        dplyr::filter(
-          # Take one scenario of each distribution type with smallest sample size
-          (data_type == "simulation" & 
-           scenario_id %in% c(
-             scenarios$scenario_id[scenarios$distribution == "gamma"][1],
-             scenarios$scenario_id[scenarios$distribution == "lognormal"][1]
-           ) & 
-           sample_size == min(sample_sizes)) |
-          # Take one Ebola scenario
-          (data_type == "ebola" & dplyr::row_number() == 1)
-        )
-    }
-    
-    combined_grid
-  },
+  create_fitting_grid(
+    monte_carlo_samples = monte_carlo_samples,
+    ebola_case_study_data = ebola_case_study_data,
+    scenarios = scenarios,
+    sample_sizes = sample_sizes,
+    test_mode = test_mode
+  ),
   dataset_id  # Group by unique dataset identifier
 )
 #> Establish _targets.R and _targets_r/targets/fitting_grid.R.
@@ -679,70 +622,7 @@ analytical marginalisation.
 ``` r
 tar_target(
   primarycensored_fits,
-  {  
-    # Extract data directly from fitting_grid
-    sampled_data <- fitting_grid$data[[1]]
-    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
-      return(create_empty_results(fitting_grid, "primarycensored"))
-    }
-    
-    tictoc::tic("fit_primarycensored")
-    dist_info <- extract_distribution_info(fitting_grid)
-    
-    # Prepare delay data for primarycensored
-    delay_data <- data.frame(
-      delay = sampled_data$delay_observed,
-      delay_upper = sampled_data$sec_cens_upper, 
-      n = 1,
-      pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-      relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
-    )
-    
-    # Configuration based on distribution and growth rate
-    config <- list(
-      dist_id = if (dist_info$distribution == "gamma") 2L else 1L,  # primarycensored: lnorm=1, gamma=2
-      primary_id = if (dist_info$growth_rate == 0) 1L else 2L
-    )
-    
-    # Set bounds and priors
-    if (dist_info$distribution == "gamma") {
-      bounds_priors <- list(
-        param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
-        priors = list(location = c(2, 2), scale = c(1, 1))
-      )
-    } else {
-      bounds_priors <- list(
-        param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
-        priors = list(location = c(1.5, 2), scale = c(1, 1))
-      )
-    }
-    
-    # Primary distribution parameters
-    if (dist_info$growth_rate == 0) {
-      primary_bounds_priors <- list(
-        primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
-        primary_priors = list(location = numeric(0), scale = numeric(0))
-      )
-    } else {
-      primary_bounds_priors <- list(
-        primary_param_bounds = list(lower = c(0.01), upper = c(10)),
-        primary_priors = list(location = c(0.2), scale = c(1))
-      )
-    }
-    
-    # Prepare Stan data and fit
-    stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
-      list(delay_data, compute_log_lik = TRUE),
-      config, bounds_priors, primary_bounds_priors
-    ))
-    
-    fit <- do.call(compile_primarycensored_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    extract_posterior_estimates(fit, "primarycensored", fitting_grid, runtime)
-  },
+  fit_primarycensored(fitting_grid, stan_settings, compile_primarycensored_model),
   pattern = map(fitting_grid)
 )
 #> Establish _targets.R and _targets_r/targets/fit_primarycensored.R.
@@ -756,62 +636,7 @@ interface.
 ``` r
 tar_target(
   primarycensored_fitdistrplus_fits,
-  {
-    # Extract data directly from fitting_grid
-    sampled_data <- fitting_grid$data[[1]]
-    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
-      return(create_empty_results(fitting_grid, "primarycensored_mle"))
-    }
-    
-    tictoc::tic("fit_primarycensored_mle")
-    dist_info <- extract_distribution_info(fitting_grid)
-    
-    # Prepare data in correct format for fitdistdoublecens
-    delay_data <- data.frame(
-      left = sampled_data$delay_observed,
-      right = sampled_data$delay_observed + (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
-    )
-    
-    pwindow <- sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1]
-    obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
-    
-    # Fit using appropriate distribution  
-    fit_result <- primarycensored::fitdistdoublecens(
-      censdata = delay_data,
-      distr = dist_info$distribution,
-      pwindow = pwindow,
-      D = if (is.finite(obs_time)) obs_time else Inf,
-      dprimary = get_dprimary(dist_info$growth_rate),
-      dprimary_args = get_dprimary_args(dist_info$growth_rate),
-      start = get_start_values(dist_info$distribution)
-    )
-    
-    # Extract parameters based on distribution
-    param_names <- get_param_names(dist_info$distribution)
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    data.frame(
-      scenario_id = fitting_grid$scenario_id,
-      sample_size = fitting_grid$sample_size,
-      method = "primarycensored_mle",
-      param1_est = fit_result$estimate[param_names[1]],
-      param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
-      param1_q025 = NA_real_,
-      param1_q975 = NA_real_,
-      param2_est = fit_result$estimate[param_names[2]],
-      param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
-      param2_q025 = NA_real_,
-      param2_q975 = NA_real_,
-      convergence = fit_result$convergence %||% 0,
-      ess_bulk_min = NA_real_,
-      ess_tail_min = NA_real_,
-      num_divergent = NA_integer_,
-      max_treedepth = NA_integer_,
-      loglik = fit_result$loglik %||% NA_real_,
-      runtime_seconds = runtime$toc - runtime$tic
-    )
-  },
+  fit_primarycensored_mle(fitting_grid),
   pattern = map(fitting_grid)
 )
 #> Establish _targets.R and _targets_r/targets/fit_primarycensored_fitdistrplus.R.
@@ -824,31 +649,7 @@ Baseline comparison that ignores primary event censoring.
 ``` r
 tar_target(
   naive_fits,
-  {
-    # Extract data directly from fitting_grid
-    sampled_data <- fitting_grid$data[[1]]
-    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
-      return(create_empty_results(fitting_grid, "naive"))
-    }
-    
-    # Start timing after data preparation
-    tictoc::tic("fit_naive")
-    
-    # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(fitting_grid)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, 
-                                  dist_info$growth_rate, "naive")
-    
-    # Fit the model using shared Stan settings
-    fit <- do.call(compile_naive_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    # Extract posterior estimates using shared function
-    extract_posterior_estimates(fit, "naive", fitting_grid, runtime)
-  },
+  fit_naive(fitting_grid, stan_settings, compile_naive_model),
   pattern = map(fitting_grid)
 )
 #> Establish _targets.R and _targets_r/targets/fit_naive.R.
@@ -864,34 +665,7 @@ constraints.
 ``` r
 tar_target(
   ward_fits,
-  {
-    # Extract data directly from fitting_grid
-    sampled_data <- fitting_grid$data[[1]]
-    if (is.null(sampled_data) || nrow(sampled_data) == 0) {
-      return(create_empty_results(fitting_grid, "ward"))
-    }
-    
-    if (nrow(sampled_data) > 1000) {
-      return(create_empty_results(fitting_grid, "ward"))
-    }
-    
-    # Start timing after data preparation
-    tictoc::tic("fit_ward")
-    
-    # Extract distribution info and prepare Stan data using shared functions
-    dist_info <- extract_distribution_info(fitting_grid)
-    stan_data <- prepare_stan_data(sampled_data, dist_info$distribution, dist_info$growth_rate, "ward", fitting_grid$truncation[1])
-    
-    # Fit the Ward model using shared Stan settings
-    fit <- do.call(compile_ward_model$sample, c(
-      list(data = stan_data), stan_settings
-    ))
-    
-    runtime <- tictoc::toc(quiet = TRUE)
-    
-    # Extract posterior estimates using shared function
-    extract_posterior_estimates(fit, "ward", fitting_grid, runtime)
-  },
+  fit_ward(fitting_grid, stan_settings, compile_ward_model),
   pattern = map(fitting_grid)
 )
 #> Establish _targets.R and _targets_r/targets/fit_ward.R.
@@ -902,7 +676,7 @@ tar_target(
 Aggregate results from all methods for comparison.
 
 ``` r
-tar_target(simulated_model_fits, {
+tar_target(model_fits, {
   dplyr::bind_rows(
     primarycensored_fits,
     primarycensored_fitdistrplus_fits,
@@ -910,8 +684,8 @@ tar_target(simulated_model_fits, {
     ward_fits
   )
 })
-#> Define target simulated_model_fits from chunk code.
-#> Establish _targets.R and _targets_r/targets/simulated_model_fits.R.
+#> Define target model_fits from chunk code.
+#> Establish _targets.R and _targets_r/targets/model_fits.R.
 ```
 
 # Model Evaluation
@@ -925,7 +699,7 @@ tar_target(parameter_recovery, {
   # Calculate bias, coverage, RMSE for each method and scenario
   # Real implementation would compare estimated vs true parameters
   
-  simulated_model_fits |>
+  model_fits |>
     dplyr::group_by(method, scenario_id) |>
     dplyr::summarise(
       bias_param1 = mean(param1_est, na.rm = TRUE) - 5,  # True param1 is 5 for both dists
@@ -946,7 +720,7 @@ Compile MCMC diagnostics for Bayesian models (Results line 318).
 ``` r
 tar_target(convergence_diagnostics, {
   # Extract convergence diagnostics from Bayesian model fits
-  bayesian_fits <- simulated_model_fits |>
+  bayesian_fits <- model_fits |>
     dplyr::filter(method %in% c("primarycensored", "ward"))
   
   if (nrow(bayesian_fits) == 0) {
@@ -1105,7 +879,7 @@ tar_target(
     
     list(
       convergence = convergence_diagnostics,
-      full_estimates = simulated_model_fits,
+      full_estimates = model_fits,
       message = "Additional supplementary analyses would go here"
     )
   }
@@ -1122,14 +896,13 @@ tar_target(
   saved_results,
   {
     # Save detailed results for reproducibility
-    save_data(scenario_grid, "scenario_definitions.csv")
-    save_data(simulated_model_fits, "simulated_model_fits.csv")
+    save_data(scenarios, "scenario_definitions.csv")
+    save_data(model_fits, "model_fits.csv")
     # Note: parameter_recovery, pmf_comparison, runtime_comparison don't exist yet
     # save_data(parameter_recovery, "parameter_recovery.csv")
     # save_data(pmf_comparison, "pmf_comparison.csv")
     # save_data(runtime_comparison, "runtime_comparison.csv")
-    save_data(ebola_model_fits, "ebola_results.csv")
-    
+
     TRUE
   }
 )
@@ -1147,7 +920,7 @@ tar_target(
   analysis_summary,
   {
     # Count completed analyses
-    n_scenarios <- nrow(scenario_grid)
+    n_scenarios <- nrow(scenarios)
     n_methods <- 3  # primarycensored, naive, ward
     n_distributions <- nrow(distributions)
     

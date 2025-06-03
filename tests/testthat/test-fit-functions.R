@@ -473,4 +473,3 @@ test_that("fitting functions handle exponential growth scenarios", {
   expect_gt(result_mle$param1_est, 0.5)
   expect_lt(result_mle$param1_est, 5)
 })
-

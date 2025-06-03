@@ -52,7 +52,7 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
     # Get simulation data only (exclude Ebola)
     sim_only <- combined_grid |>
       dplyr::filter(data_type == "simulation")
-    
+
     # For each distribution, select one scenario with smallest sample size
     combined_grid <- sim_only |>
       dplyr::group_by(distribution) |>
@@ -63,4 +63,3 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
 
   combined_grid
 }
-

@@ -164,7 +164,7 @@ tasks:
     deps: [install]
     cmds:
       - echo "🧪 Running tests..."
-      - Rscript tests/testthat.R
+      - Rscript -e "devtools::test()"
 
   coverage:
     desc: Generate test coverage report

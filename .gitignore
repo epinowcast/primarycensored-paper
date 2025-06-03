@@ -14,6 +14,7 @@ primarycensored-paper.code-workspace
 claude.md
 epidist-paper
 _targets/
+_targets_r/
 _targets.html
 figures/*.pdf
 data/results/*.csv
