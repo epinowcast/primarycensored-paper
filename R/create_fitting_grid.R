@@ -17,7 +17,7 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
   scenario_id <- sample_size <- distribution <- truncation <- NULL
   censoring <- growth_rate <- window_id <- analysis_type <- NULL
   dataset_id <- n_cases <- data_type <- NULL
-  
+
   # Create simulation grid with embedded data
   simulation_grid <- monte_carlo_samples |>
     dplyr::group_by(

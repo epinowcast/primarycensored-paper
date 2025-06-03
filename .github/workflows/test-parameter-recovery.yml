@@ -58,3 +58,4 @@ jobs:
           figures/
           data/results/
         retention-days: 7
+
