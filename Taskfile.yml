@@ -106,7 +106,9 @@ tasks:
     deps: [install]
     cmds:
       - Rscript -e "lintr::lint_dir('R', linters = lintr::linters_with_defaults(line_length_linter(120)))"
-      - Rscript -e "lintr::lint_dir('_targets_r', linters = lintr::linters_with_defaults(line_length_linter(120)))"
+      - Rscript -e "lintr::lint_dir('scripts', linters = lintr::linters_with_defaults(line_length_linter(120)))"
+      - Rscript -e "lintr::lint_dir('tests', linters = lintr::linters_with_defaults(line_length_linter(120)))"
+      - Rscript -e "lintr::lint('_targets.Rmd', linters = lintr::linters_with_defaults(line_length_linter(120)))"
 
   profile:
     desc: Profile the targets pipeline to identify performance bottlenecks
