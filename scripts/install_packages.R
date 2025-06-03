@@ -27,6 +27,11 @@ if (file.exists("renv.lock")) {
   message("Installing dependencies from DESCRIPTION...")
   renv::install(".", dependencies = TRUE)
 
+  # Install development dependencies before creating lockfile
+  dev_deps <- c("lintr", "covr")
+  message("Installing development dependencies...")
+  renv::install(dev_deps)
+  
   # Create initial lockfile
   message("Creating renv.lock...")
   renv::snapshot(prompt = FALSE)
@@ -34,6 +39,16 @@ if (file.exists("renv.lock")) {
 
 # Ensure all packages are properly loaded before proceeding
 message("Ensuring all dependencies are available...")
+
+# Ensure development dependencies are installed
+# These are needed for CI but might not be captured by implicit snapshots
+dev_deps <- c("lintr", "covr")
+for (pkg in dev_deps) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    message("Installing development dependency: ", pkg)
+    renv::install(pkg)
+  }
+}
 
 # Special handling for cmdstanr - install CmdStan v2.36.0
 # Check again after dependencies are installed to ensure cmdstanr is available
@@ -51,6 +66,14 @@ if (requireNamespace("cmdstanr", quietly = TRUE)) {
   })
 } else {
   message("cmdstanr not available - skipping CmdStan installation")
+}
+
+# Final step: explicitly ensure development dependencies are in lockfile
+# renv's implicit mode won't capture packages not used in code
+if (all(sapply(c("lintr", "covr"), requireNamespace, quietly = TRUE))) {
+  message("Ensuring development dependencies are in lockfile...")
+  # This will update the lockfile to include these specific packages
+  renv::snapshot(packages = c("lintr", "covr"), prompt = FALSE)
 }
 
 message("✅ Package management complete")
