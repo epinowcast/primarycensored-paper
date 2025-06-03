@@ -233,6 +233,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
   create_empty_results <- create_empty_results
   extract_distribution_info <- extract_distribution_info
   get_relative_obs_time <- get_relative_obs_time
+  get_start_values <- get_start_values
+  get_param_names <- get_param_names
 
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
