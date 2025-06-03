@@ -5,6 +5,12 @@
 
 message("📦 Managing R packages with renv...")
 
+# Install pak first for faster package operations
+if (!requireNamespace("pak", quietly = TRUE)) {
+  message("Installing pak for faster package operations...")
+  install.packages("pak", repos = "https://cloud.r-project.org")
+}
+
 if (!requireNamespace("renv", quietly = TRUE)) {
   install.packages("renv", repos = "https://cloud.r-project.org")
 }
