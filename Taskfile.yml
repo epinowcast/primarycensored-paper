@@ -105,10 +105,10 @@ tasks:
     desc: Run R code linting
     deps: [install]
     cmds:
-      - Rscript -e "lintr::lint_dir('R', linters = lintr::linters_with_defaults(line_length_linter(120)))"
-      - Rscript -e "lintr::lint_dir('scripts', linters = lintr::linters_with_defaults(line_length_linter(120)))"
-      - Rscript -e "lintr::lint_dir('tests', linters = lintr::linters_with_defaults(line_length_linter(120)))"
-      - Rscript -e "lintr::lint('_targets.Rmd', linters = lintr::linters_with_defaults(line_length_linter(120)))"
+      - Rscript -e "lintr::lint_dir('R')"
+      - Rscript -e "lintr::lint_dir('scripts')"
+      - Rscript -e "lintr::lint_dir('tests')"
+      - Rscript -e "lintr::lint('_targets.Rmd')"
 
   profile:
     desc: Profile the targets pipeline to identify performance bottlenecks
