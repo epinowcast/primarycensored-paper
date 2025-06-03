@@ -45,8 +45,7 @@ if (requireNamespace("cmdstanr", quietly = TRUE)) {
   }, error = function(e) {
     message("Installing CmdStan v2.36.0...")
     cmdstanr::install_cmdstan(
-      version = "2.36.0",
-      overwrite = TRUE
+      version = "2.36.0"
     )
     message("CmdStan v2.36.0 installed successfully")
   })
