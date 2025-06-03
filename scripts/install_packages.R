@@ -28,7 +28,7 @@ if (file.exists("renv.lock")) {
   renv::install(".", dependencies = TRUE)
 
   # Install development dependencies before creating lockfile
-  dev_deps <- c("lintr", "covr")
+  dev_deps <- c("lintr", "covr", "rmarkdown")
   message("Installing development dependencies...")
   renv::install(dev_deps)
   
@@ -42,7 +42,7 @@ message("Ensuring all dependencies are available...")
 
 # Ensure development dependencies are installed
 # These are needed for CI but might not be captured by implicit snapshots
-dev_deps <- c("lintr", "covr")
+dev_deps <- c("lintr", "covr", "rmarkdown")
 for (pkg in dev_deps) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     message("Installing development dependency: ", pkg)
@@ -70,10 +70,10 @@ if (requireNamespace("cmdstanr", quietly = TRUE)) {
 
 # Final step: explicitly ensure development dependencies are in lockfile
 # renv's implicit mode won't capture packages not used in code
-if (all(sapply(c("lintr", "covr"), requireNamespace, quietly = TRUE))) {
+if (all(sapply(c("lintr", "covr", "rmarkdown"), requireNamespace, quietly = TRUE))) {
   message("Ensuring development dependencies are in lockfile...")
   # This will update the lockfile to include these specific packages
-  renv::snapshot(packages = c("lintr", "covr"), prompt = FALSE)
+  renv::snapshot(packages = c("lintr", "covr", "rmarkdown"), prompt = FALSE)
 }
 
 message("✅ Package management complete")
