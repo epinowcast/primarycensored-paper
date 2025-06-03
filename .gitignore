@@ -15,6 +15,7 @@ claude.md
 epidist-paper
 _targets/
 _targets_r/
+_targets.R
 _targets.html
 _targets.md
 figures/*.pdf
