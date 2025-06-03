@@ -70,7 +70,13 @@ model {
     // Truncation constraint if finite observation time
     for (n in 1:N) {
       if (obs_times[n] < 1e5) {  // If observation time is effectively finite
-        target += -log_diff_exp(0, gamma_lcdf(obs_times[n] - ptime[n] | param1, param2));
+        if (dist_id == 1) {
+          // Gamma distribution truncation
+          target += -gamma_lcdf(obs_times[n] - ptime[n] | param1, param2);
+        } else if (dist_id == 2) {
+          // Lognormal distribution truncation
+          target += -lognormal_lcdf(obs_times[n] - ptime[n] | param1, param2);
+        }
       }
     }
   }
