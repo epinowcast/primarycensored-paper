@@ -1,0 +1,476 @@
+test_that("fit_primarycensored recovers gamma parameters correctly", {
+  skip_if_not_installed("primarycensored")
+  skip_if_not_installed("cmdstanr")
+
+  # Set up test data - gamma distribution with known parameters
+  set.seed(123)
+  true_shape <- 2
+  true_scale <- 3
+  n <- 50
+
+  # Generate synthetic double-censored data
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    rdist = function(n) rgamma(n, shape = true_shape, scale = true_scale),
+    rprimary = stats::runif,
+    rprimary_args = list(min = 0, max = 1),
+    pwindow = 1,
+    swindow = 1,
+    D = Inf
+  )
+
+  # Create mock sampled_data
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  # Create mock fitting_grid
+  fitting_grid <- data.frame(
+    scenario_id = "test_gamma",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  # Test Stan settings (reduced for speed)
+  stan_settings <- list(
+    chains = 1,
+    parallel_chains = 1,
+    iter_warmup = 100,
+    iter_sampling = 100,
+    refresh = 0,
+    show_messages = FALSE
+  )
+
+  # Test the function
+  result <- fit_primarycensored(fitting_grid, stan_settings)
+
+  # Check structure
+  expect_s3_class(result, "data.frame")
+  expect_identical(nrow(result), 1L)
+  expect_true("param1_est" %in% names(result))
+  expect_true("param2_est" %in% names(result))
+  expect_true("method" %in% names(result))
+  expect_identical(result$method, "primarycensored")
+
+  # Check parameter recovery (within reasonable bounds for small sample)
+  expect_gt(result$param1_est, 0.5) # Shape should be positive
+  expect_lt(result$param1_est, 10) # But not too large
+  expect_gt(result$param2_est, 0.5) # Scale should be positive
+  expect_lt(result$param2_est, 15) # But reasonable
+
+  # Check no error occurred
+  expect_true(is.na(result$error_msg) || result$error_msg == "")
+})
+
+test_that("fit_primarycensored recovers lognormal parameters correctly", {
+  skip_if_not_installed("primarycensored")
+  skip_if_not_installed("cmdstanr")
+
+  # Set up test data - lognormal distribution
+  set.seed(456)
+  true_meanlog <- 1
+  true_sdlog <- 0.8
+  n <- 50
+
+  # Generate synthetic data
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    rdist = function(n) rlnorm(n, meanlog = true_meanlog, sdlog = true_sdlog),
+    rprimary = stats::runif,
+    rprimary_args = list(min = 0, max = 1),
+    pwindow = 1,
+    swindow = 1,
+    D = Inf
+  )
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_lognormal",
+    sample_size = n,
+    distribution = "lognormal",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  stan_settings <- list(
+    chains = 1,
+    iter_warmup = 100,
+    iter_sampling = 100,
+    refresh = 0,
+    show_messages = FALSE
+  )
+
+  result <- fit_primarycensored(fitting_grid, stan_settings)
+
+  # Check basic structure
+  expect_s3_class(result, "data.frame")
+  expect_identical(result$method, "primarycensored")
+
+  # Check parameter bounds for lognormal
+  expect_gt(result$param1_est, -3) # meanlog reasonable
+  expect_lt(result$param1_est, 5)
+  expect_gt(result$param2_est, 0.1) # sdlog positive
+  expect_lt(result$param2_est, 3)
+
+  expect_true(is.na(result$error_msg) || result$error_msg == "")
+})
+
+test_that("fit_naive handles gamma distribution", {
+  skip_if_not_installed("cmdstanr")
+
+  set.seed(789)
+  n <- 30
+  delays <- rgamma(n, shape = 3, scale = 2)
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_naive_gamma",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  stan_settings <- list(
+    chains = 1,
+    iter_warmup = 50,
+    iter_sampling = 50,
+    refresh = 0,
+    show_messages = FALSE
+  )
+
+  result <- fit_naive(fitting_grid, stan_settings)
+
+  expect_s3_class(result, "data.frame")
+  expect_identical(result$method, "naive")
+  expect_gt(result$param1_est, 0) # Shape should be positive
+  expect_gt(result$param2_est, 0) # Scale should be positive
+})
+
+test_that("fit_ward handles small datasets correctly", {
+  skip_if_not_installed("cmdstanr")
+
+  set.seed(101112)
+  n <- 20 # Small dataset for Ward method
+  delays <- rgamma(n, shape = 2, scale = 1.5)
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_ward",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "moderate", # 10-day truncation
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  stan_settings <- list(
+    chains = 1,
+    iter_warmup = 50,
+    iter_sampling = 50,
+    refresh = 0,
+    show_messages = FALSE
+  )
+
+  result <- fit_ward(fitting_grid, stan_settings)
+
+  expect_s3_class(result, "data.frame")
+  expect_identical(result$method, "ward")
+  expect_gt(result$param1_est, 0)
+  expect_gt(result$param2_est, 0)
+})
+
+test_that("fit_ward rejects large datasets", {
+  # Test that Ward method returns empty results for large datasets
+  n <- 1500 # Too large for Ward method
+
+  sampled_data <- data.frame(
+    delay_observed = rep(5, n),
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = rep(5, n),
+    sec_cens_upper = rep(6, n)
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_ward_large",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  stan_settings <- list(chains = 1, iter_warmup = 10, iter_sampling = 10)
+
+  result <- fit_ward(fitting_grid, stan_settings)
+
+  expect_s3_class(result, "data.frame")
+  expect_identical(result$method, "ward")
+  expect_true(is.na(result$param1_est)) # Should be empty results
+  expect_true(is.na(result$param2_est))
+})
+
+test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
+  skip_if_not_installed("primarycensored")
+
+  set.seed(131415)
+  true_shape <- 1.5
+  true_scale <- 2.5
+  n <- 100
+
+  # Generate test data
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    rdist = function(n) rgamma(n, shape = true_shape, scale = true_scale),
+    rprimary = stats::runif,
+    rprimary_args = list(min = 0, max = 1),
+    pwindow = 1,
+    swindow = 1,
+    D = Inf
+  )
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_mle_gamma",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  result <- fit_primarycensored_mle(fitting_grid)
+
+  expect_s3_class(result, "data.frame")
+  expect_identical(result$method, "primarycensored_mle")
+  expect_gt(result$param1_est, 0.5) # Shape parameter recovery
+  expect_lt(result$param1_est, 5)
+  expect_gt(result$param2_est, 0.5) # Scale parameter recovery
+  expect_lt(result$param2_est, 8)
+
+  # MLE should converge successfully
+  expect_true(is.na(result$convergence) || result$convergence == 0)
+})
+
+test_that("fit_primarycensored_mle handles lognormal distribution", {
+  skip_if_not_installed("primarycensored")
+
+  set.seed(161718)
+  n <- 80
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    rdist = function(n) rlnorm(n, meanlog = 0.5, sdlog = 0.7),
+    rprimary = stats::runif,
+    rprimary_args = list(min = 0, max = 1),
+    pwindow = 1,
+    swindow = 1,
+    D = Inf
+  )
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_mle_lognormal",
+    sample_size = n,
+    distribution = "lognormal",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  result <- fit_primarycensored_mle(fitting_grid)
+
+  expect_s3_class(result, "data.frame")
+  expect_identical(result$method, "primarycensored_mle")
+  expect_gt(result$param1_est, -2) # meanlog bounds
+  expect_lt(result$param1_est, 3)
+  expect_gt(result$param2_est, 0.1) # sdlog bounds
+  expect_lt(result$param2_est, 2)
+})
+
+test_that("fitting functions handle empty data gracefully", {
+  # Test empty data scenario
+  empty_data <- data.frame(
+    delay_observed = numeric(0),
+    prim_cens_lower = numeric(0),
+    prim_cens_upper = numeric(0),
+    sec_cens_lower = numeric(0),
+    sec_cens_upper = numeric(0)
+  )
+
+  fitting_grid <- data.frame(
+    scenario_id = "test_empty",
+    sample_size = 0,
+    distribution = "gamma",
+    truncation = "none",
+    growth_rate = 0,
+    data = I(list(empty_data))
+  )
+
+  stan_settings <- list(chains = 1, iter_warmup = 10, iter_sampling = 10)
+
+  # All functions should handle empty data gracefully
+  result_pc <- fit_primarycensored(fitting_grid, stan_settings)
+  result_naive <- fit_naive(fitting_grid, stan_settings)
+  result_ward <- fit_ward(fitting_grid, stan_settings)
+  result_mle <- fit_primarycensored_mle(fitting_grid)
+
+  # Check that all return proper empty results
+  expect_s3_class(result_pc, "data.frame")
+  expect_s3_class(result_naive, "data.frame")
+  expect_s3_class(result_ward, "data.frame")
+  expect_s3_class(result_mle, "data.frame")
+
+  expect_true(is.na(result_pc$param1_est))
+  expect_true(is.na(result_naive$param1_est))
+  expect_true(is.na(result_ward$param1_est))
+  expect_true(is.na(result_mle$param1_est))
+})
+
+test_that("fitting functions handle truncation scenarios correctly", {
+  skip_if_not_installed("primarycensored")
+
+  set.seed(192021)
+  n <- 40
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    rdist = function(n) rgamma(n, shape = 2, scale = 2),
+    rprimary = stats::runif,
+    rprimary_args = list(min = 0, max = 1),
+    pwindow = 1,
+    swindow = 1,
+    D = 10 # 10-day truncation
+  )
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  # Test moderate truncation
+  fitting_grid_moderate <- data.frame(
+    scenario_id = "test_truncation",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "moderate", # Should give 10-day truncation
+    growth_rate = 0,
+    data = I(list(sampled_data))
+  )
+
+  stan_settings <- list(
+    chains = 1,
+    iter_warmup = 50,
+    iter_sampling = 50,
+    refresh = 0,
+    show_messages = FALSE
+  )
+
+  result_pc <- fit_primarycensored(fitting_grid_moderate, stan_settings)
+  result_mle <- fit_primarycensored_mle(fitting_grid_moderate)
+
+  expect_s3_class(result_pc, "data.frame")
+  expect_s3_class(result_mle, "data.frame")
+  expect_gt(result_pc$param1_est, 0)
+  expect_gt(result_mle$param1_est, 0)
+})
+
+test_that("fitting functions handle exponential growth scenarios", {
+  skip_if_not_installed("primarycensored")
+
+  set.seed(222324)
+  n <- 50
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    rdist = function(n) rgamma(n, shape = 1.8, scale = 1.2),
+    rprimary = primarycensored::rexpgrowth,
+    rprimary_args = list(r = 0.2),
+    pwindow = 1,
+    swindow = 1,
+    D = Inf
+  )
+
+  sampled_data <- data.frame(
+    delay_observed = delays,
+    prim_cens_lower = 0,
+    prim_cens_upper = 1,
+    sec_cens_lower = delays,
+    sec_cens_upper = delays + 1
+  )
+
+  fitting_grid_growth <- data.frame(
+    scenario_id = "test_growth",
+    sample_size = n,
+    distribution = "gamma",
+    truncation = "none",
+    growth_rate = 0.2, # Exponential growth
+    data = I(list(sampled_data))
+  )
+
+  stan_settings <- list(
+    chains = 1,
+    iter_warmup = 100,
+    iter_sampling = 100,
+    refresh = 0,
+    show_messages = FALSE
+  )
+
+  result_pc <- fit_primarycensored(fitting_grid_growth, stan_settings)
+  result_mle <- fit_primarycensored_mle(fitting_grid_growth)
+
+  expect_s3_class(result_pc, "data.frame")
+  expect_s3_class(result_mle, "data.frame")
+
+  # Should still recover reasonable parameters
+  expect_gt(result_pc$param1_est, 0.5)
+  expect_lt(result_pc$param1_est, 5)
+  expect_gt(result_mle$param1_est, 0.5)
+  expect_lt(result_mle$param1_est, 5)
+})
+

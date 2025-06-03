@@ -45,8 +45,10 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
   param_summary <- posterior::summarise_draws(
     fit$draws(c("param1", "param2"))
   )
-  params <- setNames(split(param_summary, param_summary$variable),
-                     param_summary$variable)
+  params <- setNames(
+    split(param_summary, param_summary$variable),
+    param_summary$variable
+  )
 
   # Calculate log-likelihood
   log_lik <- fit$draws("log_lik")
@@ -84,23 +86,24 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
 #' @param method Character string identifying the method
 #' @param error_msg Optional error message
 #' @return Data frame with NA values in standard format
-#' @export  
-create_empty_results <- function(fitting_grid, method, error_msg = NA_character_) {
+#' @export
+create_empty_results <- function(fitting_grid, method, 
+                                 error_msg = NA_character_) {
   data.frame(
     scenario_id = fitting_grid$scenario_id,
     sample_size = fitting_grid$sample_size,
     method = method,
     param1_est = NA_real_,
-    param1_se = NA_real_, 
+    param1_se = NA_real_,
     param1_q025 = NA_real_,
     param1_q975 = NA_real_,
     param2_est = NA_real_,
     param2_se = NA_real_,
-    param2_q025 = NA_real_, 
+    param2_q025 = NA_real_,
     param2_q975 = NA_real_,
     convergence = NA_real_,
     ess_bulk_min = NA_real_,
-    ess_tail_min = NA_real_, 
+    ess_tail_min = NA_real_,
     num_divergent = NA_integer_,
     max_treedepth = NA_integer_,
     loglik = NA_real_,
@@ -120,9 +123,10 @@ get_distribution_id <- function(distribution) {
 
 #' Extract distribution and growth rate from fitting grid
 #'
-#' @param fitting_grid Single row from fitting grid with distribution and growth_rate columns
+#' @param fitting_grid Single row from fitting grid with distribution and 
+#'   growth_rate columns
 #' @return List with distribution and growth_rate
-#' @export  
+#' @export
 extract_distribution_info <- function(fitting_grid) {
   list(
     distribution = fitting_grid$distribution[1],
@@ -183,9 +187,10 @@ get_param_names <- function(distribution) {
 #' @param truncation Character: truncation scenario for Ward model
 #' @return List of Stan data
 #' @export
-prepare_stan_data <- function(sampled_data, distribution, growth_rate, model_type = "naive", truncation = NULL) {
+prepare_stan_data <- function(sampled_data, distribution, growth_rate, 
+                              model_type = "naive", truncation = NULL) {
   dist_id <- get_distribution_id(distribution)
-  
+
   if (model_type == "naive") {
     list(
       N = nrow(sampled_data),
@@ -194,17 +199,18 @@ prepare_stan_data <- function(sampled_data, distribution, growth_rate, model_typ
     )
   } else if (model_type == "ward") {
     # Get censoring windows and observation times
-    pwindow_widths <- sampled_data$prim_cens_upper - sampled_data$prim_cens_lower
+    pwindow_widths <- sampled_data$prim_cens_upper - 
+      sampled_data$prim_cens_lower
     swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
     obs_times <- rep(get_relative_obs_time(truncation), nrow(sampled_data))
-    
+
     # Replace infinite values with large finite number for Stan
     obs_times[is.infinite(obs_times)] <- 1e6
-    
+
     list(
       N = nrow(sampled_data),
       Y = sampled_data$delay_observed,
-      obs_times = obs_times,           # Stan arrays are just vectors in R
+      obs_times = obs_times, # Stan arrays are just vectors in R
       pwindow_widths = pwindow_widths, # Stan arrays are just vectors in R
       swindow_widths = swindow_widths, # Stan arrays are just vectors in R
       dist_id = dist_id,

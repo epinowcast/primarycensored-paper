@@ -20,4 +20,3 @@ test_that("save_data function parameters are correct", {
   expect_length(formals(save_data), 2)
   expect_identical(names(formals(save_data)), c("data", "filename"))
 })
-

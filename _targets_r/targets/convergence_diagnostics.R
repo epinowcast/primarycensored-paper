@@ -2,7 +2,7 @@ tar_target(convergence_diagnostics, {
   # Extract convergence diagnostics from Bayesian model fits
   bayesian_fits <- simulated_model_fits |>
     dplyr::filter(method %in% c("primarycensored", "ward"))
-  
+
   if (nrow(bayesian_fits) == 0) {
     # Return empty structure if no Bayesian fits available
     data.frame(
