@@ -175,6 +175,7 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
   extract_distribution_info <- extract_distribution_info
   prepare_stan_data <- prepare_stan_data
   extract_posterior_estimates <- extract_posterior_estimates
+  get_shared_prior_settings <- get_shared_prior_settings
 
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
@@ -198,13 +199,23 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
 
   tryCatch(
     {
-      # Extract distribution info and prepare Stan data using shared functions
+      # Extract distribution info and get shared prior settings
       dist_info <- extract_distribution_info(fitting_grid)
+      bounds_priors <- get_shared_prior_settings(dist_info$distribution)
+      
+      # Prepare Ward-specific Stan data with shared bounds and priors
       stan_data <- prepare_stan_data(
         sampled_data, dist_info$distribution,
         dist_info$growth_rate, "ward",
         fitting_grid$truncation[1]
       )
+      
+      # Add shared bounds and priors to Stan data
+      stan_data$n_params <- 2L
+      stan_data$param_lower_bounds <- bounds_priors$param_bounds$lower
+      stan_data$param_upper_bounds <- bounds_priors$param_bounds$upper
+      stan_data$prior_location <- bounds_priors$priors$location
+      stan_data$prior_scale <- bounds_priors$priors$scale
 
       # Fit the Ward model using shared Stan settings
       fit <- do.call(model$sample, c(
