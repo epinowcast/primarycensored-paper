@@ -61,16 +61,14 @@ model {
       delay ~ gamma(param1, 1.0 / param2);
     }
     
-    // Truncation constraint if finite observation time
+    // Truncation constraint
     for (n in 1:N) {
-      if (obs_times[n] < 1e6) {  // If observation time is effectively finite
-        if (dist_id == 1) {
-          // Lognormal distribution truncation
-          target += -lognormal_lcdf(obs_times[n] - ptime[n] | param1, param2);
-        } else if (dist_id == 2) {
-          // Gamma distribution truncation
-          target += -gamma_lcdf(obs_times[n] - ptime[n] | param1, 1.0 / param2);
-        }
+      if (dist_id == 1) {
+        // Lognormal distribution truncation
+        target += -lognormal_lcdf(obs_times[n] - ptime[n] | param1, param2);
+      } else if (dist_id == 2) {
+        // Gamma distribution truncation
+        target += -gamma_lcdf(obs_times[n] - ptime[n] | param1, 1.0 / param2);
       }
     }
   }
