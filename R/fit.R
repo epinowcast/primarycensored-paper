@@ -163,6 +163,7 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
     return(create_empty_results(fitting_grid, "ward"))
   }
 
+
   tictoc::tic("fit_ward")
 
   # Compile model if not provided

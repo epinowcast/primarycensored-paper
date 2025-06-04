@@ -5,6 +5,8 @@ library(lintr)
 
 cat("🔍 Running R code linting...\n")
 
+devtools::load_all()
+
 # Lint entire package
 cat("Linting package...\n")
 lint_results <- lint_package()

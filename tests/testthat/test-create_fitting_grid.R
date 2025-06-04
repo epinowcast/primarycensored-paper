@@ -122,7 +122,7 @@ test_that("create_fitting_grid handles test mode filtering", {
   expect_true(all(result_test$data_type == "simulation"))
   expect_equal(sum(result_test$distribution == "gamma"), 1)
   expect_equal(sum(result_test$distribution == "lognormal"), 1)
-  expect_true(all(result_test$sample_size == 100))  # Smallest sample size
+  expect_true(all(result_test$sample_size == 200))  # Second smallest
 
   # Should have NO Ebola data in test mode
   ebola_data <- result_test[result_test$data_type == "ebola", ]

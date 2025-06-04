@@ -245,7 +245,7 @@ prepare_ward_stan_data <- function(sampled_data, shared_inputs, bounds_priors) {
   # Ward-specific requirements: censoring windows and observation times
   pwindow_widths <- sampled_data$prim_cens_upper - sampled_data$prim_cens_lower
   swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
-  obs_times <- rep(delay_data$relative_obs_time, nrow(sampled_data))
+  obs_times <- delay_data$relative_obs_time
 
   # Replace infinite values with large finite number for Stan
   obs_times[is.infinite(obs_times)] <- 1e6
