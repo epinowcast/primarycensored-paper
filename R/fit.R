@@ -173,9 +173,9 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
   # Suppress object_usage_linter warnings for utils.R functions
   create_empty_results <- create_empty_results
   extract_distribution_info <- extract_distribution_info
-  prepare_stan_data <- prepare_stan_data
   extract_posterior_estimates <- extract_posterior_estimates
   get_shared_prior_settings <- get_shared_prior_settings
+  prepare_shared_model_inputs <- prepare_shared_model_inputs
 
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]

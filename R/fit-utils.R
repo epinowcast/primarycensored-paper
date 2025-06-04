@@ -146,48 +146,6 @@ get_param_names <- function(distribution) {
   }
 }
 
-#' Prepare Stan data list for naive and Ward models
-#'
-#' @param sampled_data Data frame with delay observations
-#' @param distribution Character string: "gamma" or "lognormal"
-#' @param growth_rate Numeric growth rate value
-#' @param model_type Character: "naive" or "ward"
-#' @param truncation Character: truncation scenario for Ward model
-#' @return List of Stan data
-#' @export
-prepare_stan_data <- function(sampled_data, distribution, growth_rate,
-                              model_type = "naive", truncation = NULL) {
-  dist_id <- get_distribution_id(distribution)
-
-  if (model_type == "naive") {
-    list(
-      N = nrow(sampled_data),
-      delay_observed = sampled_data$delay_observed,
-      dist_id = dist_id
-    )
-  } else if (model_type == "ward") {
-    # Get censoring windows and observation times
-    pwindow_widths <- sampled_data$prim_cens_upper -
-      sampled_data$prim_cens_lower
-    swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
-    obs_times <- rep(get_relative_obs_time(truncation), nrow(sampled_data))
-
-    # Replace infinite values with large finite number for Stan
-    obs_times[is.infinite(obs_times)] <- 1e6
-
-    list(
-      N = nrow(sampled_data),
-      Y = sampled_data$delay_observed,
-      obs_times = obs_times, # Stan arrays are just vectors in R
-      pwindow_widths = pwindow_widths, # Stan arrays are just vectors in R
-      swindow_widths = swindow_widths, # Stan arrays are just vectors in R
-      dist_id = dist_id,
-      prior_only = 0
-    )
-  } else {
-    stop("Unknown model_type: ", model_type)
-  }
-}
 
 #' Get shared prior settings for delay distribution parameters
 #'
