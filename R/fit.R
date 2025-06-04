@@ -121,21 +121,21 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
       # Use shared prior settings
       bounds_priors <- get_shared_prior_settings(dist_info$distribution)
 
-      # Primary distribution parameters using shared settings
-      primary_bounds_priors <- get_shared_primary_priors(dist_info$growth_rate)
+      # Apply small padding to zero delays for naive model
+      padded_delays <- delay_data$delay
+      zero_mask <- padded_delays == 0
+      if (any(zero_mask)) {
+        padded_delays[zero_mask] <- 1e-6  # Small padding for zero delays
+      }
 
-      # Prepare Stan data using primarycensored framework
-      stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
-        list(delay_data, compute_log_lik = TRUE),
-        config, bounds_priors, primary_bounds_priors
-      ))
-
-      # Prepare naive Stan data with prior parameters
+      # Use primarycensored-style bounds and priors system
       naive_stan_data <- list(
-        N = stan_data$N,
-        delay_observed = delay_data$delay,
-        dist_id = stan_data$dist_id,
+        N = nrow(delay_data),
+        delay_observed = padded_delays,
+        dist_id = config$dist_id,
         n_params = 2,
+        param_lower_bounds = bounds_priors$param_bounds$lower,
+        param_upper_bounds = bounds_priors$param_bounds$upper,
         prior_location = bounds_priors$priors$location,
         prior_scale = bounds_priors$priors$scale
       )

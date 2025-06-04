@@ -76,7 +76,8 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
     num_divergent = sum(divergent_info$num_divergent %||% 0),
     max_treedepth = sum(divergent_info$num_max_treedepth %||% 0),
     loglik = total_log_lik,
-    runtime_seconds = runtime$toc - runtime$tic
+    runtime_seconds = runtime$toc - runtime$tic,
+    error_msg = NA_character_
   )
 }
 
