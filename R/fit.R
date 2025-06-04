@@ -6,15 +6,6 @@
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
-  # Suppress object_usage_linter warnings for utils.R functions
-  create_empty_results <- create_empty_results
-  extract_distribution_info <- extract_distribution_info
-  get_relative_obs_time <- get_relative_obs_time
-  extract_posterior_estimates <- extract_posterior_estimates
-  prepare_shared_model_inputs <- prepare_shared_model_inputs
-  get_shared_prior_settings <- get_shared_prior_settings
-  get_shared_primary_priors <- get_shared_primary_priors
-
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
@@ -84,15 +75,6 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
-  # Suppress object_usage_linter warnings for utils.R functions
-  create_empty_results <- create_empty_results
-  extract_distribution_info <- extract_distribution_info
-  get_relative_obs_time <- get_relative_obs_time
-  extract_posterior_estimates <- extract_posterior_estimates
-  prepare_shared_model_inputs <- prepare_shared_model_inputs
-  get_shared_prior_settings <- get_shared_prior_settings
-  get_shared_primary_priors <- get_shared_primary_priors
-
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
@@ -170,13 +152,6 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
-  # Suppress object_usage_linter warnings for utils.R functions
-  create_empty_results <- create_empty_results
-  extract_distribution_info <- extract_distribution_info
-  extract_posterior_estimates <- extract_posterior_estimates
-  get_shared_prior_settings <- get_shared_prior_settings
-  prepare_shared_model_inputs <- prepare_shared_model_inputs
-
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {
@@ -207,32 +182,10 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
       shared_inputs <- prepare_shared_model_inputs(
         sampled_data, fitting_grid, dist_info
       )
-      delay_data <- shared_inputs$delay_data
-      config <- shared_inputs$config
 
-      # Prepare Ward-specific Stan data using shared preprocessing
-      pwindow_widths <- sampled_data$prim_cens_upper -
-        sampled_data$prim_cens_lower
-      swindow_widths <- sampled_data$sec_cens_upper -
-        sampled_data$sec_cens_lower
-      obs_times <- rep(delay_data$relative_obs_time, nrow(sampled_data))
-      # Replace infinite values with large finite number for Stan
-      obs_times[is.infinite(obs_times)] <- 1e6
-
-      stan_data <- list(
-        N = nrow(sampled_data),
-        Y = delay_data$delay,
-        obs_times = obs_times,
-        pwindow_widths = pwindow_widths,
-        swindow_widths = swindow_widths,
-        dist_id = config$dist_id,
-        prior_only = 0,
-        # Add shared bounds and priors
-        n_params = 2L,
-        param_lower_bounds = bounds_priors$param_bounds$lower,
-        param_upper_bounds = bounds_priors$param_bounds$upper,
-        prior_location = bounds_priors$priors$location,
-        prior_scale = bounds_priors$priors$scale
+      # Prepare Ward-specific Stan data using shared inputs
+      stan_data <- prepare_ward_stan_data(
+        sampled_data, shared_inputs, bounds_priors
       )
 
       # Fit the Ward model using shared Stan settings
@@ -263,13 +216,6 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_primarycensored_mle <- function(fitting_grid) {
-  # Suppress object_usage_linter warnings for utils.R functions
-  create_empty_results <- create_empty_results
-  extract_distribution_info <- extract_distribution_info
-  get_relative_obs_time <- get_relative_obs_time
-  get_start_values <- get_start_values
-  get_param_names <- get_param_names
-
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
   if (is.null(sampled_data) || nrow(sampled_data) == 0) {

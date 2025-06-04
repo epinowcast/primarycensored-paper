@@ -227,3 +227,42 @@ prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
     config = config
   )
 }
+
+#' Prepare Ward-specific Stan data from shared model inputs
+#'
+#' Takes the output from prepare_shared_model_inputs and adds Ward-specific
+#' data requirements (censoring windows and observation times).
+#'
+#' @param sampled_data Data frame with delay observations and censoring windows
+#' @param shared_inputs Output from prepare_shared_model_inputs
+#' @param bounds_priors Output from get_shared_prior_settings
+#' @return List of Stan data for Ward model
+#' @export
+prepare_ward_stan_data <- function(sampled_data, shared_inputs, bounds_priors) {
+  delay_data <- shared_inputs$delay_data
+  config <- shared_inputs$config
+
+  # Ward-specific requirements: censoring windows and observation times
+  pwindow_widths <- sampled_data$prim_cens_upper - sampled_data$prim_cens_lower
+  swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
+  obs_times <- rep(delay_data$relative_obs_time, nrow(sampled_data))
+
+  # Replace infinite values with large finite number for Stan
+  obs_times[is.infinite(obs_times)] <- 1e6
+
+  list(
+    N = nrow(sampled_data),
+    Y = delay_data$delay,
+    obs_times = obs_times,
+    pwindow_widths = pwindow_widths,
+    swindow_widths = swindow_widths,
+    dist_id = config$dist_id,
+    prior_only = 0,
+    # Add shared bounds and priors
+    n_params = 2L,
+    param_lower_bounds = bounds_priors$param_bounds$lower,
+    param_upper_bounds = bounds_priors$param_bounds$upper,
+    prior_location = bounds_priors$priors$location,
+    prior_scale = bounds_priors$priors$scale
+  )
+}
