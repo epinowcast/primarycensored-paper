@@ -29,7 +29,12 @@ jobs:
         cmdstan-version: '2.36.0'
   
     - uses: r-lib/actions/setup-renv@v2
-      
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcurl4-openssl-dev libsecret-1-dev
+
     - name: Run test pipeline
       run: task test-run
       
