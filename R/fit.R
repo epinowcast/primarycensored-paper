@@ -11,6 +11,9 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
   extract_distribution_info <- extract_distribution_info
   get_relative_obs_time <- get_relative_obs_time
   extract_posterior_estimates <- extract_posterior_estimates
+  prepare_shared_model_inputs <- prepare_shared_model_inputs
+  get_shared_prior_settings <- get_shared_prior_settings
+  get_shared_primary_priors <- get_shared_primary_priors
 
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
@@ -26,37 +29,18 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
     model <- primarycensored::pcd_cmdstan_model()
   }
 
-  # Prepare delay data for primarycensored
-  delay_data <- data.frame(
-    delay = sampled_data$delay_observed,
-    delay_upper = sampled_data$sec_cens_upper,
-    n = 1,
-    pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-    relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
+  # Prepare shared data and configuration
+  shared_inputs <- prepare_shared_model_inputs(
+    sampled_data, fitting_grid, dist_info
   )
-
-  # Configuration based on distribution and growth rate
-  config <- list(
-    # primarycensored: lnorm=1, gamma=2
-    dist_id = if (dist_info$distribution == "gamma") 2L else 1L,
-    primary_id = if (dist_info$growth_rate == 0) 1L else 2L
-  )
+  delay_data <- shared_inputs$delay_data
+  config <- shared_inputs$config
 
   # Set bounds and priors using shared settings
   bounds_priors <- get_shared_prior_settings(dist_info$distribution)
 
-  # Primary distribution parameters
-  if (dist_info$growth_rate == 0) {
-    primary_bounds_priors <- list(
-      primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
-      primary_priors = list(location = numeric(0), scale = numeric(0))
-    )
-  } else {
-    primary_bounds_priors <- list(
-      primary_param_bounds = list(lower = c(0.01), upper = c(10)),
-      primary_priors = list(location = c(0.2), scale = c(1))
-    )
-  }
+  # Primary distribution parameters using shared settings
+  primary_bounds_priors <- get_shared_primary_priors(dist_info$growth_rate)
 
   tryCatch(
     {
@@ -89,7 +73,8 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
 
 #' Fit naive Bayesian model
 #'
-#' Baseline comparison method that ignores primary event censoring and truncation.
+#' Baseline comparison method that ignores primary event censoring and
+#' truncation.
 #' Uses the same priors as primarycensored for fair comparison - only the
 #' likelihood differs (treats censored delays as true delays).
 #'
@@ -104,6 +89,9 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
   extract_distribution_info <- extract_distribution_info
   get_relative_obs_time <- get_relative_obs_time
   extract_posterior_estimates <- extract_posterior_estimates
+  prepare_shared_model_inputs <- prepare_shared_model_inputs
+  get_shared_prior_settings <- get_shared_prior_settings
+  get_shared_primary_priors <- get_shared_primary_priors
 
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
@@ -123,37 +111,18 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
 
   tryCatch(
     {
-      # Use primarycensored data preparation for consistency
-      delay_data <- data.frame(
-        delay = sampled_data$delay_observed,
-        delay_upper = sampled_data$sec_cens_upper,
-        n = 1,
-        pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-        relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
+      # Use shared data preparation for consistency
+      shared_inputs <- prepare_shared_model_inputs(
+        sampled_data, fitting_grid, dist_info
       )
-
-      # Configuration based on distribution and growth rate
-      config <- list(
-        # primarycensored: lnorm=1, gamma=2
-        dist_id = if (dist_info$distribution == "gamma") 2L else 1L,
-        primary_id = if (dist_info$growth_rate == 0) 1L else 2L
-      )
+      delay_data <- shared_inputs$delay_data
+      config <- shared_inputs$config
 
       # Use shared prior settings
       bounds_priors <- get_shared_prior_settings(dist_info$distribution)
 
-      # Primary distribution parameters (same as primarycensored)
-      if (dist_info$growth_rate == 0) {
-        primary_bounds_priors <- list(
-          primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
-          primary_priors = list(location = numeric(0), scale = numeric(0))
-        )
-      } else {
-        primary_bounds_priors <- list(
-          primary_param_bounds = list(lower = c(0.01), upper = c(10)),
-          primary_priors = list(location = c(0.2), scale = c(1))
-        )
-      }
+      # Primary distribution parameters using shared settings
+      primary_bounds_priors <- get_shared_primary_priors(dist_info$growth_rate)
 
       # Prepare Stan data using primarycensored framework
       stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
@@ -161,11 +130,14 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
         config, bounds_priors, primary_bounds_priors
       ))
 
-      # Extract only delay_observed and dist_id for naive model
+      # Prepare naive Stan data with prior parameters
       naive_stan_data <- list(
         N = stan_data$N,
         delay_observed = delay_data$delay,
-        dist_id = stan_data$dist_id
+        dist_id = stan_data$dist_id,
+        n_params = 2,
+        prior_location = bounds_priors$priors$location,
+        prior_scale = bounds_priors$priors$scale
       )
 
       # Fit the model using shared Stan settings

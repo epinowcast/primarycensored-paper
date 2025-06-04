@@ -17,7 +17,8 @@ fit_naive(fitting_grid, stan_settings, model = NULL)
 Data frame with parameter estimates and diagnostics
 }
 \description{
-Baseline comparison method that ignores primary event censoring and truncation.
+Baseline comparison method that ignores primary event censoring and
+truncation.
 Uses the same priors as primarycensored for fair comparison - only the
 likelihood differs (treats censored delays as true delays).
 }

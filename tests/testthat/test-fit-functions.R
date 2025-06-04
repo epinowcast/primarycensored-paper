@@ -139,7 +139,6 @@ test_that("fit_naive recovers gamma parameters from uncensored data", {
   n <- 100
   true_shape <- 3
   true_scale <- 2
-  
   # Generate truly uncensored data (no censoring at all)
   delays <- rgamma(n, shape = true_shape, scale = true_scale)
 
@@ -172,17 +171,14 @@ test_that("fit_naive recovers gamma parameters from uncensored data", {
 
   expect_s3_class(result, "data.frame")
   expect_identical(result$method, "naive")
-  
   # Parameter recovery should be good with uncensored data
   expect_gt(result$param1_est, 0) # Shape should be positive
   expect_gt(result$param2_est, 0) # Scale should be positive
-  
   # Check recovery is within reasonable bounds (allowing for MCMC error)
   expect_gt(result$param1_est, true_shape * 0.7) # Within 30% for shape
   expect_lt(result$param1_est, true_shape * 1.3)
   expect_gt(result$param2_est, true_scale * 0.7) # Within 30% for scale
   expect_lt(result$param2_est, true_scale * 1.3)
-  
   # Check no error occurred
   expect_true(is.na(result$error_msg) || result$error_msg == "")
 })
@@ -194,7 +190,6 @@ test_that("fit_naive recovers lognormal parameters from uncensored data", {
   n <- 100
   true_meanlog <- 1.0
   true_sdlog <- 0.8
-  
   # Generate truly uncensored data (no censoring at all)
   delays <- rlnorm(n, meanlog = true_meanlog, sdlog = true_sdlog)
 
@@ -227,16 +222,14 @@ test_that("fit_naive recovers lognormal parameters from uncensored data", {
 
   expect_s3_class(result, "data.frame")
   expect_identical(result$method, "naive")
-  
   # Parameter recovery should be good with uncensored data
   expect_gt(result$param2_est, 0) # sdlog should be positive
-  
   # Check recovery is within reasonable bounds (allowing for MCMC error)
-  expect_gt(result$param1_est, true_meanlog - 0.3) # Within reasonable range for meanlog
+  expect_gt(result$param1_est, true_meanlog - 0.3)  # Within reasonable range
+  # for meanlog
   expect_lt(result$param1_est, true_meanlog + 0.3)
   expect_gt(result$param2_est, true_sdlog * 0.7) # Within 30% for sdlog
   expect_lt(result$param2_est, true_sdlog * 1.3)
-  
   # Check no error occurred
   expect_true(is.na(result$error_msg) || result$error_msg == "")
 })
@@ -249,7 +242,6 @@ test_that("fit_naive shows bias with censored data (expected behaviour)", {
   n <- 100
   true_shape <- 2.5
   true_scale <- 1.5
-  
   # Generate censored data using primarycensored
   censored_data <- primarycensored::rprimarycensored(
     n = n,
@@ -290,12 +282,10 @@ test_that("fit_naive shows bias with censored data (expected behaviour)", {
 
   expect_s3_class(result, "data.frame")
   expect_identical(result$method, "naive")
-  
   # Parameters should be biased away from true values (expected with censoring)
   # This demonstrates why proper censoring methods are needed
   expect_gt(result$param1_est, 0) # Shape should be positive
   expect_gt(result$param2_est, 0) # Scale should be positive
-  
   # Check no error occurred (the bias is expected, not an error)
   expect_true(is.na(result$error_msg) || result$error_msg == "")
 })
