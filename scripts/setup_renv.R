@@ -17,7 +17,10 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 
 # Initialize renv if not already done
 if (!file.exists("renv.lock")) {
-  renv::init(bare = TRUE)
+  renv::init(settings = list(
+    package.dependency.fields = 
+      c("Imports", "Depends", "LinkingTo", "Suggests")
+  ))
   message("renv initialized. Use task install to add packages.")
 } else {
   message("renv already initialized.")

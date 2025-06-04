@@ -88,6 +88,13 @@ library(patchwork)
 library(purrr)
 library(here)
 library(crew)
+library(tidyr)
+library(dplyr)
+library(qs2)
+library(primarycensored)
+library(cmdstanr)
+library(tictoc)
+library(posterior)
 
 # Source all R functions
 functions <- list.files(here("R"), full.names = TRUE, pattern = "\\.R$")
