@@ -63,7 +63,7 @@ model {
     
     // Truncation constraint if finite observation time
     for (n in 1:N) {
-      if (obs_times[n] < 1e5) {  // If observation time is effectively finite
+      if (obs_times[n] < 1e6) {  // If observation time is effectively finite
         if (dist_id == 1) {
           // Lognormal distribution truncation
           target += -lognormal_lcdf(obs_times[n] - ptime[n] | param1, param2);
