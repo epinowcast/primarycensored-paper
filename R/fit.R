@@ -202,14 +202,14 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
       # Extract distribution info and get shared prior settings
       dist_info <- extract_distribution_info(fitting_grid)
       bounds_priors <- get_shared_prior_settings(dist_info$distribution)
-      
+
       # Prepare Ward-specific Stan data with shared bounds and priors
       stan_data <- prepare_stan_data(
         sampled_data, dist_info$distribution,
         dist_info$growth_rate, "ward",
         fitting_grid$truncation[1]
       )
-      
+
       # Add shared bounds and priors to Stan data
       stan_data$n_params <- 2L
       stan_data$param_lower_bounds <- bounds_priors$param_bounds$lower
