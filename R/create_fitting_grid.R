@@ -61,8 +61,11 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
     # For each distribution, select one scenario with next smallest sample size
     # Use second smallest instead of smallest for better Ward model validation
     sorted_sizes <- sort(unique(sample_sizes))
-    min_test_sample_size <- if (length(sorted_sizes) > 1) sorted_sizes[2] else sorted_sizes[1]
-    
+    min_test_sample_size <- if (length(sorted_sizes) > 1) {
+      sorted_sizes[2]
+    } else {
+      sorted_sizes[1]
+    }
     combined_grid <- sim_only |>
       dplyr::group_by(distribution) |>
       dplyr::filter(sample_size >= min_test_sample_size) |>
