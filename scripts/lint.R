@@ -5,29 +5,15 @@ library(lintr)
 
 cat("🔍 Running R code linting...\n")
 
-# Lint R directory
-cat("Linting R/ directory...\n")
-lint_results_r <- lint_dir("R")
-print(lint_results_r)
+devtools::load_all()
 
-# Lint scripts directory
-cat("Linting scripts/ directory...\n")
-lint_results_scripts <- lint_dir("scripts")
-print(lint_results_scripts)
-
-# Lint tests directory
-cat("Linting tests/ directory...\n")
-lint_results_tests <- lint_dir("tests")
-print(lint_results_tests)
-
-# Lint _targets.Rmd
-cat("Linting _targets.Rmd...\n")
-lint_results_targets <- lint("_targets.Rmd")
-print(lint_results_targets)
+# Lint entire package
+cat("Linting package...\n")
+lint_results <- lint_package()
+print(lint_results)
 
 # Count total issues
-total_issues <- length(lint_results_r) + length(lint_results_scripts) +
-  length(lint_results_tests) + length(lint_results_targets)
+total_issues <- length(lint_results)
 
 if (total_issues == 0) {
   cat("✅ No linting issues found\n")

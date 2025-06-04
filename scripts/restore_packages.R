@@ -17,7 +17,13 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 }
 
 # Restore packages from lockfile
-renv::restore(prompt = FALSE)
+status <- renv::status()
+if (status$synchronized) {
+  message("Project is already synchronized with lockfile")
+} else {
+  message("Restoring packages from lockfile...")
+  renv::restore(prompt = FALSE)
+}
 
 # Special handling for cmdstanr - install CmdStan v2.36.0
 # Check after dependencies are restored to ensure cmdstanr is available
