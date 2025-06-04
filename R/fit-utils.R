@@ -208,8 +208,8 @@ get_shared_primary_priors <- function(growth_rate) {
 prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
   # Prepare delay data for primarycensored framework
   delay_data <- data.frame(
-    delay = sampled_data$delay_observed,
-    delay_upper = sampled_data$sec_cens_upper,
+    delay = as.numeric(sampled_data$delay_observed),
+    delay_upper = as.numeric(sampled_data$sec_cens_upper),
     n = 1,
     pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
     relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
