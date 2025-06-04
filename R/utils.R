@@ -76,7 +76,8 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
     num_divergent = sum(divergent_info$num_divergent %||% 0),
     max_treedepth = sum(divergent_info$num_max_treedepth %||% 0),
     loglik = total_log_lik,
-    runtime_seconds = runtime$toc - runtime$tic
+    runtime_seconds = runtime$toc - runtime$tic,
+    error_msg = NA_character_
   )
 }
 
@@ -115,10 +116,11 @@ create_empty_results <- function(fitting_grid, method,
 #' Get distribution ID for Stan models
 #'
 #' @param distribution Character string: "gamma" or "lognormal"
-#' @return Integer distribution ID for Stan
+#' @return Integer distribution ID for Stan (1=lognormal, 2=gamma,
+#'   matches primarycensored)
 #' @export
 get_distribution_id <- function(distribution) {
-  if (distribution == "gamma") 1L else 2L
+  if (distribution == "gamma") 2L else 1L
 }
 
 #' Extract distribution and growth rate from fitting grid
@@ -219,4 +221,85 @@ prepare_stan_data <- function(sampled_data, distribution, growth_rate,
   } else {
     stop("Unknown model_type: ", model_type)
   }
+}
+
+#' Get shared prior settings for delay distribution parameters
+#'
+#' Returns the prior bounds and hyperparameters used across all methods
+#' to ensure fair comparison. These match the primarycensored defaults.
+#'
+#' @param distribution Character string: "gamma" or "lognormal"
+#' @return List with bounds_priors containing param_bounds and priors
+#' @export
+get_shared_prior_settings <- function(distribution) {
+  if (distribution == "gamma") {
+    list(
+      param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
+      priors = list(location = c(2, 2), scale = c(1, 1))
+    )
+  } else if (distribution == "lognormal") {
+    list(
+      param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
+      priors = list(location = c(1.5, 2), scale = c(1, 1))
+    )
+  } else {
+    stop("Unknown distribution: ", distribution)
+  }
+}
+
+#' Get shared primary distribution prior settings
+#'
+#' Returns the primary distribution prior bounds and hyperparameters used
+#' across all methods to ensure fair comparison. These match the
+#' primarycensored defaults.
+#'
+#' @param growth_rate Numeric growth rate value
+#' @return List with primary_param_bounds and primary_priors
+#' @export
+get_shared_primary_priors <- function(growth_rate) {
+  if (growth_rate == 0) {
+    list(
+      primary_param_bounds = list(lower = numeric(0), upper = numeric(0)),
+      primary_priors = list(location = numeric(0), scale = numeric(0))
+    )
+  } else {
+    list(
+      primary_param_bounds = list(lower = c(0.01), upper = c(10)),
+      primary_priors = list(location = c(0.2), scale = c(1))
+    )
+  }
+}
+
+#' Prepare shared data and configuration for primarycensored-framework models
+#'
+#' Prepares delay data and configuration settings used by both primarycensored
+#' and naive models to ensure consistency.
+#'
+#' @param sampled_data Data frame with delay observations and censoring windows
+#' @param fitting_grid Single row from fitting grid with truncation info
+#' @param dist_info List with distribution and growth_rate from
+#'   extract_distribution_info()
+#' @return List containing delay_data and config
+#' @export
+prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
+  # Prepare delay data for primarycensored framework
+  delay_data <- data.frame(
+    delay = sampled_data$delay_observed,
+    delay_upper = sampled_data$sec_cens_upper,
+    n = 1,
+    pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
+    relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
+  )
+
+  # Configuration based on distribution and growth rate
+  config <- list(
+    # primarycensored: lnorm=1, gamma=2
+    dist_id = if (dist_info$distribution == "gamma") 2L else 1L,
+    primary_id = if (dist_info$growth_rate == 0) 1L else 2L
+  )
+
+  list(
+    delay_data = delay_data,
+    config = config
+  )
 }
