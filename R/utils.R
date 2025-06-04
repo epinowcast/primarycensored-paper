@@ -115,10 +115,10 @@ create_empty_results <- function(fitting_grid, method,
 #' Get distribution ID for Stan models
 #'
 #' @param distribution Character string: "gamma" or "lognormal"
-#' @return Integer distribution ID for Stan
+#' @return Integer distribution ID for Stan (1=lognormal, 2=gamma, matches primarycensored)
 #' @export
 get_distribution_id <- function(distribution) {
-  if (distribution == "gamma") 1L else 2L
+  if (distribution == "gamma") 2L else 1L
 }
 
 #' Extract distribution and growth rate from fitting grid
@@ -218,5 +218,29 @@ prepare_stan_data <- function(sampled_data, distribution, growth_rate,
     )
   } else {
     stop("Unknown model_type: ", model_type)
+  }
+}
+
+#' Get shared prior settings for delay distribution parameters
+#'
+#' Returns the prior bounds and hyperparameters used across all methods
+#' to ensure fair comparison. These match the primarycensored defaults.
+#'
+#' @param distribution Character string: "gamma" or "lognormal"
+#' @return List with bounds_priors containing param_bounds and priors
+#' @export
+get_shared_prior_settings <- function(distribution) {
+  if (distribution == "gamma") {
+    list(
+      param_bounds = list(lower = c(0.01, 0.01), upper = c(50, 50)),
+      priors = list(location = c(2, 2), scale = c(1, 1))
+    )
+  } else if (distribution == "lognormal") {
+    list(
+      param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
+      priors = list(location = c(1.5, 2), scale = c(1, 1))
+    )
+  } else {
+    stop("Unknown distribution: ", distribution)
   }
 }

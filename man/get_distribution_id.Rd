@@ -10,7 +10,7 @@ get_distribution_id(distribution)
 \item{distribution}{Character string: "gamma" or "lognormal"}
 }
 \value{
-Integer distribution ID for Stan
+Integer distribution ID for Stan (1=lognormal, 2=gamma, matches primarycensored)
 }
 \description{
 Get distribution ID for Stan models
