@@ -34,7 +34,11 @@ task run
 - `sample_sizes`: Monte Carlo sample sizes (default: c(10,100,1000,10000))
 - `growth_rates`: Primary event growth rates (default: c(0,0.2))
 - `base_seed`: Random seed (default: 100)
-- `test_mode`: Fast test mode (reduces scenarios significantly)
+- `test_mode`: Fast test mode for rapid development (default: true)
+  - Excludes Ebola case study data completely
+  - Uses only one scenario per distribution (gamma, lognormal)
+  - Uses second smallest sample size for better Ward model validation
+  - Reduces pipeline runtime from hours to minutes
 
 ### Alternative Configuration Methods
 

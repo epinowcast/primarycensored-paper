@@ -79,9 +79,13 @@ generated quantities {
 
   for (n in 1:N) {
     if (dist_id == 1) {
-      log_lik[n] = lognormal_lpdf(delay[n] | param1, param2);
+      // Lognormal log likelihood with truncation adjustment
+      log_lik[n] = lognormal_lpdf(delay[n] | param1, param2)
+                   - lognormal_lcdf(obs_times[n] - ptime[n] | param1, param2);
     } else {
-      log_lik[n] = gamma_lpdf(delay[n] | param1, 1.0 / param2);
+      // Gamma log likelihood with truncation adjustment
+      log_lik[n] = gamma_lpdf(delay[n] | param1, 1.0 / param2)
+                   - gamma_lcdf(obs_times[n] - ptime[n] | param1, 1.0 / param2);
     }
   }
 }

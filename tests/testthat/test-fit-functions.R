@@ -422,12 +422,25 @@ test_that("fit_ward recovers lognormal parameters from censored data", {
 
 test_that("fit_ward handles zero delays correctly", {
   skip_if_not_installed("cmdstanr")
+  skip_if_not_installed("primarycensored")
 
   set.seed(151617)
-  n <- 30
-  # Create some data that includes near-zero delays
-  delays <- c(rep(1e-6, 5), rgamma(n - 5, shape = 2, scale = 1.5))
+  n <- 50
 
+  # Generate properly censored data using primarycensored
+  # Use parameters that naturally generate some zero delays
+  delays <- primarycensored::rprimarycensored(
+    n = n,
+    # Lower scale to get more zeros
+    rdist = function(n) rgamma(n, shape = 1.5, scale = 0.5),
+    rprimary = stats::runif,
+    rprimary_args = list(),
+    pwindow = 1,
+    swindow = 1,
+    D = 8  # Lower truncation to increase zero probability
+  )
+
+  # Create properly structured censored data
   sampled_data <- data.frame(
     delay_observed = delays,
     prim_cens_lower = 0,
@@ -457,9 +470,11 @@ test_that("fit_ward handles zero delays correctly", {
 
   expect_s3_class(result, "data.frame")
   expect_identical(result$method, "ward")
-  # Should not crash with zero delays
+  # Should handle zero delays without crashing
   expect_gt(result$param1_est, 0) # Shape should be positive
   expect_gt(result$param2_est, 0) # Scale should be positive
+  # Should not return error
+  expect_true(is.na(result$error_msg) || result$error_msg == "")
 })
 
 test_that("fit_ward rejects large datasets", {

@@ -203,19 +203,37 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
       dist_info <- extract_distribution_info(fitting_grid)
       bounds_priors <- get_shared_prior_settings(dist_info$distribution)
 
-      # Prepare Ward-specific Stan data with shared bounds and priors
-      stan_data <- prepare_stan_data(
-        sampled_data, dist_info$distribution,
-        dist_info$growth_rate, "ward",
-        fitting_grid$truncation[1]
+      # Use shared data preparation for consistency
+      shared_inputs <- prepare_shared_model_inputs(
+        sampled_data, fitting_grid, dist_info
       )
+      delay_data <- shared_inputs$delay_data
+      config <- shared_inputs$config
 
-      # Add shared bounds and priors to Stan data
-      stan_data$n_params <- 2L
-      stan_data$param_lower_bounds <- bounds_priors$param_bounds$lower
-      stan_data$param_upper_bounds <- bounds_priors$param_bounds$upper
-      stan_data$prior_location <- bounds_priors$priors$location
-      stan_data$prior_scale <- bounds_priors$priors$scale
+      # Prepare Ward-specific Stan data using shared preprocessing
+      pwindow_widths <- sampled_data$prim_cens_upper -
+        sampled_data$prim_cens_lower
+      swindow_widths <- sampled_data$sec_cens_upper -
+        sampled_data$sec_cens_lower
+      obs_times <- rep(delay_data$relative_obs_time, nrow(sampled_data))
+      # Replace infinite values with large finite number for Stan
+      obs_times[is.infinite(obs_times)] <- 1e6
+
+      stan_data <- list(
+        N = nrow(sampled_data),
+        Y = delay_data$delay,
+        obs_times = obs_times,
+        pwindow_widths = pwindow_widths,
+        swindow_widths = swindow_widths,
+        dist_id = config$dist_id,
+        prior_only = 0,
+        # Add shared bounds and priors
+        n_params = 2L,
+        param_lower_bounds = bounds_priors$param_bounds$lower,
+        param_upper_bounds = bounds_priors$param_bounds$upper,
+        prior_location = bounds_priors$priors$location,
+        prior_scale = bounds_priors$priors$scale
+      )
 
       # Fit the Ward model using shared Stan settings
       fit <- do.call(model$sample, c(

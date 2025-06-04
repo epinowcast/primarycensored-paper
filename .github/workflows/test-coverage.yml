@@ -33,11 +33,6 @@ jobs:
         with:
           cmdstan-version: '2.36.0'
 
-      - name: Install task
-        run: |
-          sh -c "$(curl -ssL https://taskfile.dev/install.sh)"
-          sudo mv ./bin/task /usr/local/bin/
-
       - name: Test coverage
         run: |
           covr::codecov(
