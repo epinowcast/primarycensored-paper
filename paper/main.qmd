@@ -71,7 +71,7 @@ In practice, however, neither $P_u$ nor $S$ is typically observed. Instead, we o
 
 The secondary event time is naturally bounded below by $P_u$, whereas $P_u$ is in principle unconstrained. In the following analysis we also consider the censored primary event time,
 
-$$P = P_u \mid P_u \in [t_P, t_P + w_P].$$
+$$P = P_u \mid P_u \in [t_P, t_P + w_P].$$ {#eq-defP}
 
 The censored primary event time $P$ is bounded below by the start of the primary window, which will be useful in the derivations below. 
 The observed censored delay time, $T_c$, is measured from the start of the primary window to the start of the secondary window: $T_c = t_S - t_P$.
@@ -86,7 +86,7 @@ $$f_P(p) = f_{P_u \mid P_u \in [t_P, t_P + w_P]}(p) = \frac{f_{P_u}(p)}{F_{P_u}(
 
 In the simplest case, primary events occur uniformly within their censoring windows, but in real epidemiological situations, they often follow non-uniform patterns. During epidemic growth, for example, events are more likely to occur near the end of their censoring windows, while during decline, they are more likely to occur near the beginning. This can be modeled using an exponentially tilted distribution:
 
-$$f_P(t) \propto \exp(r t) \mathbb{1}_{[t_P, t_P + w_P]}(t)$$ {#eq-condP}
+$$f_P(p) \propto \exp(r p) \mathbb{1}_{[t_P, t_P + w_P]}(p)$$ {#eq-condP}
 
 where $r$ controls the growth/decline rate.
 
@@ -151,28 +151,28 @@ $$ {#eq-cdfbasic}
 
 However, in most epidemiological contexts, the primary event is also interval-censored, creating double interval censoring. Following the approach of Park et al. [@Park2024.01.12.24301247], we treat the primary and secondary censoring as separable problems, rather than using the joint interval approach described by Reich et al. [@Reich2009-aa]. This separation significantly simplifies the mathematical formulation.
 
-With primary event censoring, the primary event is known only to have occurred within the interval $[t_P, t_P + w_P]$. Therefore, the observed delay from $t_P$ until the secondary event will be longer than the true delay since it includes the time between the start of the primary window and the primary event time. We denote the duration between the beginning of the primary window, but before the actual primary event time, $A$. The random adjustment $A$ represents the difference between true delay time between the primary and secondary events, $T$, and the adjusted delay time between the beginning of the primary event censor window and the true delay time, $T_{\text{adj}}$,
+With primary event censoring, the primary event is known only to have occurred within the interval $[t_P, t_P + w_P]$. Therefore, the observed delay from $t_P$ until the secondary event will be longer than the true delay since it includes the time between the start of the primary window and the primary event time. We denote the duration between the beginning of the primary window, but before the actual primary event time, $A$. The random adjustment $A$ represents the difference between true delay time between the primary and secondary events, $T$, and the adjusted delay time between the beginning of the primary event censor window and the secondary event time, $T_{\text{cens}}$,
 
 $$
 \begin{aligned}
 A &= P_u - t_P, \\
-T_{\text{adj}} &= T + A.
+T_{\text{cens}} &= T + A.
 \end{aligned}
 $$ {#eq-Tadj}
 
-Although both the true delay $T$ and the adjusted delay $T_{\text{adj}}$ are latent unobserved quantities, recasting the problem in terms of the adjusted delay allows us to separate our analysis into two tractable problems.
+Although both the true delay $T$ and the adjusted delay $T_{\text{cens}}$ are latent unobserved quantities, recasting the problem in terms of the adjusted delay allows us to separate our analysis into two tractable problems by converting from a double interval censoring problem into a single interval censoring problem with an adjusted delay distribution.
 
-The first problem is relating the observed censoring delay $T_c$ to the unobserved adjusted delay $T_{\text{adj}}$. Because the beginning time of the adjusted delay is fixed to $t_P$ by construction, we can replace the true delay CDF in @eq-cdfbasic above with the adjusted delay distribution,
+The first problem is relating the observed censoring delay $T_c$ to the unobserved censoring adjusted delay $T_{\text{cens}}$. Because the beginning time of the adjusted delay is fixed to $t_P$ by construction, we can replace the true delay CDF in @eq-cdfbasic above with the adjusted delay distribution,
 
 $$
-\Pr(T_c = t_S - t_P \mid \text{observed}) = \frac{F_{\text{adj}}(t_S + w_S - t_P) - F_{\text{adj}}(t_S - t_P)}{F_{\text{adj}}(D - t_P)}.
+\Pr(T_c = t_S - t_P \mid \text{observed}) = \frac{F_{\text{cens}}(t_S + w_S - t_P) - F_{\text{cens}}(t_S - t_P)}{F_{\text{cens}}(D - t_P)}.
 $$ {#eq-cdfadj}
 
-The second problem is efficiently calculating the cumulative distribution function (CDF) of the adjusted delay $F_{\text{adj}}(q) = \Pr(T_{\text{adj}} < q)$ so that we can apply @eq-cdfadj to constructing the PMF for $T_c$ and in likelihood calculations for estimating $\theta$ (@eq-loglike). In the next section, we focus on this derivation.
+The second problem is efficiently calculating the cumulative distribution function (CDF) of the adjusted delay $F_{\text{cens}}(q) = \Pr(T_{\text{cens}} < q)$ so that we can apply @eq-cdfadj to constructing the PMF for $T_c$ and in likelihood calculations for estimating $\theta$ (@eq-loglike). In the next section, we focus on this derivation.
 
 #### Primary event censored distributions
 
-Having established the importance of the adjusted delay time CDF ($F_{\text{adj}}$) in the previous section, we now focus on deriving this distribution.
+Having established the importance of the censoring adjusted delay time CDF ($F_{\text{cens}}$) in the previous section, we now focus on deriving this distribution.
 
 The CDF of the sum of two independent random variables, $X$, $Y$, is 
 
@@ -180,25 +180,30 @@ $$
 F_{X+Y}(q) = \mathbb{E}_Y[F_X(q-Y)].
 $$ {#eq-sumcdf}  
 
-Applying @eq-sumcdf to @eq-Tadj gives
+Applying @eq-sumcdf to @eq-Tadj and using the definition for $P$ @eq-defP,
 
-$$F_{\text{adj}}(q) = \mathbb{E}_{P_u \mid P_u \in [t_P, t_P + w_P]}[\Pr(T \leq (q + t_P - P_u)]$$
+$$
+\begin{aligned}
+F_{\text{cens}}(q) &= \mathbb{E}_{P_u \mid P_u \in [t_P, t_P + w_P]}[\Pr(T \leq (q + t_P - P_u)] \\
+ &= \mathbb{E}_{P}[\Pr(T \leq (q + t_P - P)]
+\end{aligned}
+$$
 
 For continuous random variables, expectations are calculated using integrals. This gives us:
 
-$$F_{\text{adj}}(q) = \int_{t_P}^{t_P + w_P} \Pr(T \leq q + t_P - p ) \cdot f_{P}(p) \, dp$$
+$$F_{\text{cens}}(q) = \int_{t_P}^{t_P + w_P} \Pr(T \leq q + t_P - p ) \cdot f_{P}(p) \, dp$$
 
 where $f_P$ is the conditional PDF of the primary event within its censoring window (@eq-condP).
 
 Because $f_P$ is usually expressed in a simple form, c.f. @eq-condP, it is convenient to make the variable substitution $u = p - t_P$ and write $\Pr(T \leq q + t_P - p )$ in terms of the distribution function of delay time $T$
 
-$$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du.$$ {#eq-Fadj}
+$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot f_P(t_P + u) \, du.$$ {#eq-Fadj}
 
 This will reduce the @eq-Fadj to a simple form whenever $f_P$ is modelled as a simple distribution.
 
-@eq-Fadj gives us a general solution to the adjusted delay time CDF as a single variable integral problem. Because $F_{\text{adj}}$ is a single variable integral problem, we can use numerical quadrature to efficiently evaluate this integral for any delay distribution with an analytic representation of its distribution function, or derive analytical solutions for specific parametric distributions, as we will explore in the next section.
+@eq-Fadj gives us a general solution to the adjusted delay time CDF as a single variable integral problem. Because $F_{\text{cens}}$ is a single variable integral problem, we can use numerical quadrature to efficiently evaluate this integral for any delay distribution with an analytic representation of its distribution function, or derive analytical solutions for specific parametric distributions, as we will explore in the next section.
 
-As shown in @eq-cdfadj, solving for $F_{\text{adj}}$ also solves for the secondary censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
+As shown in @eq-cdfadj, solving for $F_{\text{cens}}$ also solves for the secondary censored delay PMF in an exact manner that properly accounts for the uncertainty in the primary event time. See the SI for an alternative treatment based on the survival functions and connections to the approaches of Park et al. [@Park2024.01.12.24301247], Reich et al. [@Reich2009-aa], and Cori et al. [@Cori2013].
 
 ### Analytical solutions
 
@@ -218,11 +223,11 @@ $$f_P(t) = \frac{1}{w_P} \mathbb{1}_{[t_P, t_P + w_P]}(t)$$
 
 In this case, our adjusted delay time CDF integral simplifies to:
 
-$$F_{\text{adj}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \frac{1}{w_P} \int_{0}^{w_P} F_T(q - u) \, du$$
+$$F_{\text{cens}}(q) = \int_{0}^{w_P} F_T(q - u) \cdot \frac{1}{w_P} \, du = \frac{1}{w_P} \int_{0}^{w_P} F_T(q - u) \, du$$
 
 This integral can be evaluated using integration by parts, transforming it into:
 
-$$F_{\text{adj}}(q) = F_T(q) + \frac{1}{w_P} \left[ \int_q^{q+w_P} f_T(z) (z-q) \, dz \right]$$
+$$F_{\text{cens}}(q) = F_T(q) + \frac{1}{w_P} \left[ \int_q^{q+w_P} f_T(z) (z-q) \, dz \right]$$
 
 #### The role of partial expectation in analytical solutions
 
@@ -250,7 +255,7 @@ The complete mathematical derivations are provided in the Supporting Information
 
 #### R interface
 
-The `primarycensored` R package implements the analytical and numerical solutions described in previous sections. The package follows R's standard distribution function pattern with density, distribution, quantile, and random generation functions that mirror base R naming conventions. The core functionality is implemented as S3 methods, enabling straightforward extension with new analytical solutions. The interface supports arbitrary delay distributions through their distribution functions (e.g., `lnorm` for lognormal) and includes optimised analytical implementations for the adjusted delay time CDF ($F_{\text{adj}}$) for gamma, lognormal, and Weibull distributions with uniform primary event times. The package also provides utility functions for exponentially tilted primary event distributions. All functions support any mixture of primary and secondary censoring intervals of varying widths, as well as heterogeneous observation times across observations. The package is fully documented and includes examples in the vignettes. All functionality is tested for correctness and performance. It is available on CRAN and GitHub [@primarycensored; @primarycensoredgithub].
+The `primarycensored` R package implements the analytical and numerical solutions described in previous sections. The package follows R's standard distribution function pattern with density, distribution, quantile, and random generation functions that mirror base R naming conventions. The core functionality is implemented as S3 methods, enabling straightforward extension with new analytical solutions. The interface supports arbitrary delay distributions through their distribution functions (e.g., `lnorm` for lognormal) and includes optimised analytical implementations for the adjusted delay time CDF ($F_{\text{cens}}$) for gamma, lognormal, and Weibull distributions with uniform primary event times. The package also provides utility functions for exponentially tilted primary event distributions. All functions support any mixture of primary and secondary censoring intervals of varying widths, as well as heterogeneous observation times across observations. The package is fully documented and includes examples in the vignettes. All functionality is tested for correctness and performance. It is available on CRAN and GitHub [@primarycensored; @primarycensoredgithub].
 
 #### Stan implementation
 
