@@ -146,6 +146,21 @@ get_param_names <- function(distribution) {
   }
 }
 
+#' Map distribution names to R distribution function names
+#'
+#' @param distribution Character string: "gamma" or "lognormal"
+#' @return Character string of R distribution name
+#' @export
+get_r_distribution_name <- function(distribution) {
+  if (distribution == "gamma") {
+    "gamma"
+  } else if (distribution == "lognormal") {
+    "lnorm"
+  } else {
+    stop("Unknown distribution: ", distribution)
+  }
+}
+
 
 #' Get shared prior settings for delay distribution parameters
 #'

@@ -510,7 +510,6 @@ test_that("fit_ward rejects large datasets", {
 })
 
 test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
-  skip("MLE integration tests deferred to issue #44 (structural PR)")
   skip_if_not_installed("primarycensored")
 
   set.seed(131415)
@@ -560,7 +559,6 @@ test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
 })
 
 test_that("fit_primarycensored_mle handles lognormal distribution", {
-  skip("MLE integration tests deferred to issue #44 (structural PR)")
   skip_if_not_installed("primarycensored")
 
   set.seed(161718)
