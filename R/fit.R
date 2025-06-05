@@ -239,7 +239,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
         sampled_data$prim_cens_lower[1]
       obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
 
-      # Fit using appropriate distribution with proper primary distribution functions
+      # Fit using appropriate distribution with proper primary distribution
+      # functions
       fit_result <- primarycensored::fitdistdoublecens(
         censdata = delay_data,
         distr = get_r_distribution_name(dist_info$distribution),
@@ -247,7 +248,9 @@ fit_primarycensored_mle <- function(fitting_grid) {
         D = if (is.finite(obs_time)) obs_time else Inf,
         dprimary = get_dprimary(dist_info$growth_rate),
         dprimary_args = get_dprimary_args(dist_info$growth_rate),
-        start = get_start_values(dist_info$distribution)
+        start = get_start_values(
+          dist_info$distribution, sampled_data$delay_observed
+        )
       )
 
       # Extract parameters based on distribution
