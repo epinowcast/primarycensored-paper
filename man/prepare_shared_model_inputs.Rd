@@ -13,9 +13,6 @@ prepare_shared_model_inputs(sampled_data, fitting_grid, dist_info)
 
 \item{dist_info}{List with distribution and growth_rate from
 extract_distribution_info()}
-
-\item{D}{Numeric value for relative observation time (truncation). If NULL,
-will look for relative_obs_time column in sampled_data}
 }
 \value{
 List containing delay_data and config

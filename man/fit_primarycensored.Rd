@@ -24,53 +24,6 @@ Bayesian implementation. This method properly accounts for primary event
 censoring, secondary censoring, and truncation in epidemiological delay data.
 Uses shared priors for fair comparison with other methods.
 }
-\examples{
-\dontrun{
-# Set up example data
-library(primarycensored)
-
-# Generate synthetic censored data
-delays <- rprimarycensored(
-  n = 100,
-  rdist = function(n) rgamma(n, shape = 2, scale = 3),
-  rprimary = stats::runif,
-  pwindow = 1,
-  swindow = 1,
-  D = Inf
-)
-
-# Prepare data for fitting
-sampled_data <- data.frame(
-  delay_observed = delays,
-  prim_cens_lower = 0,
-  prim_cens_upper = 1,
-  sec_cens_lower = delays,
-  sec_cens_upper = delays + 1
-)
-
-# Create fitting grid
-fitting_grid <- data.frame(
-  scenario_id = "example",
-  sample_size = length(delays),
-  distribution = "gamma",
-  truncation = "none",
-  growth_rate = 0,
-  data = I(list(sampled_data))
-)
-
-# Stan settings
-stan_settings <- list(
-  chains = 2,
-  iter_warmup = 1000,
-  iter_sampling = 1000,
-  refresh = 0
-)
-
-# Fit the model
-result <- fit_primarycensored(fitting_grid, stan_settings)
-}
-
-}
 \seealso{
 \code{\link[primarycensored:pcd_cmdstan_model]{primarycensored::pcd_cmdstan_model()}}, \code{\link[=fit_naive]{fit_naive()}}, \code{\link[=fit_ward]{fit_ward()}}
 }

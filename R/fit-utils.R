@@ -109,16 +109,6 @@ create_empty_results <- function(fitting_grid, method,
   )
 }
 
-#' Get distribution ID for Stan models
-#'
-#' @param distribution Character string: "gamma" or "lognormal"
-#' @return Integer distribution ID for Stan (1=lognormal, 2=gamma,
-#'   matches primarycensored)
-#' @export
-get_distribution_id <- function(distribution) {
-    primarycensored::pcd_stan_dist_id(distribution)
-}
-
 #' Extract distribution and growth rate from fitting grid
 #'
 #' @param fitting_grid Single row from fitting grid with distribution and
@@ -263,8 +253,6 @@ get_shared_primary_priors <- function(growth_rate) {
 #' @param fitting_grid Single row from fitting grid with truncation info
 #' @param dist_info List with distribution and growth_rate from
 #'   extract_distribution_info()
-#' @param D Numeric value for relative observation time (truncation). If NULL,
-#'   will look for relative_obs_time column in sampled_data
 #' @return List containing delay_data and config
 #' @export
 prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
@@ -280,25 +268,34 @@ prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
     stop("Data inconsistency: some delay_upper values are not strictly less than relative_obs_time. This suggests an issue with the data generation.")
   }
   
-  # Prepare delay data for primarycensored framework
-  delay <- as.numeric(sampled_data$delay_observed)
-  delay_upper <- as.numeric(sampled_data$sec_cens_upper)
-
-  
-  delay_data <- data.frame(
-    delay = delay,
-    delay_upper = delay_upper,
-    n = 1,
+  # Prepare delay data for primarycensored framework - aggregate to unique combinations
+  # for better performance following vignette approach
+  delay_data_raw <- data.frame(
+    delay = as.numeric(sampled_data$delay_observed),
+    delay_upper = as.numeric(sampled_data$sec_cens_upper),
     pwindow = sampled_data$prim_cens_upper - sampled_data$prim_cens_lower,
     relative_obs_time = relative_obs_time,
     row.names = NULL
   )
+  
+  # Aggregate to unique combinations and count occurrences (like vignette)
+  # This provides significant speed improvements for Stan
+  delay_data <- delay_data_raw |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      .by = c(delay, delay_upper, pwindow, relative_obs_time)
+    )
 
-  # Configuration based on distribution and growth rate
+  # Configuration based on distribution and growth rate using proper pcd_stan_dist_id calls
   config <- list(
-    # primarycensored: lnorm=1, gamma=2
-    dist_id = get_distribution_id(dist_info$distribution),
-    primary_id = if (dist_info$growth_rate == 0) 1L else 2L
+    # Use proper delay distribution IDs
+    dist_id = primarycensored::pcd_stan_dist_id(dist_info$distribution, "delay"),
+    # Use proper primary distribution IDs
+    primary_id = if (dist_info$growth_rate == 0) {
+      primarycensored::pcd_stan_dist_id("uniform", "primary")
+    } else {
+      primarycensored::pcd_stan_dist_id("expgrowth", "primary")
+    }
   )
 
   list(
@@ -318,20 +315,27 @@ prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
 #' @return List of Stan data for Ward model
 #' @export
 prepare_ward_stan_data <- function(sampled_data, shared_inputs, bounds_priors) {
-  delay_data <- shared_inputs$delay_data
   config <- shared_inputs$config
 
-  # Ward-specific requirements: censoring windows and observation times
+  # Ward method needs individual observations, not aggregated data
+  # So we use the original sampled_data directly
+  delays <- as.numeric(sampled_data$delay_observed)
   pwindow_widths <- sampled_data$prim_cens_upper - sampled_data$prim_cens_lower
   swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
-  obs_times <- delay_data$relative_obs_time
+  
+  # Get observation times from sampled_data (should be consistent)
+  if ("relative_obs_time" %in% names(sampled_data) && !all(is.na(sampled_data$relative_obs_time))) {
+    obs_times <- sampled_data$relative_obs_time
+  } else {
+    stop("relative_obs_time column is missing from sampled_data.")
+  }
 
   # Replace infinite values with large finite number for Stan
   obs_times[is.infinite(obs_times)] <- 1e6
 
   list(
     N = nrow(sampled_data),
-    Y = delay_data$delay,
+    Y = delays,
     obs_times = obs_times,
     pwindow_widths = pwindow_widths,
     swindow_widths = swindow_widths,

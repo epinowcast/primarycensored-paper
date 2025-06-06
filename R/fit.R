@@ -13,52 +13,6 @@
 #'   convergence diagnostics
 #' @export
 #'
-#' @examples
-#' \dontrun{
-#' # Set up example data
-#' library(primarycensored)
-#'
-#' # Generate synthetic censored data
-#' delays <- rprimarycensored(
-#'   n = 100,
-#'   rdist = function(n) rgamma(n, shape = 2, scale = 3),
-#'   rprimary = stats::runif,
-#'   pwindow = 1,
-#'   swindow = 1,
-#'   D = Inf
-#' )
-#'
-#' # Prepare data for fitting
-#' sampled_data <- data.frame(
-#'   delay_observed = delays,
-#'   prim_cens_lower = 0,
-#'   prim_cens_upper = 1,
-#'   sec_cens_lower = delays,
-#'   sec_cens_upper = delays + 1
-#' )
-#'
-#' # Create fitting grid
-#' fitting_grid <- data.frame(
-#'   scenario_id = "example",
-#'   sample_size = length(delays),
-#'   distribution = "gamma",
-#'   truncation = "none",
-#'   growth_rate = 0,
-#'   data = I(list(sampled_data))
-#' )
-#'
-#' # Stan settings
-#' stan_settings <- list(
-#'   chains = 2,
-#'   iter_warmup = 1000,
-#'   iter_sampling = 1000,
-#'   refresh = 0
-#' )
-#'
-#' # Fit the model
-#' result <- fit_primarycensored(fitting_grid, stan_settings)
-#' }
-#'
 #' @seealso [primarycensored::pcd_cmdstan_model()], [fit_naive()], [fit_ward()]
 fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
   # Extract data directly from fitting_grid
@@ -90,15 +44,24 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
 
   tryCatch(
     {
-      # Prepare Stan data and fit
-      stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
-        list(delay_data, compute_log_lik = TRUE),
-        config, bounds_priors, primary_bounds_priors
-      ))
-
-
+      # Prepare Stan data using vignette approach with proper IDs and aggregated data
+      stan_data <- primarycensored::pcd_as_stan_data(
+        delay_data,
+        delay = "delay",
+        delay_upper = "delay_upper",
+        n = "n", # Specify count column for aggregated data
+        pwindow = "pwindow",
+        relative_obs_time = "relative_obs_time",
+        dist_id = config$dist_id,
+        primary_id = config$primary_id,
+        param_bounds = bounds_priors$param_bounds,
+        primary_param_bounds = primary_bounds_priors$primary_param_bounds,
+        priors = bounds_priors$priors,
+        primary_priors = primary_bounds_priors$primary_priors,
+        compute_log_lik = TRUE
+      )
       
-      # Prepare full Stan settings with initialization
+      # Prepare Stan settings
       stan_settings <- c(
         stan_settings,
         list(
