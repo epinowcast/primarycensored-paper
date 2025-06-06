@@ -22,6 +22,10 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
     # Vector parameter format (params[1], params[2])
     draws_vars <- vector_vars
     param_names <- c("param1", "param2")  # Rename for consistency
+  } else if ("params" %in% available_vars) {
+    # Vector format - extract indices from the params vector
+    draws_vars <- c("params[1]", "params[2]")
+    param_names <- c("param1", "param2")
   } else {
     # Try to find any params
     param_candidates <- available_vars[grepl("param", available_vars)]
@@ -34,10 +38,9 @@ extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
     }
   }
   
-  # Get posterior summaries with more quantiles
+  # Get posterior summaries - use standard quantiles for now
   param_summary <- posterior::summarise_draws(
-    fit$draws(draws_vars),
-    default_quantiles = c(0.025, 0.05, 0.25, 0.5, 0.75, 0.95, 0.975)
+    fit$draws(draws_vars)
   )
   
   # Rename variables for consistency
