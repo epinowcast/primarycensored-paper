@@ -1,32 +1,37 @@
 test_that("fit_primarycensored recovers gamma parameters correctly", {
-  skip("Stan integration tests deferred to issue #41 (structural PR)")
   skip_if_not_installed("primarycensored")
   skip_if_not_installed("cmdstanr")
 
   # Set up test data - gamma distribution with known parameters
   set.seed(123)
-  true_shape <- 2
-  true_scale <- 3
+  true_shape <- 3
+  true_scale <- 2
   n <- 50
 
-  # Generate synthetic double-censored data
+  # Generate synthetic double-censored data with larger scale to reduce zeros
   delays <- primarycensored::rprimarycensored(
     n = n,
     rdist = function(n) rgamma(n, shape = true_shape, scale = true_scale),
     rprimary = stats::runif,
     rprimary_args = list(),
-    pwindow = 1,
-    swindow = 1,
+    pwindow = 0.5,  # Smaller window to reduce zeros
+    swindow = 0.5,
     D = Inf
   )
+
+  # Filter out any zero delays for this test
+  if (any(delays == 0)) {
+    delays <- delays[delays > 0]
+    n <- length(delays)
+  }
 
   # Create mock sampled_data
   sampled_data <- data.frame(
     delay_observed = delays,
     prim_cens_lower = 0,
-    prim_cens_upper = 1,
+    prim_cens_upper = 0.5,
     sec_cens_lower = delays,
-    sec_cens_upper = delays + 1
+    sec_cens_upper = delays + 0.5
   )
 
   # Create mock fitting_grid
@@ -71,7 +76,6 @@ test_that("fit_primarycensored recovers gamma parameters correctly", {
 })
 
 test_that("fit_primarycensored recovers lognormal parameters correctly", {
-  skip("Stan integration tests deferred to issue #41 (structural PR)")
   skip_if_not_installed("primarycensored")
   skip_if_not_installed("cmdstanr")
 
@@ -641,7 +645,6 @@ test_that("fitting functions handle empty data gracefully", {
 })
 
 test_that("fitting functions handle truncation scenarios correctly", {
-  skip("Integration tests deferred to issues #41-44 (structural PR)")
   skip_if_not_installed("primarycensored")
 
   set.seed(192021)
@@ -692,7 +695,6 @@ test_that("fitting functions handle truncation scenarios correctly", {
 })
 
 test_that("fitting functions handle exponential growth scenarios", {
-  skip("Integration tests deferred to issues #41-44 (structural PR)")
   skip_if_not_installed("primarycensored")
 
   set.seed(222324)

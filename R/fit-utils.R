@@ -208,7 +208,7 @@ get_shared_prior_settings <- function(distribution) {
   } else if (distribution == "lognormal") {
     list(
       param_bounds = list(lower = c(-10, 0.01), upper = c(10, 10)),
-      priors = list(location = c(1.5, 2), scale = c(1, 1))
+      priors = list(location = c(1, 0.5), scale = c(1, 0.5))
     )
   } else {
     stop("Unknown distribution: ", distribution)
@@ -256,7 +256,8 @@ prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
     delay_upper = as.numeric(sampled_data$sec_cens_upper),
     n = 1,
     pwindow = sampled_data$prim_cens_upper[1] - sampled_data$prim_cens_lower[1],
-    relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1])
+    relative_obs_time = get_relative_obs_time(fitting_grid$truncation[1]),
+    row.names = NULL
   )
 
   # Configuration based on distribution and growth rate
