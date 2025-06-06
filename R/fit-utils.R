@@ -119,12 +119,41 @@ get_relative_obs_time <- function(truncation) {
 #' Get starting values for distribution fitting
 #'
 #' @param distribution Character string: "gamma" or "lognormal"
+#' @param data Optional data to compute method-of-moments starting values
 #' @return List of starting parameter values
 #' @export
-get_start_values <- function(distribution) {
+get_start_values <- function(distribution, data = NULL) {
   if (distribution == "gamma") {
-    list(shape = 2, scale = 2)
+    if (!is.null(data) && length(data) > 1) {
+      # Use method of moments for better starting values
+      raw_mean <- mean(data, na.rm = TRUE)
+      raw_var <- var(data, na.rm = TRUE)
+      if (raw_var > 0 && raw_mean > 0) {
+        mom_shape <- raw_mean^2 / raw_var
+        mom_scale <- raw_var / raw_mean
+        # Ensure reasonable bounds
+        mom_shape <- pmax(0.1, pmin(mom_shape, 10))
+        mom_scale <- pmax(0.1, pmin(mom_scale, 10))
+        return(list(shape = mom_shape, scale = mom_scale))
+      }
+    }
+    # Fallback to default values
+    list(shape = 1.5, scale = 2)
   } else if (distribution == "lognormal") {
+    if (!is.null(data) && length(data) > 1) {
+      # Use method of moments for lognormal
+      data_pos <- data[data > 0]
+      if (length(data_pos) > 1) {
+        log_data <- log(data_pos)
+        mom_meanlog <- mean(log_data, na.rm = TRUE)
+        mom_sdlog <- sd(log_data, na.rm = TRUE)
+        # Ensure reasonable bounds
+        mom_meanlog <- pmax(-5, pmin(mom_meanlog, 5))
+        mom_sdlog <- pmax(0.1, pmin(mom_sdlog, 3))
+        return(list(meanlog = mom_meanlog, sdlog = mom_sdlog))
+      }
+    }
+    # Fallback to default values
     list(meanlog = 1.5, sdlog = 0.5)
   } else {
     stop("Unknown distribution: ", distribution)
@@ -141,6 +170,21 @@ get_param_names <- function(distribution) {
     c("shape", "scale")
   } else if (distribution == "lognormal") {
     c("meanlog", "sdlog")
+  } else {
+    stop("Unknown distribution: ", distribution)
+  }
+}
+
+#' Map distribution names to R distribution function names
+#'
+#' @param distribution Character string: "gamma" or "lognormal"
+#' @return Character string of R distribution name
+#' @export
+get_r_distribution_name <- function(distribution) {
+  if (distribution == "gamma") {
+    "gamma"
+  } else if (distribution == "lognormal") {
+    "lnorm"
   } else {
     stop("Unknown distribution: ", distribution)
   }

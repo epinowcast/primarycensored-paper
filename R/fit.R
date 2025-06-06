@@ -239,40 +239,18 @@ fit_primarycensored_mle <- function(fitting_grid) {
         sampled_data$prim_cens_lower[1]
       obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
 
-      # Simple primary distribution functions for MLE fitting
-      get_dprimary_simple <- function(growth_rate) {
-        if (growth_rate == 0) {
-          stats::dunif
-        } else {
-          # Simple exponential growth approximation
-          function(x, min = 0, max = 1, r = growth_rate) {
-            if (r == 0) {
-              return(stats::dunif(x, min, max))
-            }
-            # Exponential growth density (simplified)
-            exp_weights <- exp(r * x)
-            exp_weights / sum(exp_weights)
-          }
-        }
-      }
-
-      get_dprimary_args_simple <- function(growth_rate) {
-        if (growth_rate == 0) {
-          list() # Default uniform
-        } else {
-          list(min = 0, max = pwindow, r = growth_rate)
-        }
-      }
-
-      # Fit using appropriate distribution
+      # Fit using appropriate distribution with proper primary distribution
+      # functions
       fit_result <- primarycensored::fitdistdoublecens(
         censdata = delay_data,
-        distr = dist_info$distribution,
+        distr = get_r_distribution_name(dist_info$distribution),
         pwindow = pwindow,
         D = if (is.finite(obs_time)) obs_time else Inf,
-        dprimary = get_dprimary_simple(dist_info$growth_rate),
-        dprimary_args = get_dprimary_args_simple(dist_info$growth_rate),
-        start = get_start_values(dist_info$distribution)
+        dprimary = get_dprimary(dist_info$growth_rate),
+        dprimary_args = get_dprimary_args(dist_info$growth_rate),
+        start = get_start_values(
+          dist_info$distribution, sampled_data$delay_observed
+        )
       )
 
       # Extract parameters based on distribution

@@ -4,10 +4,12 @@
 \alias{get_start_values}
 \title{Get starting values for distribution fitting}
 \usage{
-get_start_values(distribution)
+get_start_values(distribution, data = NULL)
 }
 \arguments{
 \item{distribution}{Character string: "gamma" or "lognormal"}
+
+\item{data}{Optional data to compute method-of-moments starting values}
 }
 \value{
 List of starting parameter values
