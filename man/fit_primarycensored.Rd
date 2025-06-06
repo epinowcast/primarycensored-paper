@@ -10,7 +10,7 @@ fit_primarycensored(fitting_grid, stan_settings, model = NULL)
 \item{fitting_grid}{Single row from fitting grid containing scenario
 parameters and data}
 
-\item{stan_settings}{List of Stan sampling settings (chains, iterations, etc.)}
+\item{stan_settings}{List of Stan sampling settings (chains, iter, etc.)}
 
 \item{model}{Optional pre-compiled Stan model (will compile if NULL)}
 }

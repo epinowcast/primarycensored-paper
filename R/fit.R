@@ -318,12 +318,22 @@ fit_primarycensored_mle <- function(fitting_grid) {
         sample_size = fitting_grid$sample_size,
         method = "primarycensored_mle",
         param1_est = fit_result$estimate[param_names[1]],
+        param1_median = fit_result$estimate[param_names[1]],  # MLE point estimate
         param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
         param1_q025 = NA_real_,
+        param1_q05 = NA_real_,
+        param1_q25 = NA_real_,
+        param1_q75 = NA_real_,
+        param1_q95 = NA_real_,
         param1_q975 = NA_real_,
         param2_est = fit_result$estimate[param_names[2]],
+        param2_median = fit_result$estimate[param_names[2]],  # MLE point estimate
         param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
         param2_q025 = NA_real_,
+        param2_q05 = NA_real_,
+        param2_q25 = NA_real_,
+        param2_q75 = NA_real_,
+        param2_q95 = NA_real_,
         param2_q975 = NA_real_,
         convergence = fit_result$convergence %||% 0,
         ess_bulk_min = NA_real_,
@@ -331,7 +341,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
         num_divergent = NA_integer_,
         max_treedepth = NA_integer_,
         loglik = fit_result$loglik %||% NA_real_,
-        runtime_seconds = runtime$toc - runtime$tic
+        runtime_seconds = runtime$toc - runtime$tic,
+        error_msg = NA_character_
       )
     },
     error = function(e) {
