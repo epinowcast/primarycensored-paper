@@ -7,11 +7,17 @@
 fit_primarycensored_mle(fitting_grid)
 }
 \arguments{
-\item{fitting_grid}{Single row from fitting grid}
+\item{fitting_grid}{Single row from fitting grid containing scenario parameters
+and data. The data must include a relative_obs_time column specifying the
+observation time limit for truncation.}
 }
 \value{
 Data frame with parameter estimates and diagnostics
 }
 \description{
-Fit primarycensored MLE model using fitdistrplus
+Fits delay distribution parameters using the primarycensored package's MLE
+implementation via fitdistrplus. This method properly accounts for primary event
+censoring, secondary censoring, and truncation. The observation time (D parameter)
+is extracted from the relative_obs_time column in the sampled data rather than
+being hardcoded, ensuring consistency with other methods.
 }

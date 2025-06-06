@@ -3,9 +3,10 @@ test_that("fit_ward recovers gamma parameters from censored data", {
   skip_if_not_installed("primarycensored")
 
   set.seed(101112)
-  n <- 50 # Reasonable sample size for Ward method
-  true_shape <- 2.5
-  true_scale <- 3.0  # Increased to reduce zero probability
+  n <- 100 
+  true_shape <- 3
+  true_scale <- 2
+  D <- 10
 
   # Generate censored and truncated data using primarycensored
   delays <- primarycensored::rprimarycensored(
@@ -15,7 +16,7 @@ test_that("fit_ward recovers gamma parameters from censored data", {
     rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
-    D = 15 # Increased truncation to reduce zero probability
+    D = D
   )
 
   sampled_data <- data.frame(
@@ -23,7 +24,8 @@ test_that("fit_ward recovers gamma parameters from censored data", {
     prim_cens_lower = 0,
     prim_cens_upper = 1,
     sec_cens_lower = delays,
-    sec_cens_upper = delays + 1
+    sec_cens_upper = delays + 1,
+    relative_obs_time = D
   )
 
   fitting_grid <- data.frame(
@@ -88,7 +90,8 @@ test_that("fit_ward recovers lognormal parameters from censored data", {
     prim_cens_lower = 0,
     prim_cens_upper = 1,
     sec_cens_lower = delays,
-    sec_cens_upper = delays + 1
+    sec_cens_upper = delays + 1,
+    relative_obs_time = 15  # Use the same D value as simulation
   )
 
   fitting_grid <- data.frame(
@@ -134,7 +137,7 @@ test_that("fit_ward handles zero delays correctly", {
 
   set.seed(151617)
   n <- 50
-
+  D <- 8
   # Generate properly censored data using primarycensored
   # Use parameters that naturally generate some zero delays
   delays <- primarycensored::rprimarycensored(
@@ -145,7 +148,7 @@ test_that("fit_ward handles zero delays correctly", {
     rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
-    D = 8  # Lower truncation to increase zero probability
+    D = D  # Lower truncation to increase zero probability
   )
 
   # Create properly structured censored data
@@ -154,7 +157,8 @@ test_that("fit_ward handles zero delays correctly", {
     prim_cens_lower = 0,
     prim_cens_upper = 1,
     sec_cens_lower = delays,
-    sec_cens_upper = delays + 1
+    sec_cens_upper = delays + 1,
+    relative_obs_time = D  # Use the same D value as simulation
   )
 
   fitting_grid <- data.frame(
