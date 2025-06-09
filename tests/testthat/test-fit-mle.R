@@ -5,7 +5,7 @@ test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
   true_shape <- 1.5
   true_scale <- 2.5
   n <- 100
-  D <- 15
+  d <- 15
   # Generate test data
   delays <- primarycensored::rprimarycensored(
     n = n,
@@ -14,7 +14,7 @@ test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
     rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
-    D = D
+    D = d
   )
 
   sampled_data <- data.frame(
@@ -23,7 +23,7 @@ test_that("fit_primarycensored_mle recovers parameters using fitdistrplus", {
     prim_cens_upper = 1,
     sec_cens_lower = delays,
     sec_cens_upper = delays + 1,
-    relative_obs_time = D 
+    relative_obs_time = d
   )
 
   fitting_grid <- data.frame(
@@ -53,7 +53,7 @@ test_that("fit_primarycensored_mle handles lognormal distribution", {
 
   set.seed(161718)
   n <- 80
-  D <- Inf
+  d <- Inf
   meanlog <- 0.5
   sdlog <- 0.7
   delays <- primarycensored::rprimarycensored(
@@ -63,7 +63,7 @@ test_that("fit_primarycensored_mle handles lognormal distribution", {
     rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
-    D = D
+    D = d
   )
 
   sampled_data <- data.frame(
@@ -72,7 +72,7 @@ test_that("fit_primarycensored_mle handles lognormal distribution", {
     prim_cens_upper = 1,
     sec_cens_lower = delays,
     sec_cens_upper = delays + 1,
-    relative_obs_time = D  # No truncation for MLE test
+    relative_obs_time = d # No truncation for MLE test
   )
 
   fitting_grid <- data.frame(

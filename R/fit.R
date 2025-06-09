@@ -44,7 +44,8 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
 
   tryCatch(
     {
-      # Prepare Stan data using vignette approach with proper IDs and aggregated data
+      # Prepare Stan data using vignette approach with proper IDs and
+      # aggregated data
       stan_data <- primarycensored::pcd_as_stan_data(
         delay_data,
         delay = "delay",
@@ -60,7 +61,6 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
         primary_priors = primary_bounds_priors$primary_priors,
         compute_log_lik = TRUE
       )
-      
       # Prepare Stan settings
       stan_settings <- c(
         stan_settings,
@@ -68,7 +68,6 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
           data = stan_data
         )
       )
-      
       fit <- do.call(model$sample, stan_settings)
 
       runtime <- tictoc::toc(quiet = TRUE)
@@ -147,7 +146,6 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
         prior_location = bounds_priors$priors$location,
         prior_scale = bounds_priors$priors$scale
       )
-      
       # Prepare full Stan settings with initialization
       stan_settings <- c(
         stan_settings,
@@ -155,7 +153,6 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
           data = naive_stan_data
         )
       )
-      
       # Fit the model using shared Stan settings
       fit <- do.call(model$sample, stan_settings)
 
@@ -195,7 +192,6 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
     return(create_empty_results(fitting_grid, "ward"))
   }
 
-
   tictoc::tic("fit_ward")
 
   # Compile model if not provided
@@ -220,7 +216,6 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
       stan_data <- prepare_ward_stan_data(
         sampled_data, shared_inputs, bounds_priors
       )
-      
       # Prepare full Stan settings with initialization
       stan_settings <- c(
         stan_settings,
@@ -228,7 +223,6 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
           data = stan_data
         )
       )
-      
       # Fit the Ward model using shared Stan settings
       fit <- do.call(model$sample, stan_settings)
 
@@ -251,13 +245,18 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
 
 #' Fit primarycensored MLE model using fitdistrplus
 #'
-#' Fits delay distribution parameters using the primarycensored package's MLE
-#' implementation via fitdistrplus. This method properly accounts for primary event
-#' censoring, secondary censoring, and truncation. The observation time (D parameter)
-#' is extracted from the relative_obs_time column in the sampled data rather than
+#' Fits delay distribution parameters using the primarycensored package's
+#' MLE
+#' implementation via fitdistrplus. This method properly accounts for
+#' primary event
+#' censoring, secondary censoring, and truncation. The observation time
+#' (D parameter)
+#' is extracted from the relative_obs_time column in the sampled data
+#' rather than
 #' being hardcoded, ensuring consistency with other methods.
 #'
-#' @param fitting_grid Single row from fitting grid containing scenario parameters
+#' @param fitting_grid Single row from fitting grid containing scenario
+#'   parameters
 #'   and data. The data must include a relative_obs_time column specifying the
 #'   observation time limit for truncation.
 #' @return Data frame with parameter estimates and diagnostics
@@ -283,16 +282,17 @@ fit_primarycensored_mle <- function(fitting_grid) {
 
       pwindow <- sampled_data$prim_cens_upper[1] -
         sampled_data$prim_cens_lower[1]
-      
       # Extract relative observation time from data
-      if ("relative_obs_time" %in% names(sampled_data) && !all(is.na(sampled_data$relative_obs_time))) {
+      if ("relative_obs_time" %in% names(sampled_data) &&
+            !all(is.na(sampled_data$relative_obs_time))) {
         obs_time <- sampled_data$relative_obs_time[1]
       } else {
         stop("relative_obs_time column is missing from sampled_data.")
       }
 
       # Check that all relative observation times are the same
-      # Development version of primarycensored supports varying observation times
+      # Development version of primarycensored supports varying observation
+      # times
       unique_obs_times <- unique(sampled_data$relative_obs_time)
       if (length(unique_obs_times) > 1) {
         stop("All relative_obs_time values must be the same. ",
@@ -300,10 +300,12 @@ fit_primarycensored_mle <- function(fitting_grid) {
       }
 
       # Check that all primary censoring windows are the same
-      unique_pwindows <- unique(sampled_data$prim_cens_upper - sampled_data$prim_cens_lower)
+      unique_pwindows <- unique(sampled_data$prim_cens_upper -
+                                  sampled_data$prim_cens_lower)
       if (length(unique_pwindows) > 1) {
         stop("All primary censoring windows must be the same. ",
-             "Development version supports varying primary censoring windows.")
+             "Development version supports varying primary censoring ",
+             "windows.")
       }
 
       # Fit using appropriate distribution with proper primary distribution
@@ -330,7 +332,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
         sample_size = fitting_grid$sample_size,
         method = "primarycensored_mle",
         param1_est = fit_result$estimate[param_names[1]],
-        param1_median = fit_result$estimate[param_names[1]],  # MLE point estimate
+        # MLE point estimate
+        param1_median = fit_result$estimate[param_names[1]],
         param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
         param1_q025 = NA_real_,
         param1_q05 = NA_real_,
@@ -339,7 +342,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
         param1_q95 = NA_real_,
         param1_q975 = NA_real_,
         param2_est = fit_result$estimate[param_names[2]],
-        param2_median = fit_result$estimate[param_names[2]],  # MLE point estimate
+        # MLE point estimate
+        param2_median = fit_result$estimate[param_names[2]],
         param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
         param2_q025 = NA_real_,
         param2_q05 = NA_real_,

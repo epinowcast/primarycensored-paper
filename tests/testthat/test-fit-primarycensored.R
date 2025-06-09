@@ -2,10 +2,10 @@ test_that("fit_primarycensored recovers gamma parameters correctly", {
   skip_if_not_installed("primarycensored")
   skip_if_not_installed("cmdstanr")
 
-  n <- 100 
+  n <- 100
   true_shape <- 3
   true_scale <- 2
-  D <- 10
+  d <- 10
 
   # Generate censored and truncated data using primarycensored
   delays <- primarycensored::rprimarycensored(
@@ -15,7 +15,7 @@ test_that("fit_primarycensored recovers gamma parameters correctly", {
     rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
-    D = D
+    D = d
   )
 
   sampled_data <- data.frame(
@@ -24,7 +24,7 @@ test_that("fit_primarycensored recovers gamma parameters correctly", {
     prim_cens_upper = 1,
     sec_cens_lower = delays,
     sec_cens_upper = delays + 1,
-    relative_obs_time = D
+    relative_obs_time = d
   )
 
   # Create mock fitting_grid
@@ -62,10 +62,12 @@ test_that("fit_primarycensored recovers gamma parameters correctly", {
   expect_gt(result$param2_est, 0) # Scale should be positive
 
   # Parameter recovery should be within reasonable bounds
-  # (±50% tolerance widened due to observed bias - see GitHub issue for investigation)
+  # (±50% tolerance widened due to observed bias - see GitHub issue for
+  # investigation)
   expect_gt(result$param1_est, true_shape * 0.5) # Within 50% for shape
   expect_lt(result$param1_est, true_shape * 1.5)
-  expect_gt(result$param2_est, true_scale * 0.2) # Within 80% for scale (widened due to significant bias)
+  # Within 80% for scale (widened due to significant bias)
+  expect_gt(result$param2_est, true_scale * 0.2)
   expect_lt(result$param2_est, true_scale * 1.7)
 
   # Check no error occurred
@@ -81,7 +83,7 @@ test_that("fit_primarycensored recovers lognormal parameters correctly", {
   true_meanlog <- 1
   true_sdlog <- 0.8
   n <- 50
-  D <- 10
+  d <- 10
   # Generate synthetic data with truncation like ward tests
   delays <- primarycensored::rprimarycensored(
     n = n,
@@ -90,7 +92,7 @@ test_that("fit_primarycensored recovers lognormal parameters correctly", {
     rprimary_args = list(),
     pwindow = 1,
     swindow = 1,
-    D = D  # Add truncation with buffer for secondary censoring
+    D = d  # Add truncation with buffer for secondary censoring
   )
 
   sampled_data <- data.frame(
@@ -99,7 +101,7 @@ test_that("fit_primarycensored recovers lognormal parameters correctly", {
     prim_cens_upper = 1,
     sec_cens_lower = delays,
     sec_cens_upper = delays + 1,
-    relative_obs_time = D  # Use the same D value as simulation
+    relative_obs_time = d  # Use the same D value as simulation
   )
 
   fitting_grid <- data.frame(
@@ -129,7 +131,8 @@ test_that("fit_primarycensored recovers lognormal parameters correctly", {
   expect_gt(result$param2_est, 0) # sdlog should be positive
 
   # Parameter recovery should be within reasonable bounds
-  # (±50% tolerance widened due to observed bias - see GitHub issue for investigation)
+  # (±50% tolerance widened due to observed bias - see GitHub issue for
+  # investigation)
   expect_gt(result$param1_est, true_meanlog - 0.5) # Within range for meanlog
   expect_lt(result$param1_est, true_meanlog + 0.5)
   expect_gt(result$param2_est, true_sdlog * 0.5) # Within 50% for sdlog

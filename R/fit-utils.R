@@ -9,18 +9,16 @@
 extract_posterior_estimates <- function(fit, method, fitting_grid, runtime) {
   # All models use params vector format: params[1], params[2]
   draws_vars <- c("params[1]", "params[2]")
-  
   # Get posterior summaries with all needed quantiles
   param_summary <- posterior::summarise_draws(
     fit$draws(draws_vars),
-    ~quantile(.x, probs = c(0.025, 0.05, 0.25, 0.5, 0.75, 0.95, 0.975), na.rm = TRUE),
+    ~quantile(.x, probs = c(0.025, 0.05, 0.25, 0.5, 0.75, 0.95, 0.975),
+              na.rm = TRUE),
     mean,
     sd
   )
-  
   # Rename variables for consistency
   param_summary$variable <- c("param1", "param2")
-  
   params <- setNames(
     split(param_summary, param_summary$variable),
     param_summary$variable
@@ -257,18 +255,20 @@ get_shared_primary_priors <- function(growth_rate) {
 #' @export
 prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
   # Get truncation limit from the data - this should always be present
-  if ("relative_obs_time" %in% names(sampled_data) && !all(is.na(sampled_data$relative_obs_time))) {
+  if ("relative_obs_time" %in% names(sampled_data) &&
+        !all(is.na(sampled_data$relative_obs_time))) {
     relative_obs_time <- sampled_data$relative_obs_time
   } else {
     stop("relative_obs_time column is missing from sampled_data.")
   }
-  
 
   if (any(sampled_data$sec_cens_upper > relative_obs_time)) {
-    stop("Data inconsistency: some delay_upper values are not strictly less than relative_obs_time. This suggests an issue with the data generation.")
+    stop(paste("Data inconsistency: some delay_upper values are not",
+               "strictly less than relative_obs_time. This suggests an",
+               "issue with the data generation."))
   }
-  
-  # Prepare delay data for primarycensored framework - aggregate to unique combinations
+  # Prepare delay data for primarycensored framework - aggregate to unique
+  # combinations
   # for better performance following vignette approach
   delay_data_raw <- data.frame(
     delay = as.numeric(sampled_data$delay_observed),
@@ -277,19 +277,21 @@ prepare_shared_model_inputs <- function(sampled_data, fitting_grid, dist_info) {
     relative_obs_time = relative_obs_time,
     row.names = NULL
   )
-  
   # Aggregate to unique combinations and count occurrences (like vignette)
   # This provides significant speed improvements for Stan
   delay_data <- delay_data_raw |>
     dplyr::summarise(
       n = dplyr::n(),
-      .by = c(delay, delay_upper, pwindow, relative_obs_time)
+      .by = c("delay", "delay_upper", "pwindow", "relative_obs_time")
     )
 
-  # Configuration based on distribution and growth rate using proper pcd_stan_dist_id calls
+  # Configuration based on distribution and growth rate using proper
+  # pcd_stan_dist_id calls
   config <- list(
     # Use proper delay distribution IDs
-    dist_id = primarycensored::pcd_stan_dist_id(dist_info$distribution, "delay"),
+    dist_id = primarycensored::pcd_stan_dist_id(
+      dist_info$distribution, "delay"
+    ),
     # Use proper primary distribution IDs
     primary_id = if (dist_info$growth_rate == 0) {
       primarycensored::pcd_stan_dist_id("uniform", "primary")
@@ -322,9 +324,9 @@ prepare_ward_stan_data <- function(sampled_data, shared_inputs, bounds_priors) {
   delays <- as.numeric(sampled_data$delay_observed)
   pwindow_widths <- sampled_data$prim_cens_upper - sampled_data$prim_cens_lower
   swindow_widths <- sampled_data$sec_cens_upper - sampled_data$sec_cens_lower
-  
   # Get observation times from sampled_data (should be consistent)
-  if ("relative_obs_time" %in% names(sampled_data) && !all(is.na(sampled_data$relative_obs_time))) {
+  if ("relative_obs_time" %in% names(sampled_data) &&
+        !all(is.na(sampled_data$relative_obs_time))) {
     obs_times <- sampled_data$relative_obs_time
   } else {
     stop("relative_obs_time column is missing from sampled_data.")
@@ -344,7 +346,8 @@ prepare_ward_stan_data <- function(sampled_data, shared_inputs, bounds_priors) {
     prior_only = 0,
     # Add shared bounds and priors
     n_params = 2L,
-    n_primary_params = if (config$primary_id == 1) 0L else 1L, # 0 for uniform, 1 for exponential
+    # 0 for uniform, 1 for exponential
+    n_primary_params = if (config$primary_id == 1) 0L else 1L,
     param_lower_bounds = bounds_priors$param_bounds$lower,
     param_upper_bounds = bounds_priors$param_bounds$upper,
     prior_location = bounds_priors$priors$location,
