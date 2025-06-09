@@ -50,7 +50,7 @@ transform_ebola_to_delays <- function(case_study_row) {
   }
 
   if (any(is.na(ebola_data$symptom_onset_date)) ||
-      any(is.na(ebola_data$sample_date))) {
+        any(is.na(ebola_data$sample_date))) {
     warning("Missing dates found in Ebola data - ",
             "these will result in NA delays")
   }

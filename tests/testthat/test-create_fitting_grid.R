@@ -19,7 +19,7 @@ test_that("create_fitting_grid combines simulation and ebola data correctly", {
   mock_ebola <- data.frame(
     window_id = c(1, 1, 2, 2),
     analysis_type = c("real_time", "real_time", "retrospective",
-                     "retrospective"),
+                      "retrospective"),
     window_label = c("0-60 days", "0-60 days", "60-120 days", "60-120 days"),
     start_day = c(0, 0, 60, 60),
     end_day = c(60, 60, 120, 120),
@@ -90,7 +90,7 @@ test_that("create_fitting_grid handles test mode filtering", {
   mock_ebola <- data.frame(
     window_id = c(1, 1, 2, 2),
     analysis_type = c("real_time", "real_time", "retrospective",
-                     "retrospective"),
+                      "retrospective"),
     window_label = c("0-60 days", "0-60 days", "60-120 days", "60-120 days"),
     start_day = c(0, 0, 60, 60),
     end_day = c(60, 60, 120, 120),

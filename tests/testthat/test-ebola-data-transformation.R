@@ -80,8 +80,8 @@ test_that("summarise_ebola_windows creates correct summary statistics", {
     window_id = c("window_1", "window_1", "window_1", "window_1",
                   "window_2", "window_2", "window_2", "window_2"),
     analysis_type = c("real_time", "real_time", "retrospective",
-                     "retrospective", "real_time", "real_time",
-                     "retrospective", "retrospective"),
+                      "retrospective", "real_time", "real_time",
+                      "retrospective", "retrospective"),
     delay_observed = c(3, 5, 7, 2, 4, 6, 8, 10),
     relative_obs_time = c(10, 12, 14, 16, 20, 22, 24, 26)
   )
@@ -100,7 +100,7 @@ test_that("summarise_ebola_windows creates correct summary statistics", {
 
   # Check specific values for window_1, real_time (rows with delays 3, 5)
   window1_rt <- result[result$window_id == "window_1" &
-                        result$analysis_type == "real_time", ]
+                         result$analysis_type == "real_time", ]
   expect_equal(window1_rt$n_observations, 2)
   expect_equal(window1_rt$mean_delay, 4)  # Mean of 3 and 5
   expect_equal(window1_rt$median_delay, 4)
