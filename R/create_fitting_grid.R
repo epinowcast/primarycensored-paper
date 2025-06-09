@@ -36,8 +36,8 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_delay_data,
   # Create Ebola fitting entries
   ebola_grid <- ebola_delay_data |>
     # Group by window and analysis type to get metadata
-    dplyr::group_by(window_id, analysis_type, window_label, 
-                   start_day, end_day) |>
+    dplyr::group_by(window_id, analysis_type, window_label,
+                    start_day, end_day) |>
     dplyr::summarise(n_cases = dplyr::n(), .groups = "drop") |>
     # Join back with delay data
     dplyr::left_join(

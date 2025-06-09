@@ -52,13 +52,13 @@ transform_ebola_to_delays <- function(case_study_row) {
   if (any(is.na(ebola_data$symptom_onset_date)) ||
       any(is.na(ebola_data$sample_date))) {
     warning("Missing dates found in Ebola data - ",
-           "these will result in NA delays")
+            "these will result in NA delays")
   }
 
   # Calculate window end date (days since start of outbreak)
   outbreak_start <- min(ebola_data$symptom_onset_date, na.rm = TRUE)
   window_end_date <- outbreak_start + window_end_day
-  
+
   ebola_data |>
     dplyr::mutate(
       # Calculate delay from symptom onset to sample test
