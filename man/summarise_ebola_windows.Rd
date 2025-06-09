@@ -7,8 +7,8 @@
 summarise_ebola_windows(ebola_delay_data)
 }
 \arguments{
-\item{ebola_delay_data}{A data frame with transformed delay data containing
-window_id, analysis_type, and delay_observed columns}
+\item{ebola_delay_data}{A data frame with rows containing metadata and
+nested delay data}
 }
 \value{
 A data frame with summary statistics for each window/analysis

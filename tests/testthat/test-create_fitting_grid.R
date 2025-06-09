@@ -15,20 +15,32 @@ test_that("create_fitting_grid combines simulation and ebola data correctly", {
     delay_observed = c(2.5, 3.1, 4.2)
   )
 
-  # Create mock Ebola delay data (transformed format)
+  # Create mock Ebola delay data (transformed format with nested structure)
+  ebola_data_1 <- data.frame(
+    delay_observed = c(1.2, 2.3),
+    prim_cens_lower = c(0, 0),
+    prim_cens_upper = c(1, 1),
+    sec_cens_lower = c(1.2, 2.3),
+    sec_cens_upper = c(2.2, 3.3),
+    relative_obs_time = c(60, 58)
+  )
+  ebola_data_2 <- data.frame(
+    delay_observed = c(3.4, 4.5),
+    prim_cens_lower = c(0, 0),
+    prim_cens_upper = c(1, 1),
+    sec_cens_lower = c(3.4, 4.5),
+    sec_cens_upper = c(4.4, 5.5),
+    relative_obs_time = c(120, 118)
+  )
+
   mock_ebola <- data.frame(
-    window_id = c(1, 1, 2, 2),
-    analysis_type = c("real_time", "real_time", "retrospective",
-                      "retrospective"),
-    window_label = c("0-60 days", "0-60 days", "60-120 days", "60-120 days"),
-    start_day = c(0, 0, 60, 60),
-    end_day = c(60, 60, 120, 120),
-    delay_observed = c(1.2, 2.3, 3.4, 4.5),
-    prim_cens_lower = c(0, 0, 0, 0),
-    prim_cens_upper = c(1, 1, 1, 1),
-    sec_cens_lower = c(1.2, 2.3, 3.4, 4.5),
-    sec_cens_upper = c(2.2, 3.3, 4.4, 5.5),
-    relative_obs_time = c(60, 60, 120, 120)
+    window_id = c(1, 2),
+    analysis_type = c("real_time", "retrospective"),
+    window_label = c("0-60 days", "60-120 days"),
+    start_day = c(0, 60),
+    end_day = c(60, 120),
+    n_cases = c(2, 2),
+    data = I(list(ebola_data_1, ebola_data_2))
   )
 
   # Mock scenarios for test mode filtering
@@ -87,19 +99,32 @@ test_that("create_fitting_grid handles test mode filtering", {
     delay_observed = c(2.5, 3.1, 4.2, 5.3)
   )
 
+  # Create nested mock data for second test
+  ebola_data_test2_1 <- data.frame(
+    delay_observed = c(1.2, 2.3),
+    prim_cens_lower = c(0, 0),
+    prim_cens_upper = c(1, 1),
+    sec_cens_lower = c(1.2, 2.3),
+    sec_cens_upper = c(2.2, 3.3),
+    relative_obs_time = c(60, 58)
+  )
+  ebola_data_test2_2 <- data.frame(
+    delay_observed = c(3.4, 4.5),
+    prim_cens_lower = c(0, 0),
+    prim_cens_upper = c(1, 1),
+    sec_cens_lower = c(3.4, 4.5),
+    sec_cens_upper = c(4.4, 5.5),
+    relative_obs_time = c(120, 118)
+  )
+
   mock_ebola <- data.frame(
-    window_id = c(1, 1, 2, 2),
-    analysis_type = c("real_time", "real_time", "retrospective",
-                      "retrospective"),
-    window_label = c("0-60 days", "0-60 days", "60-120 days", "60-120 days"),
-    start_day = c(0, 0, 60, 60),
-    end_day = c(60, 60, 120, 120),
-    delay_observed = c(1.2, 2.3, 3.4, 4.5),
-    prim_cens_lower = c(0, 0, 0, 0),
-    prim_cens_upper = c(1, 1, 1, 1),
-    sec_cens_lower = c(1.2, 2.3, 3.4, 4.5),
-    sec_cens_upper = c(2.2, 3.3, 4.4, 5.5),
-    relative_obs_time = c(60, 60, 120, 120)
+    window_id = c(1, 2),
+    analysis_type = c("real_time", "retrospective"),
+    window_label = c("0-60 days", "60-120 days"),
+    start_day = c(0, 60),
+    end_day = c(60, 120),
+    n_cases = c(2, 2),
+    data = I(list(ebola_data_test2_1, ebola_data_test2_2))
   )
 
   mock_scenarios <- data.frame(
@@ -145,19 +170,15 @@ test_that("create_fitting_grid handles empty input gracefully", {
     growth_rate = numeric(0)
   )
 
-  # Empty Ebola data
+  # Empty Ebola data with nested structure
   empty_ebola <- data.frame(
     window_id = numeric(0),
     analysis_type = character(0),
     window_label = character(0),
     start_day = numeric(0),
     end_day = numeric(0),
-    delay_observed = numeric(0),
-    prim_cens_lower = numeric(0),
-    prim_cens_upper = numeric(0),
-    sec_cens_lower = numeric(0),
-    sec_cens_upper = numeric(0),
-    relative_obs_time = numeric(0)
+    n_cases = numeric(0),
+    data = I(list())
   )
 
   mock_scenarios <- data.frame(

@@ -11,7 +11,7 @@ transform_ebola_to_delays(case_study_row)
 window metadata and a data list column with the actual observations}
 }
 \value{
-A data frame with numeric delay values and censoring intervals
+A data frame row with metadata and nested delay data
 }
 \description{
 Converts date pairs to delay format with proper censoring intervals and
