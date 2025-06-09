@@ -15,21 +15,19 @@ test_that("create_fitting_grid combines simulation and ebola data correctly", {
     delay_observed = c(2.5, 3.1, 4.2)
   )
 
-  # Create mock Ebola data
+  # Create mock Ebola delay data (transformed format)
   mock_ebola <- data.frame(
-    window_id = c(1, 2),
-    analysis_type = c("real_time", "retrospective"),
-    n_cases = c(50, 75),
-    data = I(list(
-      data.frame(
-        delay_observed = c(1.2, 2.3), prim_cens_lower = c(0, 0),
-        prim_cens_upper = c(1, 1)
-      ),
-      data.frame(
-        delay_observed = c(3.4, 4.5), prim_cens_lower = c(0, 0),
-        prim_cens_upper = c(1, 1)
-      )
-    ))
+    window_id = c(1, 1, 2, 2),
+    analysis_type = c("real_time", "real_time", "retrospective", "retrospective"),
+    window_label = c("0-60 days", "0-60 days", "60-120 days", "60-120 days"),
+    start_day = c(0, 0, 60, 60),
+    end_day = c(60, 60, 120, 120),
+    delay_observed = c(1.2, 2.3, 3.4, 4.5),
+    prim_cens_lower = c(0, 0, 0, 0),
+    prim_cens_upper = c(1, 1, 1, 1),
+    sec_cens_lower = c(1.2, 2.3, 3.4, 4.5),
+    sec_cens_upper = c(2.2, 3.3, 4.4, 5.5),
+    relative_obs_time = c(60, 60, 120, 120)
   )
 
   # Mock scenarios for test mode filtering
@@ -41,7 +39,7 @@ test_that("create_fitting_grid combines simulation and ebola data correctly", {
   # Test normal mode
   result <- create_fitting_grid(
     monte_carlo_samples = mock_monte_carlo,
-    ebola_case_study_data = mock_ebola,
+    ebola_delay_data = mock_ebola,
     scenarios = mock_scenarios,
     sample_sizes = c(100, 200),
     test_mode = FALSE
@@ -89,14 +87,17 @@ test_that("create_fitting_grid handles test mode filtering", {
   )
 
   mock_ebola <- data.frame(
-    window_id = c(1, 2, 3),
-    analysis_type = c("real_time", "retrospective", "real_time"),
-    n_cases = c(50, 75, 60),
-    data = I(list(
-      data.frame(delay_observed = c(1.2, 2.3)),
-      data.frame(delay_observed = c(3.4, 4.5)),
-      data.frame(delay_observed = c(5.6, 6.7))
-    ))
+    window_id = c(1, 1, 2, 2),
+    analysis_type = c("real_time", "real_time", "retrospective", "retrospective"),
+    window_label = c("0-60 days", "0-60 days", "60-120 days", "60-120 days"),
+    start_day = c(0, 0, 60, 60),
+    end_day = c(60, 60, 120, 120),
+    delay_observed = c(1.2, 2.3, 3.4, 4.5),
+    prim_cens_lower = c(0, 0, 0, 0),
+    prim_cens_upper = c(1, 1, 1, 1),
+    sec_cens_lower = c(1.2, 2.3, 3.4, 4.5),
+    sec_cens_upper = c(2.2, 3.3, 4.4, 5.5),
+    relative_obs_time = c(60, 60, 120, 120)
   )
 
   mock_scenarios <- data.frame(
@@ -107,7 +108,7 @@ test_that("create_fitting_grid handles test mode filtering", {
   # Test with test mode enabled
   result_test <- create_fitting_grid(
     monte_carlo_samples = mock_monte_carlo,
-    ebola_case_study_data = mock_ebola,
+    ebola_delay_data = mock_ebola,
     scenarios = mock_scenarios,
     sample_sizes = c(100, 200),
     test_mode = TRUE
@@ -146,8 +147,15 @@ test_that("create_fitting_grid handles empty input gracefully", {
   empty_ebola <- data.frame(
     window_id = numeric(0),
     analysis_type = character(0),
-    n_cases = numeric(0),
-    data = I(list())
+    window_label = character(0),
+    start_day = numeric(0),
+    end_day = numeric(0),
+    delay_observed = numeric(0),
+    prim_cens_lower = numeric(0),
+    prim_cens_upper = numeric(0),
+    sec_cens_lower = numeric(0),
+    sec_cens_upper = numeric(0),
+    relative_obs_time = numeric(0)
   )
 
   mock_scenarios <- data.frame(
@@ -158,7 +166,7 @@ test_that("create_fitting_grid handles empty input gracefully", {
   # Should not error with empty inputs
   result <- create_fitting_grid(
     monte_carlo_samples = empty_monte_carlo,
-    ebola_case_study_data = empty_ebola,
+    ebola_delay_data = empty_ebola,
     scenarios = mock_scenarios,
     sample_sizes = c(100),
     test_mode = FALSE

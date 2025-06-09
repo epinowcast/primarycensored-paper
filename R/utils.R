@@ -36,21 +36,25 @@ save_data <- function(data, filename) {
 #' @return A data frame with numeric delay values and censoring intervals
 #' @export
 transform_ebola_to_delays <- function(case_study_row) {
+  # Suppress CMD check warnings for dplyr usage
+  symptom_onset_date <- sample_date <- delay_observed <- NULL
+
   # Extract the data frame and window end day from the row
   ebola_data <- case_study_row$data[[1]]
   window_end_day <- case_study_row$end_day
-  
+
   # Validate input data
   if (nrow(ebola_data) == 0) {
     warning("Empty data frame provided to transform_ebola_to_delays")
     return(data.frame())
   }
-  
-  if (any(is.na(ebola_data$symptom_onset_date)) || 
+
+  if (any(is.na(ebola_data$symptom_onset_date)) ||
       any(is.na(ebola_data$sample_date))) {
-    warning("Missing dates found in Ebola data - these will result in NA delays")
+    warning("Missing dates found in Ebola data - ",
+           "these will result in NA delays")
   }
-  
+
   # Calculate window end date (days since start of outbreak)
   outbreak_start <- min(ebola_data$symptom_onset_date, na.rm = TRUE)
   window_end_date <- outbreak_start + window_end_day
@@ -75,9 +79,12 @@ transform_ebola_to_delays <- function(case_study_row) {
 #'
 #' @param ebola_delay_data A data frame with transformed delay data containing
 #'   window_id, analysis_type, and delay_observed columns
-#' @return A data frame with summary statistics for each window/analysis combination
+#' @return A data frame with summary statistics for each window/analysis
 #' @export
 summarise_ebola_windows <- function(ebola_delay_data) {
+  # Suppress CMD check warnings for dplyr usage
+  window_id <- analysis_type <- delay_observed <- relative_obs_time <- NULL
+
   # Validate input data
   if (nrow(ebola_delay_data) == 0) {
     warning("Empty data frame provided to summarise_ebola_windows")
@@ -93,7 +100,7 @@ summarise_ebola_windows <- function(ebola_delay_data) {
       mean_relative_obs_time = numeric()
     ))
   }
-  
+
   ebola_delay_data |>
     dplyr::group_by(window_id, analysis_type) |>
     dplyr::summarise(
