@@ -1,10 +1,19 @@
 #' Fit primarycensored Bayesian model
 #'
-#' @param fitting_grid Single row from fitting grid
-#' @param stan_settings List of Stan sampling settings
+#' Fits delay distribution parameters using the primarycensored package's
+#' Bayesian implementation. This method properly accounts for primary event
+#' censoring, secondary censoring, and truncation in epidemiological delay data.
+#' Uses shared priors for fair comparison with other methods.
+#'
+#' @param fitting_grid Single row from fitting grid containing scenario
+#'   parameters and data
+#' @param stan_settings List of Stan sampling settings (chains, iter, etc.)
 #' @param model Optional pre-compiled Stan model (will compile if NULL)
-#' @return Data frame with parameter estimates and diagnostics
+#' @return Data frame with parameter estimates, credible intervals, and
+#'   convergence diagnostics
 #' @export
+#'
+#' @seealso [primarycensored::pcd_cmdstan_model()], [fit_naive()], [fit_ward()]
 fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
   # Extract data directly from fitting_grid
   sampled_data <- fitting_grid$data[[1]]
@@ -35,15 +44,31 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
 
   tryCatch(
     {
-      # Prepare Stan data and fit
-      stan_data <- do.call(primarycensored::pcd_as_stan_data, c(
-        list(delay_data, compute_log_lik = TRUE),
-        config, bounds_priors, primary_bounds_priors
-      ))
-
-      fit <- do.call(model$sample, c(
-        list(data = stan_data), stan_settings
-      ))
+      # Prepare Stan data using vignette approach with proper IDs and
+      # aggregated data
+      stan_data <- primarycensored::pcd_as_stan_data(
+        delay_data,
+        delay = "delay",
+        delay_upper = "delay_upper",
+        n = "n", # Specify count column for aggregated data
+        pwindow = "pwindow",
+        relative_obs_time = "relative_obs_time",
+        dist_id = config$dist_id,
+        primary_id = config$primary_id,
+        param_bounds = bounds_priors$param_bounds,
+        primary_param_bounds = primary_bounds_priors$primary_param_bounds,
+        priors = bounds_priors$priors,
+        primary_priors = primary_bounds_priors$primary_priors,
+        compute_log_lik = TRUE
+      )
+      # Prepare Stan settings
+      stan_settings <- c(
+        stan_settings,
+        list(
+          data = stan_data
+        )
+      )
+      fit <- do.call(model$sample, stan_settings)
 
       runtime <- tictoc::toc(quiet = TRUE)
       extract_posterior_estimates(fit, "primarycensored", fitting_grid, runtime)
@@ -121,11 +146,15 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
         prior_location = bounds_priors$priors$location,
         prior_scale = bounds_priors$priors$scale
       )
-
+      # Prepare full Stan settings with initialization
+      stan_settings <- c(
+        stan_settings,
+        list(
+          data = naive_stan_data
+        )
+      )
       # Fit the model using shared Stan settings
-      fit <- do.call(model$sample, c(
-        list(data = naive_stan_data), stan_settings
-      ))
+      fit <- do.call(model$sample, stan_settings)
 
       runtime <- tictoc::toc(quiet = TRUE)
       extract_posterior_estimates(fit, "naive", fitting_grid, runtime)
@@ -163,7 +192,6 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
     return(create_empty_results(fitting_grid, "ward"))
   }
 
-
   tictoc::tic("fit_ward")
 
   # Compile model if not provided
@@ -188,11 +216,15 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
       stan_data <- prepare_ward_stan_data(
         sampled_data, shared_inputs, bounds_priors
       )
-
+      # Prepare full Stan settings with initialization
+      stan_settings <- c(
+        stan_settings,
+        list(
+          data = stan_data
+        )
+      )
       # Fit the Ward model using shared Stan settings
-      fit <- do.call(model$sample, c(
-        list(data = stan_data), stan_settings
-      ))
+      fit <- do.call(model$sample, stan_settings)
 
       runtime <- tictoc::toc(quiet = TRUE)
       extract_posterior_estimates(fit, "ward", fitting_grid, runtime)
@@ -213,7 +245,20 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
 
 #' Fit primarycensored MLE model using fitdistrplus
 #'
-#' @param fitting_grid Single row from fitting grid
+#' Fits delay distribution parameters using the primarycensored package's
+#' MLE
+#' implementation via fitdistrplus. This method properly accounts for
+#' primary event
+#' censoring, secondary censoring, and truncation. The observation time
+#' (D parameter)
+#' is extracted from the relative_obs_time column in the sampled data
+#' rather than
+#' being hardcoded, ensuring consistency with other methods.
+#'
+#' @param fitting_grid Single row from fitting grid containing scenario
+#'   parameters
+#'   and data. The data must include a relative_obs_time column specifying the
+#'   observation time limit for truncation.
 #' @return Data frame with parameter estimates and diagnostics
 #' @export
 fit_primarycensored_mle <- function(fitting_grid) {
@@ -232,12 +277,36 @@ fit_primarycensored_mle <- function(fitting_grid) {
       delay_data <- data.frame(
         left = sampled_data$delay_observed,
         right = sampled_data$delay_observed +
-          (sampled_data$sec_cens_upper[1] - sampled_data$sec_cens_lower[1])
+          (sampled_data$sec_cens_upper - sampled_data$sec_cens_lower)
       )
 
       pwindow <- sampled_data$prim_cens_upper[1] -
         sampled_data$prim_cens_lower[1]
-      obs_time <- get_relative_obs_time(fitting_grid$truncation[1])
+      # Extract relative observation time from data
+      if ("relative_obs_time" %in% names(sampled_data) &&
+            !all(is.na(sampled_data$relative_obs_time))) {
+        obs_time <- sampled_data$relative_obs_time[1]
+      } else {
+        stop("relative_obs_time column is missing from sampled_data.")
+      }
+
+      # Check that all relative observation times are the same
+      # Development version of primarycensored supports varying observation
+      # times
+      unique_obs_times <- unique(sampled_data$relative_obs_time)
+      if (length(unique_obs_times) > 1) {
+        stop("All relative_obs_time values must be the same. ",
+             "Development version supports varying observation times.")
+      }
+
+      # Check that all primary censoring windows are the same
+      unique_pwindows <- unique(sampled_data$prim_cens_upper -
+                                  sampled_data$prim_cens_lower)
+      if (length(unique_pwindows) > 1) {
+        stop("All primary censoring windows must be the same. ",
+             "Development version supports varying primary censoring ",
+             "windows.")
+      }
 
       # Fit using appropriate distribution with proper primary distribution
       # functions
@@ -263,12 +332,24 @@ fit_primarycensored_mle <- function(fitting_grid) {
         sample_size = fitting_grid$sample_size,
         method = "primarycensored_mle",
         param1_est = fit_result$estimate[param_names[1]],
+        # MLE point estimate
+        param1_median = fit_result$estimate[param_names[1]],
         param1_se = fit_result$sd[param_names[1]] %||% NA_real_,
         param1_q025 = NA_real_,
+        param1_q05 = NA_real_,
+        param1_q25 = NA_real_,
+        param1_q75 = NA_real_,
+        param1_q95 = NA_real_,
         param1_q975 = NA_real_,
         param2_est = fit_result$estimate[param_names[2]],
+        # MLE point estimate
+        param2_median = fit_result$estimate[param_names[2]],
         param2_se = fit_result$sd[param_names[2]] %||% NA_real_,
         param2_q025 = NA_real_,
+        param2_q05 = NA_real_,
+        param2_q25 = NA_real_,
+        param2_q75 = NA_real_,
+        param2_q95 = NA_real_,
         param2_q975 = NA_real_,
         convergence = fit_result$convergence %||% 0,
         ess_bulk_min = NA_real_,
@@ -276,7 +357,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
         num_divergent = NA_integer_,
         max_treedepth = NA_integer_,
         loglik = fit_result$loglik %||% NA_real_,
-        runtime_seconds = runtime$toc - runtime$tic
+        runtime_seconds = runtime$toc - runtime$tic,
+        error_msg = NA_character_
       )
     },
     error = function(e) {

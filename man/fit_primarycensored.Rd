@@ -7,15 +7,23 @@
 fit_primarycensored(fitting_grid, stan_settings, model = NULL)
 }
 \arguments{
-\item{fitting_grid}{Single row from fitting grid}
+\item{fitting_grid}{Single row from fitting grid containing scenario
+parameters and data}
 
-\item{stan_settings}{List of Stan sampling settings}
+\item{stan_settings}{List of Stan sampling settings (chains, iter, etc.)}
 
 \item{model}{Optional pre-compiled Stan model (will compile if NULL)}
 }
 \value{
-Data frame with parameter estimates and diagnostics
+Data frame with parameter estimates, credible intervals, and
+convergence diagnostics
 }
 \description{
-Fit primarycensored Bayesian model
+Fits delay distribution parameters using the primarycensored package's
+Bayesian implementation. This method properly accounts for primary event
+censoring, secondary censoring, and truncation in epidemiological delay data.
+Uses shared priors for fair comparison with other methods.
+}
+\seealso{
+\code{\link[primarycensored:pcd_cmdstan_model]{primarycensored::pcd_cmdstan_model()}}, \code{\link[=fit_naive]{fit_naive()}}, \code{\link[=fit_ward]{fit_ward()}}
 }
