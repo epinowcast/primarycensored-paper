@@ -5,13 +5,13 @@
 #'
 #' @param monte_carlo_samples List of Monte Carlo samples from simulation
 #'   scenarios
-#' @param ebola_case_study_data Ebola case study data with observation windows
+#' @param ebola_delay_data Transformed Ebola delay data with numeric delay columns
 #' @param scenarios Scenario grid with distribution information
 #' @param sample_sizes Vector of sample sizes for filtering in test mode
 #' @param test_mode Logical indicating whether to apply test mode filtering
 #' @return Data frame with embedded data ready for model fitting
 #' @export
-create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
+create_fitting_grid <- function(monte_carlo_samples, ebola_delay_data,
                                 scenarios, sample_sizes, test_mode = FALSE) {
   # Suppress CMD check warnings for data.table/dplyr usage
   scenario_id <- sample_size <- distribution <- truncation <- NULL
@@ -33,7 +33,17 @@ create_fitting_grid <- function(monte_carlo_samples, ebola_case_study_data,
     )
 
   # Create Ebola fitting entries
-  ebola_grid <- ebola_case_study_data |>
+  ebola_grid <- ebola_delay_data |>
+    # Group by window and analysis type to get metadata
+    dplyr::group_by(window_id, analysis_type, window_label, start_day, end_day) |>
+    dplyr::summarise(n_cases = dplyr::n(), .groups = "drop") |>
+    # Join back with delay data
+    dplyr::left_join(
+      ebola_delay_data |>
+        dplyr::group_by(window_id, analysis_type) |>
+        dplyr::group_nest(.key = "data"),
+      by = c("window_id", "analysis_type")
+    ) |>
     dplyr::mutate(
       data_type = "ebola",
       dataset_id = paste0("ebola_", window_id, "_", analysis_type),

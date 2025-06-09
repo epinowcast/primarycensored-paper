@@ -503,6 +503,45 @@ tar_target(
 )
 ```
 
+## Transform Ebola data to delay format
+
+Transform the windowed Ebola case study data from date format to numeric delays with censoring intervals, matching the format expected by fitting methods.
+
+```{targets ebola_delay_data}
+tar_target(
+  ebola_delay_data,
+  {
+    # Apply transformation to each row of case study data
+    ebola_case_study_data |>
+      # Transform dates to delays for each row
+      purrr::pmap_dfr(function(...) {
+        row <- data.frame(...)
+        delay_data <- transform_ebola_to_delays(row)
+        # Add window metadata to transformed data
+        delay_data |>
+          dplyr::mutate(
+            window_id = row$window_id,
+            analysis_type = row$analysis_type,
+            window_label = row$window_label,
+            start_day = row$start_day,
+            end_day = row$end_day
+          )
+      })
+  }
+)
+```
+
+## Summarise Ebola data windows
+
+Create summary statistics for each analysis window of the transformed Ebola delay data.
+
+```{targets ebola_data_summary}
+tar_target(
+  ebola_data_summary,
+  summarise_ebola_windows(ebola_delay_data)
+)
+```
+
 # Parameter Recovery
 
 ## Compile Stan models
@@ -547,7 +586,7 @@ tarchetypes::tar_group_by(
   fitting_grid,
   create_fitting_grid(
     monte_carlo_samples = monte_carlo_samples,
-    ebola_case_study_data = ebola_case_study_data,
+    ebola_delay_data = ebola_delay_data,
     scenarios = scenarios,
     sample_sizes = sample_sizes,
     test_mode = test_mode
