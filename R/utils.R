@@ -40,6 +40,17 @@ transform_ebola_to_delays <- function(case_study_row) {
   ebola_data <- case_study_row$data[[1]]
   window_end_day <- case_study_row$end_day
   
+  # Validate input data
+  if (nrow(ebola_data) == 0) {
+    warning("Empty data frame provided to transform_ebola_to_delays")
+    return(data.frame())
+  }
+  
+  if (any(is.na(ebola_data$symptom_onset_date)) || 
+      any(is.na(ebola_data$sample_date))) {
+    warning("Missing dates found in Ebola data - these will result in NA delays")
+  }
+  
   # Calculate window end date (days since start of outbreak)
   outbreak_start <- min(ebola_data$symptom_onset_date, na.rm = TRUE)
   window_end_date <- outbreak_start + window_end_day
@@ -67,6 +78,22 @@ transform_ebola_to_delays <- function(case_study_row) {
 #' @return A data frame with summary statistics for each window/analysis combination
 #' @export
 summarise_ebola_windows <- function(ebola_delay_data) {
+  # Validate input data
+  if (nrow(ebola_delay_data) == 0) {
+    warning("Empty data frame provided to summarise_ebola_windows")
+    return(data.frame(
+      window_id = character(),
+      analysis_type = character(),
+      n_observations = integer(),
+      mean_delay = numeric(),
+      median_delay = numeric(),
+      sd_delay = numeric(),
+      min_delay = numeric(),
+      max_delay = numeric(),
+      mean_relative_obs_time = numeric()
+    ))
+  }
+  
   ebola_delay_data |>
     dplyr::group_by(window_id, analysis_type) |>
     dplyr::summarise(

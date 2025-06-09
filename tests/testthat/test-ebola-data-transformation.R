@@ -122,3 +122,83 @@ test_that("summarise_ebola_windows handles single observation per group", {
   expect_equal(result$mean_delay, 5)
   expect_equal(result$sd_delay, NA_real_)  # SD of single value is NA
 })
+
+test_that("transform_ebola_to_delays handles empty datasets", {
+  test_case_study_row <- data.frame(
+    window_id = "window_1",
+    analysis_type = "real_time",
+    window_label = "0-60 days",
+    start_day = 0,
+    end_day = 60,
+    n_cases = 0
+  )
+  
+  # Empty data frame
+  empty_data <- data.frame(
+    case_id = character(),
+    symptom_onset_date = as.Date(character()),
+    sample_date = as.Date(character())
+  )
+  
+  test_case_study_row$data <- I(list(empty_data))
+  
+  expect_warning(
+    result <- transform_ebola_to_delays(test_case_study_row),
+    "Empty data frame provided"
+  )
+  
+  expect_s3_class(result, "data.frame")
+  expect_equal(nrow(result), 0)
+})
+
+test_that("transform_ebola_to_delays warns about missing dates", {
+  test_case_study_row <- data.frame(
+    window_id = "window_1",
+    analysis_type = "real_time", 
+    window_label = "0-60 days",
+    start_day = 0,
+    end_day = 60,
+    n_cases = 2
+  )
+  
+  # Data with missing dates
+  test_data <- data.frame(
+    case_id = c("case1", "case2"),
+    symptom_onset_date = as.Date(c("2014-05-01", NA)),
+    sample_date = as.Date(c("2014-05-05", "2014-05-15"))
+  )
+  
+  test_case_study_row$data <- I(list(test_data))
+  
+  expect_warning(
+    result <- transform_ebola_to_delays(test_case_study_row),
+    "Missing dates found"
+  )
+  
+  # Should still return results for valid data
+  expect_equal(nrow(result), 2)
+  expect_true(is.na(result$delay_observed[2]))
+})
+
+test_that("summarise_ebola_windows handles empty datasets", {
+  empty_delay_data <- data.frame(
+    window_id = character(),
+    analysis_type = character(),
+    delay_observed = numeric(),
+    relative_obs_time = numeric()
+  )
+  
+  expect_warning(
+    result <- summarise_ebola_windows(empty_delay_data),
+    "Empty data frame provided"
+  )
+  
+  expect_s3_class(result, "data.frame")
+  expect_equal(nrow(result), 0)
+  
+  # Check correct column structure
+  expected_cols <- c("window_id", "analysis_type", "n_observations", 
+                    "mean_delay", "median_delay", "sd_delay", 
+                    "min_delay", "max_delay", "mean_relative_obs_time")
+  expect_true(all(expected_cols %in% names(result)))
+})
