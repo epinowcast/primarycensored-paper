@@ -35,8 +35,8 @@ test_that("transform_ebola_to_delays converts dates to numeric delays", {
   expect_equal(result$sec_cens_lower, c(4, 5))
   expect_equal(result$sec_cens_upper, c(5, 6))
 
-  # Check relative observation time
-  # Window ends at day 60, so 60 days after 2014-05-01
+  # Check relative observation time for real-time analysis
+  # Real-time uses window end (day 60) for truncation
   expect_equal(result$relative_obs_time, c(60, 51))
 
   # Check that date columns are removed
@@ -72,6 +72,62 @@ test_that("transform_ebola_to_delays handles edge cases", {
   expect_equal(result$delay_observed, 0)
   expect_equal(result$sec_cens_lower, 0)
   expect_equal(result$sec_cens_upper, 1)
+
+  # Check relative observation time for retrospective analysis
+  # Retrospective uses outbreak end (max sample date + 30 day buffer)
+  # Sample date: 2014-05-01, so outbreak end: 2014-05-01 + 30 = 2014-05-31
+  # Relative obs time: 2014-05-31 - 2014-05-01 = 30 days
+  expect_equal(result$relative_obs_time, 30)
+})
+
+test_that("transform_ebola_to_delays real-time vs retrospective", {
+  # Create identical data for both analysis types
+  test_data <- data.frame(
+    case_id = c("case1", "case2"),
+    symptom_onset_date = as.Date(c("2014-05-01", "2014-05-10")),
+    # Second extends beyond window
+    sample_date = as.Date(c("2014-05-05", "2014-06-15"))
+  )
+
+  # Real-time analysis (window 1: 0-60 days)
+  realtime_row <- data.frame(
+    window_id = "window_1",
+    analysis_type = "real_time",
+    window_label = "0-60 days",
+    start_day = 0,
+    end_day = 60,
+    n_cases = 2,
+    data = I(list(test_data))
+  )
+
+  # Retrospective analysis (same window)
+  retrospective_row <- data.frame(
+    window_id = "window_1",
+    analysis_type = "retrospective",
+    window_label = "0-60 days",
+    start_day = 0,
+    end_day = 60,
+    n_cases = 2,
+    data = I(list(test_data))
+  )
+
+  realtime_result <- transform_ebola_to_delays(realtime_row)
+  retrospective_result <- transform_ebola_to_delays(retrospective_row)
+
+  # Check that delays are identical (same source data)
+  expect_equal(
+    realtime_result$delay_observed,
+    retrospective_result$delay_observed
+  )
+
+  # Check that relative observation times differ
+  # Real-time: truncated at window end (60 days from outbreak start)
+  expect_equal(realtime_result$relative_obs_time, c(60, 51))
+
+  # Retrospective: truncated at outbreak end (max sample date + 30 day buffer)
+  # Max sample date: 2014-06-15, outbreak end: 2014-06-15 + 30 = 2014-07-15
+  # Relative obs times: 2014-07-15 - c(2014-05-01, 2014-05-10) = c(75, 66)
+  expect_equal(retrospective_result$relative_obs_time, c(75, 66))
 })
 
 test_that("summarise_ebola_windows creates correct summary statistics", {

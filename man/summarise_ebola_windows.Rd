@@ -11,7 +11,7 @@ summarise_ebola_windows(ebola_delay_data)
 window_id, analysis_type, and delay_observed columns}
 }
 \value{
-A data frame with summary statistics for each window/analysis combination
+A data frame with summary statistics for each window/analysis
 }
 \description{
 Summarise Ebola delay data by window and analysis type

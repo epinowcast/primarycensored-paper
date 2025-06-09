@@ -14,5 +14,10 @@ window metadata and a data list column with the actual observations}
 A data frame with numeric delay values and censoring intervals
 }
 \description{
-Transform Ebola case study data from dates to numeric delays
+Converts date pairs to delay format with proper censoring intervals and
+analysis-type specific truncation times:
+\itemize{
+\item Real-time: Truncated at window end (simulates real-time analysis)
+\item Retrospective: Truncated at outbreak end (simulates post-outbreak analysis)
+}
 }

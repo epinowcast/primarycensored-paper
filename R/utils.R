@@ -31,6 +31,11 @@ save_data <- function(data, filename) {
 
 #' Transform Ebola case study data from dates to numeric delays
 #'
+#' Converts date pairs to delay format with proper censoring intervals and
+#' analysis-type specific truncation times:
+#' - Real-time: Truncated at window end (simulates real-time analysis)
+#' - Retrospective: Truncated at outbreak end (simulates post-outbreak analysis)
+#'
 #' @param case_study_row A single row from ebola_case_study_data containing
 #'   window metadata and a data list column with the actual observations
 #' @return A data frame with numeric delay values and censoring intervals
@@ -55,9 +60,20 @@ transform_ebola_to_delays <- function(case_study_row) {
             "these will result in NA delays")
   }
 
-  # Calculate window end date (days since start of outbreak)
+  # Calculate dates for truncation based on analysis type
   outbreak_start <- min(ebola_data$symptom_onset_date, na.rm = TRUE)
   window_end_date <- outbreak_start + window_end_day
+
+  # For retrospective analysis, use end of outbreak;
+  # for real-time, use window end
+  if (case_study_row$analysis_type == "retrospective") {
+    # Use end of outbreak (maximum sample date + buffer for ongoing cases)
+    outbreak_end_date <- max(ebola_data$sample_date, na.rm = TRUE) + 30
+    truncation_date <- outbreak_end_date
+  } else {
+    # Real-time analysis: truncate at window end (RHS of window)
+    truncation_date <- window_end_date
+  }
 
   ebola_data |>
     dplyr::mutate(
@@ -69,8 +85,8 @@ transform_ebola_to_delays <- function(case_study_row) {
       # Secondary event (sample) censoring - assuming daily reporting
       sec_cens_lower = delay_observed,
       sec_cens_upper = delay_observed + 1,
-      # Observation time for truncation (time from onset to window end)
-      relative_obs_time = as.numeric(window_end_date - symptom_onset_date)
+      # Observation time for truncation (analysis-type dependent)
+      relative_obs_time = as.numeric(truncation_date - symptom_onset_date)
     ) |>
     dplyr::select(-symptom_onset_date, -sample_date)  # Remove date columns
 }

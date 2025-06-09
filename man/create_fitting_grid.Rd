@@ -16,7 +16,7 @@ create_fitting_grid(
 \item{monte_carlo_samples}{List of Monte Carlo samples from simulation
 scenarios}
 
-\item{ebola_delay_data}{Transformed Ebola delay data with numeric delay columns}
+\item{ebola_delay_data}{Transformed Ebola delay data with numeric delays}
 
 \item{scenarios}{Scenario grid with distribution information}
 

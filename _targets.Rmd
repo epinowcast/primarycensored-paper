@@ -511,23 +511,20 @@ Transform the windowed Ebola case study data from date format to numeric delays 
 tar_target(
   ebola_delay_data,
   {
-    # Apply transformation to each row of case study data
-    ebola_case_study_data |>
-      # Transform dates to delays for each row
-      purrr::pmap_dfr(function(...) {
-        row <- data.frame(...)
-        delay_data <- transform_ebola_to_delays(row)
-        # Add window metadata to transformed data
-        delay_data |>
-          dplyr::mutate(
-            window_id = row$window_id,
-            analysis_type = row$analysis_type,
-            window_label = row$window_label,
-            start_day = row$start_day,
-            end_day = row$end_day
-          )
-      })
-  }
+    # Transform dates to delays for this window/analysis combination
+    delay_data <- transform_ebola_to_delays(ebola_case_study_data)
+    
+    # Add window metadata to transformed data
+    delay_data |>
+      dplyr::mutate(
+        window_id = ebola_case_study_data$window_id,
+        analysis_type = ebola_case_study_data$analysis_type,
+        window_label = ebola_case_study_data$window_label,
+        start_day = ebola_case_study_data$start_day,
+        end_day = ebola_case_study_data$end_day
+      )
+  },
+  pattern = map(ebola_case_study_data)
 )
 ```
 
@@ -538,7 +535,11 @@ Create summary statistics for each analysis window of the transformed Ebola dela
 ```{targets ebola_data_summary}
 tar_target(
   ebola_data_summary,
-  summarise_ebola_windows(ebola_delay_data)
+  {
+    # Combine all delay data branches and summarise
+    combined_delay_data <- dplyr::bind_rows(ebola_delay_data)
+    summarise_ebola_windows(combined_delay_data)
+  }
 )
 ```
 
@@ -586,7 +587,7 @@ tarchetypes::tar_group_by(
   fitting_grid,
   create_fitting_grid(
     monte_carlo_samples = monte_carlo_samples,
-    ebola_delay_data = ebola_delay_data,
+    ebola_delay_data = dplyr::bind_rows(ebola_delay_data),
     scenarios = scenarios,
     sample_sizes = sample_sizes,
     test_mode = test_mode
