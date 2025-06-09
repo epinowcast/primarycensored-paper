@@ -21,7 +21,6 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
     return(create_empty_results(fitting_grid, "primarycensored"))
   }
 
-  tictoc::tic("fit_primarycensored")
   dist_info <- extract_distribution_info(fitting_grid)
 
   # Compile model if not provided
@@ -68,6 +67,8 @@ fit_primarycensored <- function(fitting_grid, stan_settings, model = NULL) {
           data = stan_data
         )
       )
+      # Start timing just before sampling
+      tictoc::tic("fit_primarycensored")
       fit <- do.call(model$sample, stan_settings)
 
       runtime <- tictoc::toc(quiet = TRUE)
@@ -106,7 +107,6 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
     return(create_empty_results(fitting_grid, "naive"))
   }
 
-  tictoc::tic("fit_naive")
   dist_info <- extract_distribution_info(fitting_grid)
 
   # Compile model if not provided
@@ -153,6 +153,8 @@ fit_naive <- function(fitting_grid, stan_settings, model = NULL) {
           data = naive_stan_data
         )
       )
+      # Start timing just before sampling
+      tictoc::tic("fit_naive")
       # Fit the model using shared Stan settings
       fit <- do.call(model$sample, stan_settings)
 
@@ -192,8 +194,6 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
     return(create_empty_results(fitting_grid, "ward"))
   }
 
-  tictoc::tic("fit_ward")
-
   # Compile model if not provided
   if (is.null(model)) {
     model <- cmdstanr::cmdstan_model(
@@ -223,6 +223,8 @@ fit_ward <- function(fitting_grid, stan_settings, model = NULL) {
           data = stan_data
         )
       )
+      # Start timing just before sampling
+      tictoc::tic("fit_ward")
       # Fit the Ward model using shared Stan settings
       fit <- do.call(model$sample, stan_settings)
 
@@ -268,7 +270,6 @@ fit_primarycensored_mle <- function(fitting_grid) {
     return(create_empty_results(fitting_grid, "primarycensored_mle"))
   }
 
-  tictoc::tic("fit_primarycensored_mle")
   dist_info <- extract_distribution_info(fitting_grid)
 
   tryCatch(
@@ -310,6 +311,8 @@ fit_primarycensored_mle <- function(fitting_grid) {
 
       # Fit using appropriate distribution with proper primary distribution
       # functions
+      # Start timing just before fitting
+      tictoc::tic("fit_primarycensored_mle")
       fit_result <- primarycensored::fitdistdoublecens(
         censdata = delay_data,
         distr = get_r_distribution_name(dist_info$distribution),
