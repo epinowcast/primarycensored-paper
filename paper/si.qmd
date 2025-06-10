@@ -12,8 +12,6 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 ## Primary event censored distributions via adjusted CDF
 
-This section details the derivation of analytical solutions for primary event censored distributions using the adjusted cumulative distribution function (CDF) approach described in the main text. This approach marginalises over primary event times to compute $F_{\text{cens}}(q) = \Pr(T_{\text{cens}} < q)$, providing both computational efficiency and statistical rigour.
-
 ## Alternative: Survival function approach to primary event censoring
 
 The survival function approach provides an alternative but equivalent perspective to the marginalisation method described in the main text. Here, the focus is on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
