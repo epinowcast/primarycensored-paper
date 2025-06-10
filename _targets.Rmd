@@ -257,6 +257,8 @@ tar_target(
       # Secondary event censoring intervals [delay, delay + swindow]
       sec_cens_lower = delays,
       sec_cens_upper = delays + scenarios$secondary_width,
+      # Truncation observation time
+      relative_obs_time = scenarios$relative_obs_time,
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
@@ -519,11 +521,8 @@ tar_target(
 
 Create summary statistics for each analysis window of the transformed Ebola delay data.
 
-```{targets ebola_data_summary}
-tar_target(
-  ebola_data_summary,
-  summarise_ebola_windows(dplyr::bind_rows(ebola_delay_data))
-)
+```{targets ebola_data_summary, tar_simple = TRUE}
+summarise_ebola_windows(ebola_delay_data)
 ```
 
 # Parameter Recovery
