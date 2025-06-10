@@ -6,7 +6,7 @@
 \usage{
 create_fitting_grid(
   monte_carlo_samples,
-  ebola_case_study_data,
+  ebola_delay_data,
   scenarios,
   sample_sizes,
   test_mode = FALSE
@@ -16,7 +16,7 @@ create_fitting_grid(
 \item{monte_carlo_samples}{List of Monte Carlo samples from simulation
 scenarios}
 
-\item{ebola_case_study_data}{Ebola case study data with observation windows}
+\item{ebola_delay_data}{Transformed Ebola delay data with numeric delays}
 
 \item{scenarios}{Scenario grid with distribution information}
 

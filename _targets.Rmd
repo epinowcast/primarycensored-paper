@@ -257,6 +257,8 @@ tar_target(
       # Secondary event censoring intervals [delay, delay + swindow]
       sec_cens_lower = delays,
       sec_cens_upper = delays + scenarios$secondary_width,
+      # Truncation observation time
+      relative_obs_time = scenarios$relative_obs_time,
       distribution = scenarios$distribution,
       truncation = scenarios$truncation,
       censoring = scenarios$censoring,
@@ -503,6 +505,26 @@ tar_target(
 )
 ```
 
+## Transform Ebola data to delay format
+
+Transform the windowed Ebola case study data from date format to numeric delays with censoring intervals, matching the format expected by fitting methods.
+
+```{targets ebola_delay_data}
+tar_target(
+  ebola_delay_data,
+  transform_ebola_to_delays(ebola_case_study_data),
+  pattern = map(ebola_case_study_data)
+)
+```
+
+## Summarise Ebola data windows
+
+Create summary statistics for each analysis window of the transformed Ebola delay data.
+
+```{targets ebola_data_summary, tar_simple = TRUE}
+summarise_ebola_windows(ebola_delay_data)
+```
+
 # Parameter Recovery
 
 ## Compile Stan models
@@ -547,7 +569,7 @@ tarchetypes::tar_group_by(
   fitting_grid,
   create_fitting_grid(
     monte_carlo_samples = monte_carlo_samples,
-    ebola_case_study_data = ebola_case_study_data,
+    ebola_delay_data = ebola_delay_data,
     scenarios = scenarios,
     sample_sizes = sample_sizes,
     test_mode = test_mode
