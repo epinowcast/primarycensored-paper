@@ -38,9 +38,15 @@ save_data <- function(data, filename) {
 #'
 #' @param case_study_row A single row from ebola_case_study_data containing
 #'   window metadata and a data list column with the actual observations
+#' @param primary_cens_interval Numeric vector of length 2 specifying the
+#'   primary event censoring interval (default: c(0, 1) for daily reporting)
+#' @param secondary_cens_days Numeric value specifying the secondary event
+#'   censoring interval in days (default: 1 for daily reporting)
 #' @return A data frame row with metadata and nested delay data
 #' @export
-transform_ebola_to_delays <- function(case_study_row) {
+transform_ebola_to_delays <- function(case_study_row,
+                                      primary_cens_interval = c(0, 1),
+                                      secondary_cens_days = 1) {
   # Suppress CMD check warnings for dplyr usage
   symptom_onset_date <- sample_date <- delay_observed <- NULL
 
@@ -95,12 +101,12 @@ transform_ebola_to_delays <- function(case_study_row) {
     dplyr::mutate(
       # Calculate delay from symptom onset to sample test
       delay_observed = as.numeric(sample_date - symptom_onset_date),
-      # Primary event (onset) censoring - assuming daily reporting
-      prim_cens_lower = 0,
-      prim_cens_upper = 1,
-      # Secondary event (sample) censoring - assuming daily reporting
+      # Primary event (onset) censoring - configurable interval
+      prim_cens_lower = primary_cens_interval[1],
+      prim_cens_upper = primary_cens_interval[2],
+      # Secondary event (sample) censoring - configurable interval
       sec_cens_lower = delay_observed,
-      sec_cens_upper = delay_observed + 1,
+      sec_cens_upper = delay_observed + secondary_cens_days,
       # Observation time for truncation (analysis-type dependent)
       relative_obs_time = as.numeric(truncation_date - symptom_onset_date)
     ) |>
@@ -147,59 +153,70 @@ summarise_ebola_windows <- function(ebola_delay_data) {
     ))
   }
 
+  # Helper function to create summary row with consistent structure
+  create_summary_row <- function(row, df = NULL) {
+    # Handle empty/null data case
+    if (is.null(df) || nrow(df) == 0) {
+      delay_stats <- rep(NA_real_, 5)
+      obs_time_stats <- rep(NA_real_, 5)
+      n_obs <- 0
+    } else {
+      delay_stats <- c(
+        mean(df$delay_observed, na.rm = TRUE),
+        stats::median(df$delay_observed, na.rm = TRUE),
+        stats::sd(df$delay_observed, na.rm = TRUE),
+        min(df$delay_observed, na.rm = TRUE),
+        max(df$delay_observed, na.rm = TRUE)
+      )
+      obs_time_stats <- c(
+        mean(df$relative_obs_time, na.rm = TRUE),
+        stats::median(df$relative_obs_time, na.rm = TRUE),
+        stats::sd(df$relative_obs_time, na.rm = TRUE),
+        min(df$relative_obs_time, na.rm = TRUE),
+        max(df$relative_obs_time, na.rm = TRUE)
+      )
+      n_obs <- nrow(df)
+    }
+
+    data.frame(
+      window_id = if (length(row$window_id) > 0) {
+        row$window_id
+      } else {
+        NA_character_
+      },
+      analysis_type = if (length(row$analysis_type) > 0) {
+        row$analysis_type
+      } else {
+        NA_character_
+      },
+      window_label = if (length(row$window_label) > 0) {
+        row$window_label
+      } else {
+        NA_character_
+      },
+      n_observations = n_obs,
+      mean_delay = delay_stats[1],
+      median_delay = delay_stats[2],
+      sd_delay = delay_stats[3],
+      min_delay = delay_stats[4],
+      max_delay = delay_stats[5],
+      mean_relative_obs_time = obs_time_stats[1],
+      median_relative_obs_time = obs_time_stats[2],
+      sd_relative_obs_time = obs_time_stats[3],
+      min_relative_obs_time = obs_time_stats[4],
+      max_relative_obs_time = obs_time_stats[5]
+    )
+  }
+
   # Process each row to extract summary statistics
   result_list <- lapply(seq_len(nrow(ebola_delay_data)), function(i) {
     row <- ebola_delay_data[i, ]
-
-    if (row$n_cases > 0 && length(row$data[[1]]) > 0) {
-      df <- row$data[[1]]
-      data.frame(
-        window_id = row$window_id,
-        analysis_type = row$analysis_type,
-        window_label = row$window_label,
-        n_observations = row$n_cases,
-        mean_delay = mean(df$delay_observed, na.rm = TRUE),
-        median_delay = stats::median(df$delay_observed, na.rm = TRUE),
-        sd_delay = stats::sd(df$delay_observed, na.rm = TRUE),
-        min_delay = min(df$delay_observed, na.rm = TRUE),
-        max_delay = max(df$delay_observed, na.rm = TRUE),
-        mean_relative_obs_time = mean(df$relative_obs_time, na.rm = TRUE),
-        median_relative_obs_time = stats::median(df$relative_obs_time,
-                                                 na.rm = TRUE),
-        sd_relative_obs_time = stats::sd(df$relative_obs_time, na.rm = TRUE),
-        min_relative_obs_time = min(df$relative_obs_time, na.rm = TRUE),
-        max_relative_obs_time = max(df$relative_obs_time, na.rm = TRUE)
-      )
+    df <- if (row$n_cases > 0 && length(row$data[[1]]) > 0) {
+      row$data[[1]]
     } else {
-      data.frame(
-        window_id = if (length(row$window_id) > 0) {
-          row$window_id
-        } else {
-          NA_character_
-        },
-        analysis_type = if (length(row$analysis_type) > 0) {
-          row$analysis_type
-        } else {
-          NA_character_
-        },
-        window_label = if (length(row$window_label) > 0) {
-          row$window_label
-        } else {
-          NA_character_
-        },
-        n_observations = 0,
-        mean_delay = NA_real_,
-        median_delay = NA_real_,
-        sd_delay = NA_real_,
-        min_delay = NA_real_,
-        max_delay = NA_real_,
-        mean_relative_obs_time = NA_real_,
-        median_relative_obs_time = NA_real_,
-        sd_relative_obs_time = NA_real_,
-        min_relative_obs_time = NA_real_,
-        max_relative_obs_time = NA_real_
-      )
+      NULL
     }
+    create_summary_row(row, df)
   })
 
   # Combine all results

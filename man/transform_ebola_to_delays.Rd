@@ -4,11 +4,21 @@
 \alias{transform_ebola_to_delays}
 \title{Transform Ebola case study data from dates to numeric delays}
 \usage{
-transform_ebola_to_delays(case_study_row)
+transform_ebola_to_delays(
+  case_study_row,
+  primary_cens_interval = c(0, 1),
+  secondary_cens_days = 1
+)
 }
 \arguments{
 \item{case_study_row}{A single row from ebola_case_study_data containing
 window metadata and a data list column with the actual observations}
+
+\item{primary_cens_interval}{Numeric vector of length 2 specifying the
+primary event censoring interval (default: c(0, 1) for daily reporting)}
+
+\item{secondary_cens_days}{Numeric value specifying the secondary event
+censoring interval in days (default: 1 for daily reporting)}
 }
 \value{
 A data frame row with metadata and nested delay data

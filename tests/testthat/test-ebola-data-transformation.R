@@ -295,6 +295,50 @@ test_that("transform_ebola_to_delays warns about missing dates", {
   expect_true(is.na(nested_data$delay_observed[2]))
 })
 
+test_that("transform_ebola_to_delays respects configurable censoring params", {
+  # Test with custom censoring intervals
+  test_case_study_row <- data.frame(
+    window_id = "window_1",
+    analysis_type = "real_time",
+    window_label = "0-60 days",
+    start_day = 0,
+    end_day = 60,
+    n_cases = 1
+  )
+
+  test_data <- data.frame(
+    case_id = "case1",
+    symptom_onset_date = as.Date("2014-05-01"),
+    sample_date = as.Date("2014-05-05")
+  )
+
+  test_case_study_row$data <- I(list(test_data))
+
+  # Test with custom parameters
+  result <- transform_ebola_to_delays(
+    test_case_study_row,
+    primary_cens_interval = c(0, 2),  # 2-day window instead of 1
+    secondary_cens_days = 3           # 3-day secondary interval
+  )
+
+  # Extract nested data for checks
+  nested_data <- result$data[[1]]
+
+  # Check that custom censoring intervals are applied
+  expect_equal(nested_data$prim_cens_lower, 0)
+  expect_equal(nested_data$prim_cens_upper, 2)  # Custom 2-day interval
+  expect_equal(nested_data$sec_cens_lower, 4)   # Delay is 4 days
+  expect_equal(nested_data$sec_cens_upper, 7)   # 4 + 3 (custom interval)
+
+  # Test with default parameters for comparison
+  result_default <- transform_ebola_to_delays(test_case_study_row)
+  nested_default <- result_default$data[[1]]
+
+  # Check that defaults are different from custom
+  expect_equal(nested_default$prim_cens_upper, 1)  # Default 1-day
+  expect_equal(nested_default$sec_cens_upper, 5)   # delay + default interval
+})
+
 test_that("summarise_ebola_windows handles empty datasets", {
   empty_delay_data <- data.frame(
     window_id = character(),
