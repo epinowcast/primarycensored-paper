@@ -81,7 +81,9 @@ $$
 F_{\text{cens}}(q) = 1 - Q_{S_+}(q-w_P).
 $$
 
-We now show that @eq-Q_Splus gives equivalent analytic results to the main text.
+Therefore, any result from the survival analysis perspective can be rewritten as a result from the censoring adjusted CDF perspective used in the main text.
+
+To make this concrete, we now show that @eq-Q_Splus gives equivalent analytic results to the main text.
 For a uniform distribution of $P$ @eq-FCP becomes $F_{C_P}(p) = p / w_P$ (c.f. further derivation below).
 Introducing this into @eq-Q_Splus then gives:
 
