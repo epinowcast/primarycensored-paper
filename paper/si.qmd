@@ -75,7 +75,7 @@ $$
 
 As mentioned above, in the main text we focus on the censoring adjusted delay from the _beginning_ of primary censored window, $T_{\text{cens}}$. 
 The event that $S_+$ has a duration greater than $q$ is the complement event to $T_{\text{cens}}$ having a duration less than $q+w_P$ because of the shift in relative point and swap between cCDF and CDF based analysis.
-Applying this identity of events to gives:
+Applying this identity of events gives:
 
 $$
 F_{\text{cens}}(q) = 1 - Q_{S_+}(q-w_P).
