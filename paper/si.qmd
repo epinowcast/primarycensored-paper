@@ -10,9 +10,7 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 # Detailed analytical solutions
 
-## Primary event censored distributions via adjusted CDF
-
-## Alternative: Survival function approach to primary event censoring
+## Survival function approach to primary event censoring
 
 The survival function approach provides an alternative but equivalent perspective to the marginalisation method described in the main text. Here, the focus is on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
 
