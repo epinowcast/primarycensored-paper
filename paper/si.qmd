@@ -12,7 +12,14 @@ csl: https://raw.githubusercontent.com/citation-style-language/styles/master/plo
 
 ## Survival function approach to primary event censoring
 
-The survival function approach provides an alternative but equivalent perspective to the marginalisation method described in the main text. Here, the focus is on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
+The survival function approach provides an alternative but equivalent perspective to the cumulative distribution function (CDF) marginalisation method described in the main text.
+The main differences are that:
+
+- In the survival function approach we convert the censoring problem to a single interval censoring problem with a censoring adjusted delay relative to the _end_ of the primary censoring window. In the main text, we do this relative to the _start_ of the primary censoring window.
+- In the survival function approach we consider the probability of censoring adjusted delays _exceeding_ any given delay. This follows a typical survival analysis approach of considering the complementary cumulative distribution function (cCDF) or _survival function_ $Q$ of a delay duration random variable. In the main text, we consider the probability of censoring adjusted delays _being less than_ any given delay, and focus on the cumulative distribution function (CDF) of the censoring adjusted delays.
+
+
+In this section we focus on the probability that the secondary event occurs after a given time, measured from the end of the primary censoring window. This is formalised as the survival function for the time from the end of the primary window to the secondary event, $S_+ = S - (t_P + w_P)$.
 
 When reasoning about the distribution of the censored delay time $T_c$, it is useful to consider the time from the end (right) point of the primary censoring interval to the secondary time as a random variable,
 
@@ -20,7 +27,11 @@ $$
 S_+ = S - (t_P + w_P) = T - ((t_P + w_P) - P) = T - C_P.
 $$
 
-Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: $F_{C_P}(p) = \Pr(C_P < p) = \Pr(P > t_P + w_P - p)$.
+Where $T$ is the delay distribution of interest and $C_P = (t_P + w_P) - P$ is the interval between the end (right) point of the primary censoring window and the primary event time; note that by definition $C_P$ is not observed but we can relate its distribution to the distribution of $P$: 
+
+$$
+F_{C_P}(p) = \Pr(C_P < p) = \Pr(P > t_P + w_P - p).
+$$ {#eq-FCP}
 
 With non-informative censoring, it is possible to derive the upper distribution function of $S_+$, or *survival function* of $S_+$, from the distribution of $T$ and the distribution of $C_P$.
 
@@ -38,7 +49,7 @@ $$
 Using integration by parts gives:
 $$
 Q_{S_+}(t) = Q_T(t + w_P) + \int_0^{w_P} f_T(t+p) F_{C_P}(p) dp.
-$$
+$$ {#eq-Q_Splus}
 
 Where we have used that $Q^{'}_{T} = - f_T$, $Q_T$ is the survival function of the actual delay distribution of interest and $w_P$ is the length of the primary censoring window.
 
@@ -59,6 +70,34 @@ Note that the censored secondary event time can also occur within the primary ce
 $$
 Q_{S_+}(-w_P) - Q_{S_+}(0) = 1 - Q_T(w_P) - \int_0^{w_P} f_T(p) F_{C_P}(p) dp = \Pr(T< C_P).
 $$
+
+### Analytic solution comparison to main text
+
+As mentioned above, in the main text we focus on the censoring adjusted delay from the _beginning_ of primary censored window, $T_{\text{cens}}$. 
+The event that $S_+$ has a duration greater than $q$ is the complement event to $T_{\text{cens}}$ having a duration less than $q+w_P$ because of the shift in relative point and swap between cCDF and CDF based analysis.
+Applying this identity of events gives:
+
+$$
+F_{\text{cens}}(q) = 1 - Q_{S_+}(q-w_P).
+$$
+
+Therefore, any result from the survival analysis perspective can be rewritten as a result from the censoring adjusted CDF perspective used in the main text.
+
+To make this concrete, we now show that @eq-Q_Splus gives equivalent analytic results to the main text.
+For a uniform distribution of $P$ @eq-FCP becomes $F_{C_P}(p) = p / w_P$ (c.f. further derivation below).
+Introducing this into @eq-Q_Splus then gives:
+
+$$
+\begin{aligned}
+F_{\text{cens}}(q) &= 1 - Q_T(q) - \frac{1}{w_P} \int_0^{w_P} p ~ f_T(q - w_P + p) ~dp \\
+&= F_T(q) - \frac{1}{w_P} \int_{q-w_P}^{q} (z + w_P - q) ~f_T(z)~dz \\
+&= F_T(q) - [F_T(q) - F_T(q-w_P)] + \frac{1}{w_P} \int_{q-w_P}^{q} (q - z) ~f_T(z)~dz \\
+&= F_T(q-w_P) + \frac{1}{w_P} \int_{q-w_P}^{q} (q - z) ~f_T(z)~dz.
+\end{aligned}
+$$ {#eq-convert}
+
+Where we have made the $z = q - w_P +p$ variable substitution and, where possible, resolved integrals over densities as the difference of CDFs.
+Note that @eq-convert, derived from the survival analysis approach is identical to the censoring adjusted delay approach in the main text.
 
 ## General framework for analytical solutions
 
