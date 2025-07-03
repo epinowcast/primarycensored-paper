@@ -185,6 +185,8 @@ tasks:
         if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
           echo "🗑️  Removing _targets/ directory..."
           rm -rf _targets/
+          echo "🗑️  Removing _targets.md..."
+          rm  -f _targets.md
           echo "✅ Targets cache cleaned successfully"
         else
           echo "❌ Clean operation cancelled"
